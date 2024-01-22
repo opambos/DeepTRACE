@@ -50,35 +50,48 @@ function [accuracy, recall, f1_score] = compareLabels(app)
     false_negatives = 0;
     true_negatives  = 0;
     
-    N_GRU   = length(app.movie_data.results.GRULabelled.LabelledMols);
+    %copy the data to a new local cell array - performance can be improved
+    %for certain dataset sizes by instead placing the switch statement
+    %around ML_mol inside main loop - placed here for clarity
+    switch app.movie_data.models.current_model
+        case "Long Short-Term Memory"
+            ML_labelled = app.movie_data.results.LSTMLabelled.LabelledMols;
+        case "GRU"
+            ML_labelled = app.movie_data.results.GRULabelled.LabelledMols;
+        otherwise
+            % << exception handling here >>
+            return;
+    end
+    
+    N_GRU   = length(ML_labelled.LabelledMols);
     N_human = length(app.movie_data.results.VisuallyLabelled.LabelledMols);
     
-    %loop through GRU labelled molecules
+    %loop through ML labelled molecules
     for ii = 1:N_GRU
-        gru_mol     = app.movie_data.results.GRULabelled.LabelledMols{ii, 1};
-        gru_cell_id = gru_mol.CellID;
-        gru_mol_id  = gru_mol.MolID;
-        gru_labels  = gru_mol.Mol(:, end);
+        ML_mol     = ML_labelled{ii, 1};
+        ML_cell_id = ML_mol.CellID;
+        ML_mol_id  = ML_mol.MolID;
+        ML_labels  = ML_mol.Mol(:, end);
         
         %search for matching human-generated label
         for jj = 1:N_human
             human_mol = app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1};
-            if gru_cell_id == human_mol.CellID && gru_mol_id == human_mol.MolID
+            if ML_cell_id == human_mol.CellID && ML_mol_id == human_mol.MolID
                 human_labels = human_mol.Mol(:, end);
                 
                 %ensure the labels are of the same length
-                N_labels = min(length(gru_labels), length(human_labels));
+                N_labels = min(length(ML_labels), length(human_labels));
                 
                 %compare labels
                 for kk = 1:N_labels
-                    if gru_labels(kk) == human_labels(kk)
-                        if gru_labels(kk) == 1
+                    if ML_labels(kk) == human_labels(kk)
+                        if ML_labels(kk) == 1
                             true_positives = true_positives + 1;
                         else
                             true_negatives = true_negatives + 1;
                         end
                     else
-                        if gru_labels(kk) == 1
+                        if ML_labels(kk) == 1
                             false_positives = false_positives + 1;
                         else
                             false_negatives = false_negatives + 1;

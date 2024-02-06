@@ -1,10 +1,10 @@
-function [] = labelWithGRU(app)
-%Label the entire loaded dataset using a pre-trained GRU model, Oliver
-%Pambos, 28/04/2023.
+function [] = labelWithGRUSlidingWindow(app)
+%Label the entire loaded dataset with a pre-trained GRU model in sections
+%using a sliding window, Oliver Pambos, 02/02/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
-%MATLAB FUNCTION: labelWithGRU
+%MATLAB FUNCTION: labelWithGRUSlidingWindow
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
@@ -29,18 +29,11 @@ function [] = labelWithGRU(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%Uses a pre-trained model to classify the data. This function begins by
-%first generating a new copy of the source data to ensure the data is
-%uncorrupted by any other actions performed during runtime. Currently
-%trajectory cropping is hardcoded and favoured over imputation, so the
-%newly copied trajectories do not contain the irrelevant steps at their
-%start and end. The selected features will be scaled using the same feature
-%scaling method used during feature scaling of the source data.
-%
-%Note that labelling with an pre-trained model requires all of the features
-%used to train the original model to exist in the data being labelled;
-%specifically the string literal of each feature must be identical to that
-%used in training.
+%Moves a sliding window through a trajectory labelling the entire
+%trajectory. As the sliding window passes each frame confidence parameters
+%for each state from multiple windows are combined to obtain the most
+%likely class for each frame, thus labelling the entire trajectory. This
+%then repeats for every molecule in the dataset.
 %
 %Input
 %-----
@@ -53,6 +46,7 @@ function [] = labelWithGRU(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %cropTrajectories()
+%labelSingleTrackSlidingGRU()   - local to this .m file
     
     %clear any pre-existing GRU labelled data
     app.movie_data.results.GRULabelled = [];
@@ -93,8 +87,9 @@ function [] = labelWithGRU(app)
         end
     end
     
-    %initialise a progress bar
-    %f = waitbar(0,"Labelling the entire loaded dataset using Gated Recurrent Unit (GRU) model...");
+    %initialise a progress bar (optionally set it to update only every five trajectories)
+    f = waitbar(0,"Labelling the entire loaded dataset using a GRU model in sliding window mode...");
+    %update_freq = 5;
     
     tic
     
@@ -127,29 +122,13 @@ function [] = labelWithGRU(app)
         %extract columns of features to classify
         curr_track = app.movie_data.results.GRULabelled.LabelledMols{ii, 1}.Mol(:, feature_cols);
         
-        %add padding feature column
-        curr_track = [curr_track, ones(size(curr_track, 1), 1)];
-        
-        %ensure track is same length as model input layer; pad or crop
-        if size(curr_track, 1) <app.movie_data.models.GRU.max_len
-            padding = zeros(app.movie_data.models.GRU.max_len - size(curr_track, 1), size(curr_track, 2));
-            curr_track = [curr_track; padding];
-        elseif size(curr_track, 1) > app.movie_data.models.GRU.max_len
-            curr_track = curr_track(1:app.movie_data.models.GRU.max_len, :);
-        end
-        
         %transpose and predict labels with model
         curr_track = curr_track';
         
         %predict labels using GRU model
-        label_sequence = classify(app.movie_data.models.GRU.model, curr_track);
-
-        %crop labels to non-padded region using padded mask feature
-        label_sequence = label_sequence(curr_track(end, :) == 1);
+        %label_sequence = classify(app.movie_data.models.GRU.model, curr_track);
+        label_sequence = labelSingleTrackSlidingGRU(curr_track, app.movie_data.models.GRU.max_len, numel(app.movie_data.models.GRU.class_names), app.movie_data.models.GRU.model);
         
-        %convert from categorical to numeric
-        label_sequence = str2double(cellstr(label_sequence));
-
         %write labels back into GRULabelled results struct
         app.movie_data.results.GRULabelled.LabelledMols{ii, 1}.Mol(:,end) = double(label_sequence');
         
@@ -175,11 +154,149 @@ function [] = labelWithGRU(app)
             otherwise
             
         end
-        
-       %waitbar(ii/size(app.movie_data.results.RFLabelled.LabelledMols, 1), f, "Classificaiton complete for " + num2str(ii) + "/" + num2str(size(app.movie_data.results.RFLabelled.LabelledMols, 1)) + " trajectories");
+       
+        %update the waitbar (optionally every 5 iterations)
+        %if mod(ii, update_freq) == 0
+            waitbar(ii/size(app.movie_data.results.GRULabelled.LabelledMols, 1), f, "Classification complete for " + num2str(ii) + "/" + num2str(size(app.movie_data.results.GRULabelled.LabelledMols, 1)) + " trajectories");
+        %end
     end
     
     t = toc;
+    
+    %update the waitbar one last time at the end
+    waitbar(1, f, "Classification complete for all trajectories");
+    
     app.textout.Value = "Completed classification and segmentation of entire dataset using Gated Recurrent Unit model in " + num2str(t) + " seconds";
-    %close(f);
+    
+    close(f);
 end
+
+
+function [final_predictions] = labelSingleTrackSlidingGRU(curr_track, window_size, N_classes, model)
+%Uses a sliding window to label a single trajectory using a GRU model,
+%Oliver Pambos, 02/02/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: labelSingleTrackSlidingGRU
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Moves a sliding window through a single trajectory classifying each step.
+%As the sliding window passes each frame, confidence parameters
+%for each state from multiple windows are combined to obtain the most
+%likely class for each frame, thus labelling the entire trajectory.
+%
+%Input
+%-----
+%curr_track     (mat)   NxM numeric matrix of trajectory to be classified
+%                           consisting of N features and M frames
+%window_size    (int)   size of the window in number of frames
+%N_classes      (int)   number of classes used for classification
+%model          (mdl)   GRU model used for classification
+%
+%
+%Output
+%------
+%final_predictions  (vec)   row vector of predictions for entire trajectory
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_frames = size(curr_track, 2);    
+    
+    %initialize matrices to store predictions and their confidences
+    class_predictions = zeros(N_frames, N_classes);
+    confidence_scores = zeros(N_frames, N_classes);
+    
+    %process each window
+    for start_idx = 1:(N_frames - window_size + 1)
+        end_idx = start_idx + window_size - 1;
+        
+        %extract the window
+        window_data = curr_track(:, start_idx:end_idx);
+    
+        %get predictions and confidences
+        raw_scores = predict(model, window_data);
+        probabilities = softmax(raw_scores);
+        [max_probs, predicted_labels] = max(probabilities, [], 1);
+        
+        %store predictions and confidences
+        for i = start_idx:end_idx
+            class_predictions(i, predicted_labels(i - start_idx + 1)) = class_predictions(i, predicted_labels(i - start_idx + 1)) + 1;
+            confidence_scores(i, predicted_labels(i - start_idx + 1)) = confidence_scores(i, predicted_labels(i - start_idx + 1)) + max_probs(i - start_idx + 1);
+        end
+
+    end
+    
+    %aggregate predictions for each frame
+    final_predictions = zeros(1, N_frames);
+    final_confidences = zeros(1, N_frames);
+    for i = 1:N_frames
+        [final_confidences(i), final_predictions(i)] = max(confidence_scores(i, :));
+    end
+    
+    
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

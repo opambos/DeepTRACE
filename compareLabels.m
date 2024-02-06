@@ -1,4 +1,4 @@
-function [accuracy, recall, f1_score] = compareLabels(app)
+function [accuracy, precision, recall, f1_score] = compareLabels(app)
 %Compare labels between a human-labelled dataset and the same dataset
 %labelled with an ML model, Oliver Pambos, 10/01/2024.
 %
@@ -27,10 +27,6 @@ function [accuracy, recall, f1_score] = compareLabels(app)
 %RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
-%
-%Note that this function is currently hardcoded only for use with the GRU
-%model as this model type is currently in active development. This function
-%will be later updated to handle all model types.
 %
 %Input
 %-----
@@ -63,11 +59,11 @@ function [accuracy, recall, f1_score] = compareLabels(app)
             return;
     end
     
-    N_GRU   = length(ML_labelled.LabelledMols);
+    N_ML    = length(ML_labelled);
     N_human = length(app.movie_data.results.VisuallyLabelled.LabelledMols);
     
     %loop through ML labelled molecules
-    for ii = 1:N_GRU
+    for ii = 1:N_ML
         ML_mol     = ML_labelled{ii, 1};
         ML_cell_id = ML_mol.CellID;
         ML_mol_id  = ML_mol.MolID;
@@ -105,14 +101,14 @@ function [accuracy, recall, f1_score] = compareLabels(app)
     end
     
     %calculate metrics
-    accuracy = (true_positives + true_negatives) / (true_positives + true_negatives + false_positives + false_negatives);
-    recall = true_positives / (true_positives + false_negatives);
-    precision = true_positives / (true_positives + false_positives);
-    f1_score = 2 * (precision * recall) / (precision + recall);
+    accuracy    = (true_positives + true_negatives) / (true_positives + true_negatives + false_positives + false_negatives);
+    recall      = true_positives / (true_positives + false_negatives);
+    precision   = true_positives / (true_positives + false_positives);
+    f1_score    = 2 * (precision * recall) / (precision + recall);
 
-    app.textout.Value = "Accuracy = " + num2str(accuracy) + newline + "Recall = " + num2str(recall) + newline + "F1 score = " + f1_score;
+    app.textout.Value = "Accuracy = " + num2str(accuracy) + newline + "Precision = " + num2str(precision) + newline + "Recall = " + num2str(recall) + newline + "F1 score = " + f1_score;
     
     %create confusion matrix
     confusion_matrix = [true_negatives, false_positives; false_negatives, true_positives];
-    confusionchart(confusion_matrix);
+    confusionchart(confusion_matrix, 'FontSize', 18);
 end

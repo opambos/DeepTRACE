@@ -106,8 +106,47 @@ function [] = addPartialVisualLabel(app)
                 %give the user a projected time to finish
                 if app.movie_data.state.event_labeller_current_ID > 5
                     time_per_mol = etime(datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified),   datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID-5, 1}.DateClassified))/5;
+                    
                     if time_per_mol < 1000
-                        app.textout.Value = strcat('Based on your past 5 classifications, it took you ', num2str(time_per_mol), ' seconds per molecule; to complete the remaining dataset will take an estimated ', num2str((size(app.movie_data.results.VisuallyLabelled.LabelledMols,1) - app.movie_data.state.event_labeller_current_ID) * time_per_mol / 60), ' minutes');
+                        pred_sec = (size(app.movie_data.results.VisuallyLabelled.LabelledMols, 1) - app.movie_data.state.event_labeller_current_ID) * time_per_mol;
+                        pred_hr = floor(pred_sec / 3600);
+                        pred_remaining_min = round(mod(pred_sec / 60, 60));
+                        
+                        app.textout.Value = sprintf('Based on your past 5 classifications, it took you %.0f seconds per molecule; to complete the remaining dataset will take an estimated %d hours and %d minutes.', time_per_mol, pred_hr, pred_remaining_min);
+                    end
+                end
+                
+
+                %autosave
+                if app.AutosavefrequencytrajectoriesSpinner.Value ~= 0 && mod(app.movie_data.state.event_labeller_current_ID, app.AutosavefrequencytrajectoriesSpinner.Value) == 0
+                    app.textout.Value = ("Autosaving...");
+
+                    %define the autosave folder; create if it doesn't already exist
+                    autosave_dir = fullfile(app.movie_data.params.ffPath, 'Autosave');
+                    if ~exist(autosave_dir, 'dir')
+                        mkdir(autosave_dir);
+                    end
+                    
+                    autosave_name = sprintf('%s_Autosave_%d_mols.mat', app.movie_data.params.title{1}, app.movie_data.state.event_labeller_current_ID);
+                    autosave_path = fullfile(autosave_dir, autosave_name);
+                    
+                    %save to disk
+                    movie_data  = app.movie_data;
+                    save(autosave_path, 'movie_data');
+                    app.textout.Value = ("Autosave complete!");
+                    
+                    %delete non-recent autosave files
+                    files = dir(fullfile(autosave_dir, '*.mat'));
+                    if length(files) > app.NumberofautosvefilestokeepSpinner.Value
+                        %sort files by date
+                        [~, idx] = sort([files.datenum]);
+                        %get list of all but the last N files
+                        del_files = files(idx(1:end - app.NumberofautosvefilestokeepSpinner.Value));
+                        
+                        %delete oldest files
+                        for ii = 1:length(del_files)
+                            delete(fullfile(autosave_dir, del_files(ii).name));
+                        end
                     end
                 end
                 

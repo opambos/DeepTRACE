@@ -1,6 +1,7 @@
 function [accuracy, precision, recall, f1_score] = compareLabels(app)
 %Compare labels between a human-labelled dataset and the same dataset
 %labelled with an ML model, Oliver Pambos, 10/01/2024.
+%oliver.pambos@physics.ox.ac.uk
 %
 %
 %MATLAB FUNCTION: compareLabels

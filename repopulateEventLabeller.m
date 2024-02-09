@@ -45,6 +45,7 @@ function [] = repopulateEventLabeller(app)
 %-----------------------------------------
 %illustrateMol()
 %plotColourTrack()
+%setLabellerAxRanges()
     
     %load next mol, which is a callback to the next mol button
     
@@ -60,10 +61,19 @@ function [] = repopulateEventLabeller(app)
     cell_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.CellID;
     mol_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
     
+    %obtain time and user-selected feature column; also write them to the
+    %state features
+    app.movie_data.state.col_t = find(strcmp(app.movie_data.params.column_titles.tracks, 'Time from start of trajectory (s)'));
+    app.movie_data.state.col_feature = find(strcmp(app.movie_data.params.column_titles.tracks, app.FeatureDropDown.Value));
+
+    %set the y-axis label
+    ylabel(app.UIAxes_event_labeller, app.FeatureDropDown.Value);
+    
     %plot the next molecule - note that column/feature ID for time and step size are currently hardcoded which will change in a future version
-    plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,16), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,19), 'k', 'Tag', 'step_trace');
+    plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature),...
+        'LineWidth', app.LinethicknessSpinner.Value, 'Color', app.LinecolourDropDown.Value, 'Tag', 'step_trace');
     hold(app.UIAxes_event_labeller, 'on');
-    xline(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,16), 'Tag', 'current_pos');
+    xline(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_t), 'LineWidth', app.IndicatorthicknessSpinner.Value, 'Tag', 'current_pos');
     app.movie_data.state.labeller_frame = 1;    %keep track of which frame is currently being displayed, this is incredibly important for performance on slower machine as it greatly reduces number of calls to imagesc()
     app.CellIDTextArea.Value =  num2str(cell_ID);
     app.MolIDTextArea.Value  =  num2str(mol_ID);
@@ -72,15 +82,19 @@ function [] = repopulateEventLabeller(app)
     if isfield(app.movie_data.params, 'reference_lines')
         %ensure user hasn't added duplicates
         app.movie_data.params.reference_lines = unique(app.movie_data.params.reference_lines);
-        yline(app.UIAxes_event_labeller, app.movie_data.params.reference_lines, 'r--', string(app.movie_data.params.reference_lines) + " nm");
+        %yline(app.UIAxes_event_labeller, app.movie_data.params.reference_lines, 'r--', string(app.movie_data.params.reference_lines));
+        for ii = 1:size(app.movie_data.params.reference_lines,1)
+            yline(app.UIAxes_event_labeller, app.movie_data.params.reference_lines, '--', string(app.movie_data.params.reference_lines) + "  ", 'Color', app.ReferencelinecolourDropDown.Value, 'LineWidth', app.ReferencelinethicknessSpinner.Value);
+        end
     end
     
+    %set ranges for axes of the event labeller
+    setLabellerAxesRange(app)
+
     %place red circle to highlight next labelling point - hardcoded feature/column IDs will be replaced in a future version
-    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,16), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,19), 'ro', 'Tag', 'current_loc');
-    app.UIAxes_event_labeller.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,16) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,16)];
-    app.UIAxes_event_labeller.YLim = [0 1.1*max(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,19))];
+    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_feature), 'ro', 'Tag', 'current_loc');
     box(app.UIAxes_event_labeller, 'on');
-    app.Slider_event_labeller.Limits = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,16) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,16)];
+    app.Slider_event_labeller.Limits = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,app.movie_data.state.col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,app.movie_data.state.col_t)];
     
     %prevent user being able to drag/zoom/etc.
     disableDefaultInteractivity(app.UIAxes_event_labeller);
@@ -90,7 +104,7 @@ function [] = repopulateEventLabeller(app)
     %set up the status bar above the trajectory labeller
     axis(app.UIAxes_event_labeller_status, 'off');
     app.UIAxes_event_labeller_status.YLim = [0 1];
-    app.UIAxes_event_labeller_status.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,16) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,16)];
+    app.UIAxes_event_labeller_status.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,app.movie_data.state.col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,app.movie_data.state.col_t)];
     inpos  = app.UIAxes_event_labeller.InnerPosition;
     outpos = app.UIAxes_event_labeller.OuterPosition;
     app.UIAxes_event_labeller_status.InnerPosition = [inpos(1), outpos(2)+outpos(4), inpos(3), 20];
@@ -113,22 +127,8 @@ function [] = repopulateEventLabeller(app)
     axis(app.UIAxes_image_event_labeller, 'off');
     colormap(app.UIAxes_image_event_labeller, gray(256));
     
-    %display the mesh over the overlay
-    imagesc(app.movie_data.cellROI_data(cell_ID).overlay, 'parent', app.UIAxes_event_labeller_mesh);
-    axis(app.UIAxes_event_labeller_mesh, 'equal');
-    axis(app.UIAxes_event_labeller_mesh, 'off');
-    hold(app.UIAxes_event_labeller_mesh, 'on');
-    colormap(app.UIAxes_event_labeller_mesh, gray(256));
-    
-    %obtain the trajectory
-    track = app.movie_data.cellROI_data(cell_ID).tracks(app.movie_data.cellROI_data(cell_ID).tracks(:,4) == mol_ID, :);
-    
-    %correct offset between cropped image and track - note that the offset applied by LoColi's ROI_tracking function appears to have already been applied to the localisation data
-    track(:,1) = track(:,1) - app.movie_data.cellROI_data(cell_ID).overlay_offset(2);
-    track(:,2) = track(:,2) - app.movie_data.cellROI_data(cell_ID).overlay_offset(1);
-    
-    %plot the trajectory
-    plotColourTrack(app.UIAxes_event_labeller_mesh, "Rainbow", "Lines", track, app.movie_data.params.event_label_colours);
+    %populate the track viewer component
+    regenerateTrackViewer(app);
     
     %update the state positions
     app.movie_data.state.labeller_track_pos     = 1;

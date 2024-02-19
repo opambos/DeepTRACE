@@ -101,6 +101,13 @@ function [] = splitData(app)
             app.movie_data.results.train_data   = app.movie_data.results.FeatureScaledData.LabelledMols(1:N_train, 1);
             app.movie_data.results.val_data     = app.movie_data.results.FeatureScaledData.LabelledMols(N_train+1:N_train+N_val, 1);
             app.movie_data.results.test_data    = app.movie_data.results.FeatureScaledData.LabelledMols(N_train+N_val+1:end, 1);
+
+            %keep a copy of all cell_ID and mol_IDs of molecules in the test set
+            app.movie_data.models.temp_params.test_mols = zeros(size(app.movie_data.results.test_data, 1), 2);
+            for ii = 1:size(app.movie_data.results.test_data, 1)
+                app.movie_data.models.temp_params.test_mols(ii, 1) = app.movie_data.results.test_data{ii, 1}.CellID;
+                app.movie_data.models.temp_params.test_mols(ii, 2) = app.movie_data.results.test_data{ii, 1}.MolID;
+            end
             
             %concatenate all data types to produce reference datasets for fast plotting; note that these reference datasets retain all
             %of the original information, while the data used for training, validation, etc. is reformatted for use in model training

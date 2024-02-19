@@ -114,6 +114,7 @@ function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] =
     accuracy = sum(diag(confusion_mat)) / sum(confusion_mat(:));
     
     %generate visual confusion matrix
+    figure;
     confusion_chart = confusionchart(confusion_mat, all_classes, 'FontSize', 18);
     confusion_chart.Title = 'Confusion Matrix';
     %confusion_chart.RowSummary = 'row-normalized';

@@ -97,7 +97,7 @@ function [] = prepData(app)
     filterTracks(app);
     
     %register all filtered track IDs
-    f = waitbar(0,'1','Name','Preparing filtered data: registering filtered tracks');
+    f = waitbar(0,'1','Name','Preparing data: registering filtered tracks');
     waitbar(1/3, f, 'Registering filtered tracks');
     for ii = 1:size(app.movie_data.cellROI_data)
         if ~isempty(app.movie_data.cellROI_data(ii).tracks)
@@ -110,7 +110,7 @@ function [] = prepData(app)
     app.movie_data = genAllOverlays(app.movie_data, app.movie_data.params.ill_border, 8);
     
     %compute localisation-to-membrane distance for every localisation in dataset
-    waitbar(3/3, f, 'Computing distances to membrane for all localisations. Window will close automatically.');
+    waitbar(3/3, f, 'Computing distances to membrane.');
     app.movie_data = computeLocMemDists(app.movie_data);
     
     %add all StormTracker data to the tracks matrix

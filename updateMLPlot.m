@@ -1,4 +1,4 @@
-function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, class_colours, text_title, N_max)
+function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, class_colours, text_title, N_max, viewer_state)
 %Update the ML data viewer axes, Oliver Pambos, 01/05/2023.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -40,6 +40,12 @@ function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, c
 %class_names    (cell)  cell array of strings of class names
 %class_colours  (mat)   Nx3 matrix of RGB colour values for N classes
 %text_title     (str)   title to place above the plot
+%viewer_state   (str)   stores the current content of the app.MLDataViewer
+%                           UIAxes component; this is necessary because the
+%                           process of reseting the figure causes lag, this
+%                           ensures the call to reset() only occurs when
+%                           needed, when the viewer does not currently
+%                           display the same type of data.
 %
 %Output
 %------
@@ -53,6 +59,13 @@ function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, c
     N_keep      = min(N_max, size(data, 1));
     idx_keep    = randperm(size(data, 1), N_keep);
     data        = data(idx_keep, :);
+    
+    %if the last plot wasn't data visualisation
+    if ~strcmp(viewer_state, "Visualisation")
+        reset(h_axes);
+        box(h_axes, "on");
+        grid(h_axes, "on");
+    end
     
     %set the axis style
     cla(h_axes);

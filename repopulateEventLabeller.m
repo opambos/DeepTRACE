@@ -1,5 +1,5 @@
 function [] = repopulateEventLabeller(app)
-%Repopulate the event labeller with a new molecule, Oliver Pambos,
+%Repopulate the human annotation system with a new molecule, Oliver Pambos,
 %28/10/2022.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -29,9 +29,9 @@ function [] = repopulateEventLabeller(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%This function clears the relevant components of the Event Labeller, and
-%repopulates them with new data associated with the next molecule ready for
-%the next manual labelling.
+%This function clears the relevant components of the human annotation
+%system, and repopulates them with new data associated with the next
+%molecule ready for the next manual labelling.
 %
 %Inputs
 %------
@@ -88,7 +88,7 @@ function [] = repopulateEventLabeller(app)
         end
     end
     
-    %set ranges for axes of the event labeller
+    %set ranges for axes of the human annotation system
     setLabellerAxesRange(app)
 
     %place red circle to highlight next labelling point - hardcoded feature/column IDs will be replaced in a future version

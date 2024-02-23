@@ -29,7 +29,7 @@ function [] = placeScaleBar(app, ax)
 %
 %
 %This function generates and positions a scale bar within the
-%track-plotting component of the event labeller.
+%track-plotting component of the human annotation system.
 %
 %There is a convoluted process of generating the label, establishing its
 %extent within the axes, and then moving it using it's object handle. This

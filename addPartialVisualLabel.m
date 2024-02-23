@@ -30,7 +30,9 @@ function [] = addPartialVisualLabel(app)
 %
 %When user interacts with togglebutton panel to add a label to some data,
 %this subroutine checks it is valid, and assigns associated numerical
-%labels
+%label. Each time this runs it populates the human annotations in the
+%VisuallyLabelled results substruct. This function also performs autosave
+%and provides predictions of annotation time to the user.
 %
 %Inputs
 %------
@@ -48,14 +50,14 @@ function [] = addPartialVisualLabel(app)
     pos = app.movie_data.state.labeller_track_pos;
     
     %check that the assignment is valid
-    if pos <= app.movie_data.state.labelled_so_far      % THIS MIGHT NEED TO BE REPLACED WITH < RATHER THAN <=
+    if pos <= app.movie_data.state.labelled_so_far
         %current position has already been labelled; warn and return
         app.textout.Value = 'You have already assigned that step. If you have made a mistake, you can repeat the labelling by clicking the (Undo label) button.';
         return
     else
         %get state being requested
         app.movie_data.state.current_label_number = strcmp(app.movie_data.state.current_label, app.movie_data.params.class_names);
-        app.movie_data.state.current_label_number = find(app.movie_data.state.current_label_number, 1); %error checking required when event labeller first runs to make sure that there is only one of each class name or this will crash out
+        app.movie_data.state.current_label_number = find(app.movie_data.state.current_label_number, 1); %error handling required when the human annotation system first runs to make sure that there is only one of each class name; this will be addressed in a future version
         
         app.textout.Value = strcat('user is manually assigning a state to', {' '}, app.movie_data.state.current_label, {' and the label number is '}, num2str(app.movie_data.state.current_label_number));
         
@@ -85,8 +87,19 @@ function [] = addPartialVisualLabel(app)
         %keep track of new position
         app.movie_data.state.labelled_so_far = pos;
         
-        %if it's the end of the trajectory, and not the last trajectory, then load the next trajectory
+        %if it's the end of the trajectory
         if pos == size(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol, 1)
+            %complete the classification: add a date, compute the condensed state sequence
+            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified  =  datestr(now, 'dd/mm/yy-HH:MM:SS');
+            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.User            = app.UserEditField.Value;
+            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.EventSequence   = condenseStateSequence(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.Mol(:,end));
+            
+            %if user asked illustration to happen after labelling, then do this now
+            if app.IllustrateafterlabellingCheckBox.Value == 1
+                SaveillustrationButtonPushed(app);
+            end
+            
+            %if it's the last trajectory end, otherwise then load the next trajectory
             if app.movie_data.state.event_labeller_current_ID == size(app.movie_data.results.VisuallyLabelled.LabelledMols, 1)
                 %if it's the end of the dataset
                 cla(app.UIAxes_event_labeller);
@@ -94,15 +107,6 @@ function [] = addPartialVisualLabel(app)
                 app.textout.Value = 'Well done: you have successfully labelled all of the molecules!';
                 
             else
-                %complete the classification: add a date, compute the condensed state sequence
-                app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified =  datestr(now, 'dd/mm/yy-HH:MM:SS');
-                app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.EventSequence = condenseStateSequence(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.Mol(:,end));
-
-                %if user asked illustration to happen after labelling, then do this now
-                if app.IllustrateafterlabellingCheckBox.Value == 1
-                    SaveillustrationButtonPushed(app);
-                end
-
                 %give the user a projected time to finish
                 if app.movie_data.state.event_labeller_current_ID > 5
                     time_per_mol = etime(datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified),   datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID-5, 1}.DateClassified))/5;

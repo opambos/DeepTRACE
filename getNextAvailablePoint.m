@@ -29,8 +29,8 @@ function [vid_idx, loc_idx, loc_coords] = getNextAvailablePoint(t, frameseries, 
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%Determine from the continuous slider input of the event labeller the  next
-%available discrete value in the video stack, and the time series
+%Determine from the continuous slider input of the human annotation system
+%the next available discrete value in the video stack, and the time series
 %trajectory, which may have missing values due to the 2D Gauss fitting and
 %band-pass filtering processes from localisation; this essentially
 %discretises the continuous distribution from a continuous input slider.
@@ -45,8 +45,9 @@ function [vid_idx, loc_idx, loc_coords] = getNextAvailablePoint(t, frameseries, 
 %Inputs
 %------
 %t              (float)     the continuous input time
-%frameseries    (vec)       column vector containing the time points for each frame of the video to be displayed using the event labeller
-%locseries      (mat)       2xN matrix containing the time points (col1: t, col2: step size) for each localisation in the trajectory currently displayed using the event labeller
+%frameseries    (vec)       column vector containing the time points for each frame of the video to be displayed using the human annotation system
+%locseries      (mat)       2xN matrix containing the time points (col1: t,
+%col2: step size) for each localisation in the trajectory currently displayed using the human annotation system
 %
 %Outputs
 %------

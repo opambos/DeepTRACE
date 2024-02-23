@@ -1,6 +1,6 @@
 function [data] = gatherEventHistogramData(app, class_number)
-%Gather dwell time data for each event in the event labeller data based
-%on user selections of which class to show, and what type of truncation to
+%Gather dwell time data for each event in the human annotated data based on
+%user selections of which class to show, and what type of truncation to
 %show, Oliver Pambos, 29/10/2022.
 %oliver.pambos@physics.ox.ac.uk
 %

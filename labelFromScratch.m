@@ -30,10 +30,10 @@ function [] = labelFromScratch(app)
 %
 %
 %Initialises the labelling from scratch process, by gathering custom label
-%names form the user, repopulating the Event Labeller with new buttons,
-%overwriting any previous manual labels applying the colour assignments to
-%each state, and copying over every molecular trajectory to the results
-%substruct.
+%names form the user, repopulating the human annotation system with new
+%buttons, overwriting any previous manual labels applying the colour
+%assignments to each state, and copying over every molecular trajectory to
+%the results substruct.
 %
 %Note that colours are currently hardcoded; in a future update this will
 %be replaced with options for custom colours using a colour picker
@@ -67,7 +67,7 @@ function [] = labelFromScratch(app)
     app.movie_data.results.VisuallyLabelled = [];
     app.movie_data.state.labelled_so_far = 0;
     
-    %populate custom buttons of the Event Labeller
+    %populate custom buttons of the human annotation system
     regenerateLabelButtons(app);
     
     %generate random colours for each of the states selected by user - to be later introduced in an update also enabling user definition of label colours

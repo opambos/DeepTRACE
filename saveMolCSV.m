@@ -1,6 +1,6 @@
 function [] = saveMolCSV(app, result_ID, cell_ID, mol_ID, video_name)
 %Export CSV data of a molecule that has been segmented/classified using the
-%Event Labeller tool, Oliver Pambos, 14/11/2022.
+%human annotation tool, Oliver Pambos, 14/11/2022.
 %oliver.pambos@physics.ox.ac.uk
 %
 %

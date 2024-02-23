@@ -1,6 +1,6 @@
 function [] = regenerateTrackViewer(app)
-%Regenerate the track viewer inside the event labeller, Oliver Pambos,
-%08/08/2024.
+%Regenerate the track viewer inside the human annotation system, Oliver
+%Pambos, 08/08/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
@@ -30,7 +30,7 @@ function [] = regenerateTrackViewer(app)
 %
 %
 %This function regenerates all components of the track viewer component
-%inside the event labeller.
+%inside the human annotation system.
 %
 %Inputs
 %------

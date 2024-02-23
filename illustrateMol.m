@@ -30,7 +30,7 @@ function [video, error_out] = illustrateMol(movie_data, cell_ID, mol_ID, play_vi
 %
 %This function is also called by repopulateEventLabeller to store the
 %current cropped molecule video in app.movie_data.current_video which
-%enables the event labeller to more rapidly display video frames.
+%enables the human annotation system to more rapidly display video frames.
 %
 %I have not passed app GUI handles to this function so that it can be used
 %on save files independently, this neccessitated the introduction of an

@@ -1,5 +1,6 @@
 function [] = setLabellerAxesRange(app)
-%Set axes ranges for the event labeller, Oliver Pambos, 08/02/2024.
+%Set axes ranges for the human annnotation system, Oliver Pambos,
+%08/02/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %

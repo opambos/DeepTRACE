@@ -1,10 +1,10 @@
-function [] = exportNotesPDF(app)
+function [] = exportNotes(app)
 %Export the current analysis notes as a PDF file, Oliver Pambos,
 %20/02/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
-%MATLAB FUNCTION: exportNotesPDF
+%MATLAB FUNCTION: exportNotes
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
@@ -35,8 +35,8 @@ function [] = exportNotesPDF(app)
 %   - Plain text
 %   - Rich text
 %   - LaTeX
-%
-%Future versions will include markdown and html.
+%   - Markdown
+%   - HTML
 %
 %Note that the current implementation of PDF export will only export a
 %single page due to restrictions in MATLAB's standard toolbox. Future
@@ -54,7 +54,11 @@ function [] = exportNotesPDF(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%None
+%convertToRTF()         - local to this .m file
+%convertToLaTeX()       - local to this .m file
+%convertToMarkdown()    - local to this .m file
+%convertToHTML()        - local to this .m file
+%sanitiseFileName()     - local to this .m file
     
     %check filepath is known
     if ~isprop(app, "movie_data") || ~isfield(app.movie_data, "params") ||...
@@ -73,8 +77,8 @@ function [] = exportNotesPDF(app)
         mkdir(notes_path);
     end
     
-    %get the strings that make up the file title: first row of the file description, user name, and date-time stamp
-    file_title  = string(app.CurrentlyloadeddatasetTextArea.Value{1,1});
+    %get the strings that make up the file title: first row of the file description (this is sanitised, see f'n), user name, and date-time stamp
+    file_title  = sanitiseFileName(string(app.CurrentlyloadeddatasetTextArea.Value{1,1}));
     username    = app.UserEditField.Value;
     timestamp   = string(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
     
@@ -173,6 +177,63 @@ function [] = exportNotesPDF(app)
             %convert plain text to LaTeX formatted text and write to file
             convertToLaTeX(full_pathname, formatted_text, file_title, timestamp, username);
             
+        case "Markdown (.md)"
+            %suggested filename
+            notes_filename = sprintf("[%s]_%s", file_title, "analysis_notes.md");
+            
+            %user specifies filename, and check if user presses cancel
+            [file, path] = uiputfile('*.md', 'Save notes to Markdown file', fullfile(notes_path, notes_filename));
+            if isequal(file, 0) || isequal(path, 0)
+                return;
+            end
+            
+            %convert to Markdown
+            md_text = convertToMarkdown(formatted_text, file_title, timestamp, username);
+            
+            %write to the specified file
+            full_pathname = fullfile(path, file);
+            file_ID = fopen(full_pathname, 'w');
+            
+            %check the file could be opened
+            if file_ID == -1
+                warndlg("Please make sure that you have access to the path " + path, ...
+                        "Warning: Unable to write analysis notes to Markdown file");
+                return;
+            end
+            
+            fprintf(file_ID, '%s', md_text);
+            fclose(file_ID);
+        
+        case "HTML (.html)"
+            %suggested filename
+            notes_filename = sprintf("[%s]_%s", file_title, "analysis_notes.html");
+            
+            %user specifies filename, and check if user presses cancel
+            [file, path] = uiputfile('*.html', 'Save notes to HTML file', fullfile(notes_path, notes_filename));
+            if isequal(file, 0) || isequal(path, 0)
+                return;
+            end
+            
+            %convert to HTML
+            html_text = convertToHTML(formatted_text, file_title, timestamp, username);
+            
+            %write to the specified file
+            full_pathname = fullfile(path, file);
+            file_ID = fopen(full_pathname, 'w');
+            
+            %check the file could be opened
+            if file_ID == -1
+                warndlg("Please make sure that you have access to the path " + path, ...
+                        "Warning: Unable to write analysis notes to HTML file");
+                return;
+            end
+            
+            fprintf(file_ID, '%s', html_text);
+            fclose(file_ID);
+        
+            %display the HTML file in a web browser
+            web(full_pathname, '-browser');
+
         otherwise
         
     end
@@ -347,5 +408,198 @@ function convertToLaTeX(file_path, text, file_description, timestamp, username)
     fprintf(file_ID, '%s\n', '\end{document}');
     fclose(file_ID);
 end
+
+
+function md_text = convertToMarkdown(text, file_description, timestamp, username)
+%Reformat plain text as markdown, apply formatting and styling, Oliver
+%Pambos, 23/02/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: convertToMarkdown
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This function reformats the plain text notes in markdown format,
+%constructs a title, and returns the formatted text as a new string that
+%can be written directly to a markdown file.
+%
+%Inputs
+%------
+%text               (str)   main text body of notes
+%file_description   (str)   description of the experiment; taken from the
+%                               first line of the `currently loaded
+%                               dataset` field in the Load/Save tab
+%timestamp          (str)   current date-time stored as string literal
+%username           (str)   name of the user that performed the analysis;
+%                               taken from `User` field in Load/Save tab
+%
+%Output
+%------
+%md_text            (str)   markdown-formatted notes text
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %construct md text
+    md_title = "# " + file_description + newline + "## InVivoKinetics analysis notes" + newline + ...
+               "### " + username + newline + "*notes exported on " + timestamp + "*" + newline + newline;
+
+    %construct full md text
+    md_text = md_title + replace(text, newline, newline);
+end
+
+
+function html_text = convertToHTML(text, file_description, timestamp, username)
+%Reformat plain text to HTML, apply formatting and styling, Oliver Pambos,
+%23/02/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: convertToHTML
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This function reformats the plain text notes in HTML format, escapes
+%special characters, constructs a title, and returns the formatted text as
+%a new string that can be written directly to an HTML file.
+%
+%Inputs
+%------
+%text               (str)   main text body of notes
+%file_description   (str)   description of the experiment; taken from the
+%                               first line of the `currently loaded
+%                               dataset` field in the Load/Save tab
+%timestamp          (str)   current date-time stored as string literal
+%username           (str)   name of the user that performed the analysis;
+%                               taken from `User` field in Load/Save tab
+%
+%Output
+%------
+%html_text          (str)   HTML-formatted notes text
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %escape special HTML characters
+    text = strrep(text, '&', '&amp;');
+    text = strrep(text, '<', '&lt;');
+    text = strrep(text, '>', '&gt;');
+    
+    %replace newline chars with HTML line breaks
+    text = strrep(text, newline, '<br>');
+    
+    %format document title and text
+    title_text = "<h1>" + file_description + "</h1><h2>InVivoKinetics analysis notes</h2>" + ...
+                 "<h3>" + username + "</h3><p><i>notes exported on " + timestamp + "</i></p>";
+    
+    %construct the HTML text (UTF-8 encoding here enables user to use Greek characters in their notes)
+    html_text = "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>" + file_description + "</title></head><body>" + ...
+                title_text + text + "</body></html>";
+end
+
+
+function sanitised_title = sanitiseFileName(title)
+%Replaces all chars that cause problems for filenames with underscores,
+%Oliver Pambos, 23/02/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: sanitiseFileName
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Specific chars can cause issues for filenames, and this varies depending
+%upon the operating system. This function sanitises the string that is used
+%to suggest filenames, replacing these chars with underscores.
+%
+%Inputs
+%------
+%title              (str)   original string
+%
+%Output
+%------
+%sanitised_title    (str)   original string with forbidden chars replaced
+%                               with `_`s.
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %define list of chars forbidden in path/filenames
+    invalid_chars = {'\', '/', ':', '*', '?', '"', '<', '>', '|'};
+    
+    %replace each invalid character with an underscore or remove them
+    sanitised_title = title;
+    for ii = 1:length(invalid_chars)
+        sanitised_title = strrep(sanitised_title, invalid_chars{ii}, '_');
+    end
+end
+
 
 

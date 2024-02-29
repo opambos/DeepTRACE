@@ -362,9 +362,9 @@ function params = promptUserForMissingParams(params)
 %
 %This implementation is tailored for numeric data input. To accommodate
 %string inputs in future, input parsing will be necessary to identify
-%non-numeric characters in the input. This approach allows for flexible
-%handling of various input types without relying on hardcoded values or a
-%lookup table for allowed parameters.
+%non-numeric characters in the input. This allows for flexible handling of
+%various input types without relying on hardcoded values or a lookup table
+%for allowed parameters.
 %
 %Inputs
 %------

@@ -73,17 +73,22 @@ function [] = importGroundTruth(app)
 %-----------------------------------------
 %None
     
+    %obtain frame number column
+    [frame_col] = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Frame');
+    if frame_col == 0
+        error('Error in importGroundTruth(): column ID not found');
+    end
+    
     %get file containing ground truth from the user; note all data must be numeric
     [file, path] = uigetfile({'*.tsv;*.dat;*.txt', 'Data Files (*.tsv, *.dat, *.txt)'}, 'Select the data file');
     if isequal(file, 0)
         disp('User selected Cancel');
     else
-        fullPath = fullfile(path, file);
-        opts = detectImportOptions(fullPath, 'Delimiter', '\t');
-        dataTbl = readtable(fullPath, opts);
-        ground_truth = table2array(dataTbl);
+        fullPath        = fullfile(path, file);
+        opts            = detectImportOptions(fullPath, 'Delimiter', '\t');
+        dataTbl         = readtable(fullPath, opts);
+        ground_truth    = table2array(dataTbl);
     end
-    
     
     count = 1;
     %copy over every track to the ground truth struct
@@ -93,11 +98,9 @@ function [] = importGroundTruth(app)
             app.movie_data.results.GroundTruth.LabelledMols{count,1}.Mol = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj), :);
             
             %update the GroundTruth results substruct
-            app.movie_data.results.GroundTruth.LabelledMols{count,1}.CellID = ii;
-            app.movie_data.results.GroundTruth.LabelledMols{count,1}.MolID = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj);
-            app.movie_data.results.GroundTruth.LabelledMols{count,1}.EventSequence = 'pending';
-            app.movie_data.results.GroundTruth.LabelledMols{count,1}.MoleculeDuration = size(app.movie_data.results.GroundTruth.LabelledMols{count}.Mol,1) / app.movie_data.params.frame_rate;      %in seconds
-            app.movie_data.results.GroundTruth.LabelledMols{count,1}.DateClassified = 'pending';
+            app.movie_data.results.GroundTruth.LabelledMols{count,1}.CellID             = ii;
+            app.movie_data.results.GroundTruth.LabelledMols{count,1}.MolID              = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj);
+            app.movie_data.results.GroundTruth.LabelledMols{count,1}.MoleculeDuration   = size(app.movie_data.results.GroundTruth.LabelledMols{count}.Mol,1) / app.movie_data.params.frame_rate;    %in seconds
             
             count = count + 1;
         end
@@ -121,7 +124,7 @@ function [] = importGroundTruth(app)
         
         %loop over frames
         for jj = 1:size(curr_mol, 1)
-            frame_num   = curr_mol(jj, 3);
+            frame_num   = curr_mol(jj, frame_col);
             key         = sprintf('%d_%d_%d', cell_ID, mol_ID, frame_num);
             
             %if the key exists write class label
@@ -134,4 +137,17 @@ function [] = importGroundTruth(app)
         app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol = curr_mol;
     end
     
+    %compute and store the event sequences and labelling times
+    timestamp = string(datetime);
+    for ii = 1:size(app.movie_data.cellROI_data,1)
+        app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence     = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
+        app.movie_data.results.GroundTruth.LabelledMols{count,1}.DateClassified = timestamp;
+    end
+    
 end
+
+
+
+
+
+

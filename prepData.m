@@ -360,11 +360,19 @@ function params = promptUserForMissingParams(params)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%This implementation is tailored for numeric data input. To accommodate
+%This implementation is tailored for numeric data input. Parameters holding
+%string literals are accommodated by first testing conversion on a dummy
+%copy using MATLAB's str2double() function. The result of this conversion
+%determines whether to perform conversion. This approach eliminates the
+%need for a lookup table of possible parameters
 %string inputs in future, input parsing will be necessary to identify
 %non-numeric characters in the input. This allows for flexible handling of
 %various input types without relying on hardcoded values or a lookup table
-%for allowed parameters.
+%of formats for all possible parameters. This eliminates hardcoding, more
+%elegantly handles user input of unknown parameters, and ensures ease of
+%modification and inclusion of new parameters without hardcoded rules.
+%However it does rely on the user entering numeric or string values when
+%prompted.
 %
 %Inputs
 %------
@@ -382,7 +390,7 @@ function params = promptUserForMissingParams(params)
     
     %list of required fields and corresponding user-friendly descriptions
     required_fields     = {'frame_rate', 'px_scale'};
-    field_descriptions  = {'Frame rate (Hz)', 'Pixel scale (nm / pixel)'};
+    field_descriptions  = {'Frame rate (Hz)', 'Pixel scale (nm / pixel)', 'Class names, separated by `;`'};
     default_vals        = {'5', '0.096'};
     
     missing_fields = {};
@@ -404,10 +412,17 @@ function params = promptUserForMissingParams(params)
         dims = [1 35];
         answers = inputdlg(missing_descriptions, dlgtitle, dims, missing_defaults);
         
-        %convert the inputs to floats and save to struct
+        %save new params to struct
         for ii = 1:length(missing_fields)
             if ~isempty(answers) && ~isempty(answers{ii})
-                params.(missing_fields{ii}) = str2double(answers{ii});
+                %use MATLAB's string conversion to test whether it converts to a double correctly,
+                %if unsuccessful the input must be non-numeric, so write it as a string
+                dummy = str2double(answers{ii});
+                if isnan(dummy)
+                    params.(missing_fields{ii}) = answers{ii};
+                else
+                    params.(missing_fields{ii}) = str2double(answers{ii});
+                end
             else
                 %handle user closing window
                 error('Input for all fields is required. Operation cancelled.');

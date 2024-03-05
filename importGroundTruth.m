@@ -36,7 +36,7 @@ function [] = importGroundTruth(app)
 %
 %   1. Class (ground truth label)
 %   2. Frame number
-%   3. mol_ID (mol_ID)
+%   3. mol_ID (mol_ID)  - currently unused as [cell_ID frame_num] are in our simulations unique
 %   4. cell_ID (cell_ID)
 %
 %Note that all entries (including class label) are integers. In the case of
@@ -90,8 +90,44 @@ function [] = importGroundTruth(app)
         ground_truth    = table2array(dataTbl);
     end
     
-    count = 1;
+    %clear any existing ground truth data
+    if isfield(app.movie_data, "results")
+        app.movie_data.results = rmfield(app.movie_data.results, 'GroundTruth');
+    end
+    
+    
+    %if class names already exist, ask the user if they want to overwrite
+    update_class_names = true;
+    if isfield(app.movie_data.params, "class_names")
+        choice = questdlg('Do you want to use existing class names?', 'Class Name Selection', 'Yes', 'No', 'Yes');
+        switch choice
+            case 'Yes'
+                % << do nothing >> %update_class_names = true;
+            case 'No'
+                update_class_names = false;
+            otherwise
+                app.textout.Value = "User clicked cancel, ground truth data not loaded.";
+                return;
+        end
+    end
+    
+    %update class names with user prompt if required
+    if update_class_names
+        class_names_input = inputdlg('Enter a list of class names for each of the diffusive states, separated by commas');
+        
+        %exit early if user either presses cancel, closes the dialogue box, or doesn't enter anything
+        if isempty(class_names_input) || isempty(class_names_input{1})
+            error("Warning in labelFromScratch: Either user cancelled or closed the class name definition dialogue, or they entered an empty input.");
+        else
+            app.movie_data.params.class_names = class_names_input;
+        end
+
+        %parsing user input: separates the user inputs by the comma delimiter, then strips out any of the white space at beginning and end
+        app.movie_data.params.class_names = strip(split(app.movie_data.params.class_names, ','));
+    end
+    
     %copy over every track to the ground truth struct
+    count = 1;
     for ii = 1:size(app.movie_data.cellROI_data,1)
         for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs,1)
             %write the LoColi tracks data to the LabelledMols struct
@@ -105,12 +141,12 @@ function [] = importGroundTruth(app)
             count = count + 1;
         end
     end
-
+    
     %generate a unique key for each entry in ground_truth and map it to the class
     key_set     = cell(size(ground_truth, 1), 1);
     value_set   = zeros(size(ground_truth, 1), 1);
     for ii = 1:size(ground_truth, 1)
-        key             = sprintf('%d_%d_%d', ground_truth(ii, 4), ground_truth(ii, 3), ground_truth(ii, 2)); %cellID_molID_frame
+        key             = sprintf('%d_%d', ground_truth(ii, 4), ground_truth(ii, 2)); %cellID_frame (mol_ID currently unused due to nature of existing simulations)
         key_set{ii}     = key;
         value_set(ii)   = ground_truth(ii, 1); %class label for this entry
     end
@@ -120,12 +156,12 @@ function [] = importGroundTruth(app)
     for ii = 1:size(app.movie_data.results.GroundTruth.LabelledMols, 1)
         curr_mol    = app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol;
         cell_ID     = app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.CellID;
-        mol_ID      = app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.MolID;
+        %mol_ID      = app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.MolID;    %currently unused due to nature of existing simulations
         
         %loop over frames
         for jj = 1:size(curr_mol, 1)
             frame_num   = curr_mol(jj, frame_col);
-            key         = sprintf('%d_%d_%d', cell_ID, mol_ID, frame_num);
+            key         = sprintf('%d_%d', cell_ID, frame_num);  %mol_ID removed as [cell_ID frame_num] is currently unique
             
             %if the key exists write class label
             if isKey(class_map, key)
@@ -141,7 +177,7 @@ function [] = importGroundTruth(app)
     timestamp = string(datetime);
     for ii = 1:size(app.movie_data.cellROI_data,1)
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence     = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
-        app.movie_data.results.GroundTruth.LabelledMols{count,1}.DateClassified = timestamp;
+        app.movie_data.results.GroundTruth.LabelledMols{ii,1}.DateClassified = timestamp;
     end
     
 end

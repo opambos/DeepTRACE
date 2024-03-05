@@ -28,12 +28,13 @@ function [] = scaleLabelledFeatures(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%This function scales user-selected features in the human labelled data
-%(VisuallyLabelled substruct), and saves this to a new substruct
-%(FeatureScaledData). This function is called during the process of
-%generating training datasets for ML models. To ensure seemless future
-%classification using these models on unseen datasets, the parameters used
-%(e.g. mean and standard deviation in the case of Z-score) are saved
+%This function scales user-selected features in the user-selected source
+%data (currently either VisuallyLabelled or GroundTruth substruct), and
+%saves this to a new substruct (FeatureScaledData). This function is called
+%during the process of generating training datasets for ML models. To
+%ensure seemless future classification using these models on unseen
+%datasets, the parameters used in the transformation (e.g. mean and
+%standard deviation in the case of Z-score) and the method used are saved
 %alongside the model such that they remain with the trained model file.
 %This simplifies the flow of execution outside of the scope of this
 %function.
@@ -73,9 +74,17 @@ function [] = scaleLabelledFeatures(app)
     method = app.FeaturescalingDropDown.Value;
     app.movie_data.models.temp_params.feature_scaling = method;
     
-    %copy over all of the manually labelled data
-    app.movie_data.results.FeatureScaledData = app.movie_data.results.VisuallyLabelled;
-
+    %copy over all labelled data to be used for training, validation, and testing
+    switch app.SourcedataDropDown.Value
+        case 'Human annotations'
+            app.movie_data.results.FeatureScaledData = app.movie_data.results.VisuallyLabelled;
+        case 'Ground truth'
+            app.movie_data.results.FeatureScaledData = app.movie_data.results.GroundTruth;
+        otherwise
+            app.textout.Value = "The training dataset is not currently available";
+            return;
+    end
+    
     %erase any trajectories from scaled data that have not been fully labelled
     del_idx = [];
     for ii = 1:size(app.movie_data.results.FeatureScaledData.LabelledMols, 1)
@@ -84,7 +93,7 @@ function [] = scaleLabelledFeatures(app)
         end
     end
     app.movie_data.results.FeatureScaledData.LabelledMols(del_idx) = [];
-
+    
     %crop trajectories to ensure all features contain viable information
     cropTrajectories(app, "feature_scaled", app.IgnorerowsfromstartSpinner.Value, app.IgnorerowsfromendSpinner.Value);
     

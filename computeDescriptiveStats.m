@@ -29,6 +29,16 @@ function [] = computeDescriptiveStats(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
+%%Update 07/03/2024: the active labelled dataset is now copied to the
+%substruct `InsightData` through the `Source data` GUI component.
+%Downstream analysis code, including this function, now operate directly
+%on this dedicated substruct. This greatly simplifies and generalises the
+%analysis codebase, enabling functions such as this one to operate on any
+%labelled dataset defined dynamically during runtime. This also enables
+%analysis of future labelling types without having to locally hardcode
+%rules, and eliminates the need for state variables to keep track of the
+%current analysis target.
+%
 %Inputs
 %------
 %app    (handle)    main GUI handle
@@ -47,10 +57,16 @@ function [] = computeDescriptiveStats(app)
     %there's a lot of conversion to string, rounding, etc. here before displaying because
     %the table GUI element cannot handle different precisions, alignments, etc.
     
+    %move data from labelled dataset to Insights substruct
+    data_available = copyLabelsToInsights(app);
+    if ~data_available
+        return;
+    end
+    
     %get data
     [t_obs, N_labelled, N_filtered, pc_progress, N_prefilter,...
-        pc_filtered, t_experiment]          = computeTotalObsTime(app.movie_data, 'VisuallyLabelled');
-    [state_times, state_proportions]        = computeTotalStateTimes(app.movie_data, 'VisuallyLabelled');
+        pc_filtered, t_experiment]          = computeTotalObsTime(app.movie_data, 'InsightData');
+    [state_times, state_proportions]        = computeTotalStateTimes(app.movie_data);
     [transition_rates, state_transitions]   = computeTransitionRates(app.movie_data);
     
     %construct table
@@ -139,14 +155,14 @@ function [t_obs, N_labelled, N_filtered, pc_progress, N_prefilter, pc_filtered, 
     t_obs       = 0;
     N_labelled  = 0;
     N_prefilter = 0;
-    N_filtered  = size(movie_data.results.VisuallyLabelled.LabelledMols,1);
+    N_filtered  = size(movie_data.results.InsightData.LabelledMols,1);
 
     switch label_type
-        case 'VisuallyLabelled'
-            for ii = 1:size(movie_data.results.VisuallyLabelled.LabelledMols,1)
-                if ~strcmp(movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.EventSequence, 'pending')
+        case 'InsightData'
+            for ii = 1:size(movie_data.results.InsightData.LabelledMols,1)
+                if ~strcmp(movie_data.results.InsightData.LabelledMols{ii, 1}.EventSequence, 'pending')
                     N_labelled  = N_labelled + 1;
-                    t_obs       = t_obs + size(movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.Mol, 1);
+                    t_obs       = t_obs + size(movie_data.results.InsightData.LabelledMols{ii, 1}.Mol, 1);
                 end
             end
         otherwise
@@ -168,7 +184,5 @@ function [t_obs, N_labelled, N_filtered, pc_progress, N_prefilter, pc_filtered, 
         t_experiment = fitsinfo(fullfile(movie_data.params.ffPath, movie_data.params.ffFile)).PrimaryData.Size(3) ./ movie_data.params.frame_rate;
     end
 end
-
-
 
 

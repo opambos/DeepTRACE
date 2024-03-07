@@ -48,9 +48,17 @@ function [] = compileMSDsAllLabelled(app)
 %This code also takes advantage of the regular structure of labelled data
 %to enable it to be flexible to operate on data labelled from different
 %sources (manually labelled, labelled with ML, labelled using changepoint
-%analysis). Currently this is only implemented for manually labelling, but
-%conditions have been left specifically for the re-introduction of these
-%other sources as was present in earlier versions of this system.
+%analysis).
+%
+%Update 07/03/2024: the active labelled dataset is now copied to the
+%substruct `InsightData` through the `Source data` GUI component.
+%Downstream analysis code, including this function, now operate directly
+%on this dedicated substruct. This greatly simplifies and generalises the
+%analysis codebase, enabling functions such as this one to operate on any
+%labelled dataset defined dynamically during runtime. This also enables
+%analysis of future labelling types without having to locally hardcode
+%rules, and eliminates the need for state variables to keep track of the
+%current analysis target.
 %
 %Input
 %-----
@@ -72,25 +80,13 @@ function [] = compileMSDsAllLabelled(app)
 %computeDStars()        - local to this .m file
     
     %obtain from the GUI user selections for source data, minimum span to use for MSD, upper limit for the lag time to display in MSD curves, and the averaging method
-    source_data      = app.SourceoflabelleddataDropDown.Value;
     min_locs_MSD     = app.MinimumlocalisationsforMSDSpinner.Value;
     plot_lim         = app.LagtimetodisplaysSpinner.Value;
     averaging_method = app.ProcessaveragesDropDown.Value;
     
     N_classes = size(app.movie_data.params.class_names,1);
     
-    %take advantage of the regular data structure of the different labelled
-    %sub-structs to copy over data, and simplify downstream code
-    switch source_data
-        case 'Manually labelled'
-            labelled_mols = app.movie_data.results.VisuallyLabelled.LabelledMols;
-        case 'Random Forest labelled'
-            % <re-introduce in a future version>
-        case 'Changepoint labelled'
-            % <re-introduce in a future version>
-        otherwise
-            error("IVK:compileDStarAllMols:LabelledDataTypeDoesNotExist");
-    end
+    labelled_mols = app.movie_data.results.InsightData.LabelledMols;
     
     %convert localisation data to micrometers - in future versions this conversion may be more efficiently applied immediately before data presentation
     [labelled_mols] = convertLabelLocsToUm(labelled_mols, app.movie_data.params.px_scale);
@@ -150,7 +146,7 @@ function [] = compileMSDsAllLabelled(app)
             " " + char(956) + "m" + char(178) + "s" + char(8315) + char(185);       %I love unicode
     end
     app.textout.Value = string_out;
-    app.movie_data.results.VisuallyLabelled.DStars = DStars;
+    app.movie_data.results.InsightData.DStars = DStars;
 end
 
 

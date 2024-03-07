@@ -53,7 +53,7 @@ function [] = extractAllStates(app)
 %Output
 %------
 %app    (handle)    main GUI handle containing a new cell array,
-%                       app.movie_data.results.VisuallyLabelled.extractedStates
+%                       app.movie_data.results.InsightData.extractedStates
 %                       which contains the list of events for each state in
 %                       the entire dataset, each entry in the cell array
 %                       contains an Nx6 matrix with the columns,
@@ -74,22 +74,22 @@ function [] = extractAllStates(app)
     end
     
     %loop over every labelled molecule
-    for ii = 1:size(app.movie_data.results.VisuallyLabelled.LabelledMols,1)
-        if ~any(app.movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.Mol(:,end) == -1)
+    for ii = 1:size(app.movie_data.results.InsightData.LabelledMols,1)
+        if ~any(app.movie_data.results.InsightData.LabelledMols{ii, 1}.Mol(:,end) == -1)
             %loop over all of the possible classes in the dataset
             for jj = 1:size(app.movie_data.params.class_names,1)
                 %get any events in the current trajectory that match the current class
-                new_events = extractLabelledState(app.movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.Mol, jj);
+                new_events = extractLabelledState(app.movie_data.results.InsightData.LabelledMols{ii, 1}.Mol, jj);
                 if ~isempty(new_events)
                     %concatenate each event entry with the cell and mol IDs,
                     %then concatenate it with the previous entries for that
                     %class from molecules that have already been interrogated
-                    cell_mol_IDs = repmat([app.movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.CellID, app.movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.MolID], size(new_events,1), 1);
+                    cell_mol_IDs = repmat([app.movie_data.results.InsightData.LabelledMols{ii, 1}.CellID, app.movie_data.results.InsightData.LabelledMols{ii, 1}.MolID], size(new_events,1), 1);
                     new_events = cat(2, cell_mol_IDs, new_events);
                     curr_events{jj} = cat(1, curr_events{jj}, new_events);
                 end
             end
         end
     end
-    app.movie_data.results.VisuallyLabelled.extractedStates = curr_events;
+    app.movie_data.results.InsightData.extractedStates = curr_events;
 end

@@ -85,7 +85,8 @@ function [] = importGroundTruth(app)
         disp('User selected Cancel');
     else
         fullPath        = fullfile(path, file);
-        opts            = detectImportOptions(fullPath, 'Delimiter', '\t');
+        %opts            = detectImportOptions(fullPath, 'Delimiter', '\t');
+        opts            = detectImportOptions(fullPath, 'FileType', 'text', 'Delimiter', '\t');
         dataTbl         = readtable(fullPath, opts);
         ground_truth    = table2array(dataTbl);
     end
@@ -126,6 +127,26 @@ function [] = importGroundTruth(app)
         app.movie_data.params.class_names = strip(split(app.movie_data.params.class_names, ','));
     end
     
+    %define the default class colours
+    preset_colours = [1 0 0;        %red
+        0 0 1;                      %blue
+        0 1 0;                      %green
+        133/255 176/255, 154/255;   %Cambridge blue
+        87/255 188/255 240/255;     %light blue
+        243/255 69/255 107/255      %light red
+        ];
+    
+    %if there are more states than the currently described number of colours, then use the colours available, followed by randomly-selected colours
+    if size(app.movie_data.params.class_names,1) > size(preset_colours, 1)
+        app.movie_data.params.event_label_colours = zeros(size(app.movie_data.params.class_names,1),3);
+        app.movie_data.params.event_label_colours(1:size(preset_colours, 1),:) = preset_colours;
+        app.movie_data.params.event_label_colours(size(preset_colours,1)+1:size(app.movie_data.params.class_names,1),:) = rand(size(app.movie_data.params.class_names,1) - size(preset_colours,1), 3);
+    else
+        %otherwise use the available colours
+        app.movie_data.params.event_label_colours(1:size(app.movie_data.params.class_names,1),:) =  preset_colours(1:size(app.movie_data.params.class_names,1),:);
+    end
+    
+
     %copy over every track to the ground truth struct
     count = 1;
     for ii = 1:size(app.movie_data.cellROI_data,1)
@@ -175,7 +196,7 @@ function [] = importGroundTruth(app)
     
     %compute and store the event sequences and labelling times
     timestamp = string(datetime);
-    for ii = 1:size(app.movie_data.cellROI_data,1)
+    for ii = 1:size(app.movie_data.results.GroundTruth.LabelledMols, 1)
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence     = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.DateClassified = timestamp;
     end

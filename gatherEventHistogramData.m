@@ -34,10 +34,6 @@ function [data] = gatherEventHistogramData(app, class_number)
 %class to compile histogram data based on truncation type. Filtering is
 %performed based on logical comparison of left and right trucation values.
 %
-%This code is currently hardcoded to the VisuallyLabelled substruct as the
-%system is currently primarily used for manually-labelled data, but this
-%will be expanded to include other modalities in the near future.
-%
 %Inputs
 %------
 %app            (handle)    main GUI handle, crucially this must contain the Nx6 extractedStates matrices
@@ -52,7 +48,7 @@ function [data] = gatherEventHistogramData(app, class_number)
 %None
     
     %retrieve the extracted states matrix for the requested class
-    data = app.movie_data.results.VisuallyLabelled.extractedStates{1, class_number};
+    data = app.movie_data.results.InsightData.extractedStates{1, class_number};
 
     truncation = app.TruncationDropDown.Value;
     

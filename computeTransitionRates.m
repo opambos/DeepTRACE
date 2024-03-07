@@ -32,9 +32,15 @@ function [transition_rates, state_transitions] = computeTransitionRates(movie_da
 %The square transition matrices describe state transition from on the
 %y-axis (dimension 1, )and state transition TO on the x-axis (dimension 2).
 %
-%Note that this is currently hardcoded to the VisuallyLabelled data until
-%either ML-classified and/or changepoint labelling is reintroduced as a
-%separate substruct
+%Update 07/03/2024: the active labelled dataset is now copied to the
+%substruct `InsightData` through the `Source data` GUI component.
+%Downstream analysis code, including this function, now operate directly
+%on this dedicated substruct. This greatly simplifies and generalises the
+%analysis codebase, enabling functions such as this one to operate on any
+%labelled dataset defined dynamically during runtime. This also enables
+%analysis of future labelling types without having to locally hardcode
+%rules, and eliminates the need for state variables to keep track of the
+%current analysis target.
 %
 %Input
 %-----
@@ -51,7 +57,7 @@ function [transition_rates, state_transitions] = computeTransitionRates(movie_da
 %computeTotalStateTimes()
 %condenseStateSequence()
     
-    [state_times, ~] = computeTotalStateTimes(movie_data, "VisuallyLabelled");
+    [state_times, ~] = computeTotalStateTimes(movie_data);
     
     %preallocate state transition matrices
     state_transitions   = zeros(size(movie_data.params.class_names,1), size(movie_data.params.class_names,1));
@@ -64,9 +70,9 @@ function [transition_rates, state_transitions] = computeTransitionRates(movie_da
             
             if state1 ~= state2
                 %loop through all labelled mols counting the number of events
-                for kk = 1:size(movie_data.results.VisuallyLabelled.LabelledMols,1)
+                for kk = 1:size(movie_data.results.InsightData.LabelledMols,1)
                     %get the state sequence, then count the number of transitions in the sequence
-                    curr_sequence = condenseStateSequence(movie_data.results.VisuallyLabelled.LabelledMols{kk, 1}.Mol(:,end));
+                    curr_sequence = condenseStateSequence(movie_data.results.InsightData.LabelledMols{kk, 1}.Mol(:,end));
                     occurrences = strfind(curr_sequence, [num2str(state1) num2str(state2)]);
                     count = count + size(occurrences,2);
 %                    disp(num2str(state1) + "; " + num2str(state2) + "; state sequence: " + string(curr_sequence) + "; there were occurrences at positions " + num2str(occurrences) + "; total count so far is: " + num2str(count));    %testing only

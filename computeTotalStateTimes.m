@@ -1,4 +1,4 @@
-function [state_times, state_proportions] = computeTotalStateTimes(movie_data, label_type)
+function [state_times, state_proportions] = computeTotalStateTimes(movie_data)
 %Computes the total time spent in each of the states, Oliver Pambos,
 %20/07/2023.
 %oliver.pambos@physics.ox.ac.uk
@@ -64,25 +64,15 @@ function [state_times, state_proportions] = computeTotalStateTimes(movie_data, l
     N_classes   = size(movie_data.params.class_names,1);
     state_times = zeros(1,N_classes);
     
-    switch label_type
-        case 'VisuallyLabelled'
-            %loop over all molecules
-            for ii = 1:size(movie_data.results.VisuallyLabelled.LabelledMols,1)
-                %check all labels are valid
-                if all(movie_data.results.VisuallyLabelled.LabelledMols{ii,1}.Mol(:,end) > 0 & movie_data.results.VisuallyLabelled.LabelledMols{ii,1}.Mol(:,end) <= N_classes)
-                    
-                    %increment counters for each class
-                    for kk = 1:N_classes
-                        state_times(kk) = state_times(kk) + sum(movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.Mol(:, end) == kk);
-                    end
-                    
-                end
-            end
-        
-        % <space left for other cases for different labelling types in a future version>
-        
-        otherwise
-            error("IVK:computeTotalStateTimes:UnknownLabelType", "An unknown label type was entered into the ")
+    %loop over all molecules
+    for ii = 1:size(movie_data.results.InsightData.LabelledMols,1)
+        %check all labels are valid
+        if all(movie_data.results.InsightData.LabelledMols{ii,1}.Mol(:,end) > 0 & movie_data.results.InsightData.LabelledMols{ii,1}.Mol(:,end) <= N_classes)
+            %increment counters for each class
+            for kk = 1:N_classes
+                state_times(kk) = state_times(kk) + sum(movie_data.results.InsightData.LabelledMols{ii, 1}.Mol(:, end) == kk);
+            end     
+        end
     end
     
     %convert to seconds

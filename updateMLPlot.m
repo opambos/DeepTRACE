@@ -72,8 +72,23 @@ function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, c
     hold(h_axes, 'on');
     zoom(h_axes, 'off');
     pan(h_axes, 'off');
-    xlim(h_axes, [min(data(:,feat_idx(1))) max(data(:,feat_idx(1)))]);
-    ylim(h_axes, [min(data(:,feat_idx(2))) max(data(:,feat_idx(2)))]);
+
+    %handling error in call to xlim, ylim when a feature contains a single
+    %repeating value (f'ns require a pair of non-identical values)
+    x_lims = [min(data(:,feat_idx(1))) max(data(:,feat_idx(1)))];
+    y_lims = [min(data(:,feat_idx(2))) max(data(:,feat_idx(2)))];
+    if x_lims(1) == x_lims(2)
+        x_lims(1) = x_lims(1) - 0.1*x_lims(1);
+        x_lims(2) = x_lims(2) + 0.1*x_lims(2);
+    end
+    if y_lims(1) == y_lims(2)
+        y_lims(1) = y_lims(1) - 0.1*y_lims(1);
+        y_lims(2) = y_lims(2) + 0.1*y_lims(2);
+    end
+
+    %set limits
+    xlim(h_axes, x_lims);
+    ylim(h_axes, y_lims);
     
     if size(feat_idx,2) > 2
         rotate3d(h_axes, 'on');

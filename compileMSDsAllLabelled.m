@@ -60,6 +60,14 @@ function [] = compileMSDsAllLabelled(app)
 %rules, and eliminates the need for state variables to keep track of the
 %current analysis target.
 %
+%A new optional `fast mode` has been introduced which restricts MSD
+%calculations to only the data used for computation of the diffusion
+%coefficients. This greatly improves performance but restricts the
+%available plotting range as longer lag times are not calculated. A future
+%update will introduce a third option which will construct MSDs up to the
+%maximum displayed lag time, providing a balance between the two
+%approaches.
+%
 %Input
 %-----
 %app    (handle)    main GUI handle
@@ -81,10 +89,18 @@ function [] = compileMSDsAllLabelled(app)
     
     %obtain from the GUI user selections for source data, minimum span to use for MSD, upper limit for the lag time to display in MSD curves, and the averaging method
     min_locs_MSD     = app.MinimumlocalisationsforMSDSpinner.Value;
-    plot_lim         = app.LagtimetodisplaysSpinner.Value;
     averaging_method = app.ProcessaveragesDropDown.Value;
+    N_classes   = size(app.movie_data.params.class_names,1);
+    N_steps     = app.NumberofstepsforDcalculationSpinner.Value;
+    fast_mode   = app.FastmodeCheckBox.Value;
     
-    N_classes = size(app.movie_data.params.class_names,1);
+    %re-assess x-axis plot limit based on available data range
+    if fast_mode
+        plot_lim = N_steps ./ app.movie_data.params.frame_rate;
+        app.LagtimetodisplaysSpinner.Value = plot_lim;
+    else
+        plot_lim = app.LagtimetodisplaysSpinner.Value;
+    end
     
     labelled_mols = app.movie_data.results.InsightData.LabelledMols;
     
@@ -92,9 +108,7 @@ function [] = compileMSDsAllLabelled(app)
     [labelled_mols] = convertLabelLocsToUm(labelled_mols, app.movie_data.params.px_scale);
     
     %get the MSD matrices for all molecules and all states; MSD_global is used for plotting MSDs as lines, MSD_all is used for equivalent scatter plot
-    [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, min_locs_MSD, 1/app.movie_data.params.frame_rate);
-    
-    N_steps = app.NumberofstepsforDcalculationSpinner.Value;
+    [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, min_locs_MSD, 1/app.movie_data.params.frame_rate, fast_mode, N_steps);
 
     switch averaging_method
         case 'Molecule-by-molecule'
@@ -203,7 +217,7 @@ end
 
 
 
-function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, min_locs_MSD, frame_rate)
+function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, min_locs_MSD, frame_rate, fast_mode, N_steps)
 %Compiles matrices of MSD lag time data from labelled molecules used for
 %computation of mean and SEM values for plotting and D* calculation,
 %Oliver Pambos, 14/11/2022.
@@ -255,12 +269,22 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
 %conditional statements incorporated such that only one matrix is
 %contructed (MSD_all, or MSD_global).
 %
+%A new optional `fast mode` has been introduced which restricts MSD
+%calculations to only the data used for computation of the diffusion
+%coefficients. This greatly improves performance but restricts the
+%available plotting range as longer lag times are not calculated. A future
+%update will introduce a third option which will construct MSDs up to the
+%maximum displayed lag time, providing a balance between the two
+%approaches.
+%
 %Inputs
 %------
 %labelled_mols  (struct)    labelled molecule substruct, with units of micrometers
 %N_classes      (int)       number of classes/states in the labelled data
 %min_locs_MSD   (int)       minimum number of localisations required in any span for inclusion in the dataset
 %frame_rate     (float)     frame rate of fluorescence video recording
+%fast_mode      (bool)      in fast mode, lag times are only computed over the range required for D* calculation
+%N_steps        (int)       maximum lag time to be used for the D* calculation; in fast mode this determines the size of the range of lag times to compute
 %
 %Outputs
 %-------
@@ -290,7 +314,11 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
 %None
     
     %pre-allocation of the MSD global matrix, this has the form described in the function header above
-    MSD_lim = findMSDLims(labelled_mols);
+    if fast_mode
+        MSD_lim = N_steps;
+    else
+        MSD_lim = findMSDLims(labelled_mols);
+    end
     MSD_global = zeros(MSD_lim,4,N_classes+1);
     
     %pre-allocation of MSD_all cell array, this has the form described in the function header above
@@ -314,7 +342,11 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
             %step 1: if trajectory contains enough localisations, compute the MSD for the whole molecule, and store this in MSD_global(:,:,1)
             
             if size(labelled_mols{ii,1}.Mol, 1) >= min_locs_MSD
-                MSD_mol = compileMSDMatrix(labelled_mols{ii,1}.Mol(:,1:3), frame_rate);
+                if fast_mode
+                    MSD_mol = compileMSDMatrixFast(labelled_mols{ii,1}.Mol(:,1:3), frame_rate, N_steps);
+                else
+                    MSD_mol = compileMSDMatrix(labelled_mols{ii,1}.Mol(:,1:3), frame_rate);
+                end
                 MSD_global(1:size(MSD_mol,1), 1:2 , 1) = MSD_global(1:size(MSD_mol,1), 1:2 , 1) + MSD_mol(:,1:2);
                 
                 %add the raw MSD data to the MSD_all list and increment the current position
@@ -336,7 +368,11 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
                 
                 %if the section is long enough, compute its MSD, and add it to the global MSD for that class
                 if size(section,1) >= min_locs_MSD
-                    MSD_section = compileMSDMatrix(section(:,1:3),frame_rate);
+                    if fast_mode
+                        MSD_section = compileMSDMatrixFast(section(:,1:3), frame_rate, N_steps);
+                    else
+                        MSD_section = compileMSDMatrix(section(:,1:3), frame_rate);
+                    end
                     MSD_global(1:size(MSD_section,1), 1:2, class_label + 1) = MSD_global(1:size(MSD_section,1), 1:2, class_label + 1) + MSD_section(:,1:2);
                     
                     %add the raw MSD data to the MSD_all list and increment the current position

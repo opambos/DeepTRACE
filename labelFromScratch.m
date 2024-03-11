@@ -110,8 +110,8 @@ function [] = labelFromScratch(app)
         end
     end
     
-    %populate the GUI dropdown options in the Event histogram and Event overlayer tabs with the new class names
-    app.EventstoviewDropDown.Items  = app.movie_data.params.class_names;    %put class names back in class selection box in event histogram options
+    %populate the GUI dropdown options in the State histogram and Event overlayer panels with the new class names
+    app.EventstoviewDropDown.Items  = app.movie_data.params.class_names;    %put class names back in class selection box in state histogram options
     app.EventoverlayerSOI.Items     = app.movie_data.params.class_names;    %put class names back in class selection box in event overlayer options
     
     %start the user at the first molecule in the dataset

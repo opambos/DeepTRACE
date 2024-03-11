@@ -84,9 +84,18 @@ function [step_sizes] = computeStepSizeProfile(movie_data, N_lim, h_axes)
         end
     end
     
+    %scale steps to nm
     step_sizes = step_sizes .* movie_data.params.px_scale;
-    histogram(h_axes, step_sizes);
-    xlabel(h_axes, 'Step size (nm)');
-    ylabel(h_axes, 'Frequency');
+    
+    %plot the histogram
+    h = histogram(h_axes, step_sizes);
+    h.FaceColor = 'black';
+    h.EdgeColor = 'white';
+    h.LineWidth = 2;
+    h_axes.YLim = [0 ceil(max(h.Values) * 1.1)];
+    h_axes.XLim = [0 max(h.BinEdges)];
+    xlabel(h_axes, 'Step size (nm)'); ylabel(h_axes, 'Frequency');
+    title(h_axes, 'All step sizes present in dataset');
+    box(h_axes, 'on');
 end
 

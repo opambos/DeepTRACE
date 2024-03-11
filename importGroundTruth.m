@@ -197,7 +197,7 @@ function [] = importGroundTruth(app)
     %compute and store the event sequences and labelling times
     timestamp = string(datetime);
     for ii = 1:size(app.movie_data.results.GroundTruth.LabelledMols, 1)
-        app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence     = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
+        app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence  = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.DateClassified = timestamp;
     end
     

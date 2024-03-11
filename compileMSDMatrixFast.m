@@ -5,7 +5,7 @@ function [msd_result] = compileMSDMatrixFast(track, t_interframe, max_lag)
 %oliver.pambos@physics.ox.ac.uk
 %
 %
-%MATLAB FUNCTION: compileMSDMatrix
+%MATLAB FUNCTION: compileMSDMatrixFast
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %

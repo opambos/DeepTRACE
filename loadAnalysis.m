@@ -92,13 +92,23 @@ function loadAnalysis(app)
             component_name = fields{ii};
             if isprop(app, component_name)
                 component = app.(component_name);
+                
+                %if it's a dropdown box, search for a saved items list in the loaded data and update the current values
+                if isa(component, 'matlab.ui.control.DropDown')
+                    var_name = strcat(component_name, '_Items');
+                    if iscell(loaded_data.GUI_config.(var_name))
+                        app.(component_name).Items = loaded_data.GUI_config.(var_name);
+                    end
+                end
+                
                 %if it's recognised, update it in the active GUI
                 if isa(component, 'matlab.ui.control.NumericEditField') || ...  %numeric entry (non-spinner)
                     isa(component, 'matlab.ui.control.TextArea') || ...         %text area
                     isa(component, 'matlab.ui.control.Spinner')  || ...         %spinner
                     isa(component, 'matlab.ui.control.CheckBox') || ...         %check box
-                    isa(component, 'matlab.ui.control.DropDown')                %drop down selection
+                    isa(component, 'matlab.ui.control.DropDown')                %dropdown box
                     
+                    %load component value
                     component.Value = components.(component_name);
                 end
             end

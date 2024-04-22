@@ -81,6 +81,12 @@ function saveAnalysis(app)
             
             %save component
             GUI_config.(component_name) = component_handle.Value;
+            
+            %if it's a dropdown box also save the list of items
+            if isa(component_handle, 'matlab.ui.control.DropDown') && isprop(component_handle, 'Items')
+                var_name = strcat(component_name, '_Items');
+                GUI_config.(var_name) = component_handle.Items;
+            end
         end
     end
     

@@ -57,9 +57,10 @@ function [] = importGroundTruth(app)
 %The source data (ground_truth) is preprocessed into a map (class_map)
 %using the unique combination of cell_ID, mol_ID, and frame number as keys,
 %and mapped to the labelled class. The class label for each timepoint is
-%then retrieve from class_map with O(1) time complexity. This avoids nested
-%search, greatly improving performance, which is important for extremely
-%large synthetic datasets that may be used for benchmarking the ML models.
+%then retrieved from class_map with O(1) time complexity. This avoids
+%nested search, greatly improving performance, which is important for
+%extremely large synthetic datasets that may be used for benchmarking the
+%ML models.
 %
 %Inputs
 %------
@@ -74,28 +75,54 @@ function [] = importGroundTruth(app)
 %None
     
     %obtain frame number column
-    [frame_col] = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Frame');
-    if frame_col == 0
-        error('Error in importGroundTruth(): column ID not found');
+    if isfield(app.movie_data.params, "column_titles") && isfield(app.movie_data.params.column_titles, "tracks")
+        [frame_col] = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Frame');
+        if frame_col == 0
+            frame_col = 3;
+        end
+    else
+        frame_col = 3;
     end
     
-    %get file containing ground truth from the user; note all data must be numeric
-    [file, path] = uigetfile({'*.tsv;*.dat;*.txt', 'Data Files (*.tsv, *.dat, *.txt)'}, 'Select the data file');
-    if isequal(file, 0)
+    %get files containing ground truth from the user; note all data must be numeric
+    [file_list, path] = uigetfile({'*.tsv;*.dat;*.txt', 'Data Files (*.tsv, *.dat, *.txt)'}, ...
+                                  'Select the data file', 'MultiSelect', 'on');
+    if isequal(file_list, 0)
         disp('User selected Cancel');
     else
-        fullPath        = fullfile(path, file);
-        %opts            = detectImportOptions(fullPath, 'Delimiter', '\t');
-        opts            = detectImportOptions(fullPath, 'FileType', 'text', 'Delimiter', '\t');
-        dataTbl         = readtable(fullPath, opts);
-        ground_truth    = table2array(dataTbl);
+        %ensure file_list is cell array when only one file selected
+        if ischar(file_list)
+            file_list = {file_list};
+        end
+        
+        if size(file_list,2) ~= size(app.movie_data.params.frame_offsets,2)
+            error('Number of selected files does not match the number of videos');
+        end
+        
+        %prompt user to verify file order
+        file_list = confirmVideoOrder(file_list);
+        
+        %read data from each file and apply frame_offsets
+        all_data = [];
+        for i = 1:size(file_list,2)
+            full_path = fullfile(path, file_list{i});
+            opts = detectImportOptions(full_path, 'FileType', 'text', 'Delimiter', '\t');
+            dataTbl = readtable(full_path, opts);
+            curr_ground_truth = table2array(dataTbl);
+            
+            %add frame_offsets to column 2
+            curr_ground_truth(:,2) = curr_ground_truth(:,2) + app.movie_data.params.frame_offsets(i);
+            
+            %concatenate all the data
+            all_data = [all_data; curr_ground_truth];
+        end
+        ground_truth = all_data;
     end
     
     %clear any existing ground truth data
-    if isfield(app.movie_data, "results")
+    if isfield(app.movie_data, "results") && isfield(app.movie_data.results, "GroundTruth")
         app.movie_data.results = rmfield(app.movie_data.results, 'GroundTruth');
     end
-    
     
     %if class names already exist, ask the user if they want to overwrite
     update_class_names = true;
@@ -131,7 +158,7 @@ function [] = importGroundTruth(app)
     preset_colours = [1 0 0;        %red
         0 0 1;                      %blue
         0 1 0;                      %green
-        133/255 176/255, 154/255;   %Cambridge blue
+        133/255 176/255 154/255;   %Cambridge blue
         87/255 188/255 240/255;     %light blue
         243/255 69/255 107/255      %light red
         ];
@@ -146,7 +173,7 @@ function [] = importGroundTruth(app)
         app.movie_data.params.event_label_colours(1:size(app.movie_data.params.class_names,1),:) =  preset_colours(1:size(app.movie_data.params.class_names,1),:);
     end
     
-
+    
     %copy over every track to the ground truth struct
     count = 1;
     for ii = 1:size(app.movie_data.cellROI_data,1)

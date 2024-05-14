@@ -163,7 +163,7 @@ function [] = prepData(app)
     %register all filtered track IDs
     file_ext = waitbar(0,'1','Name','Preparing data: registering filtered tracks');
     waitbar(1/3, file_ext, 'Registering filtered tracks');
-    for ii = 1:size(app.movie_data.cellROI_data)
+    for ii = 1:size(app.movie_data.cellROI_data, 1)
         if ~isempty(app.movie_data.cellROI_data(ii).tracks)
             app.movie_data.cellROI_data(ii).filtered_track_IDs = unique(app.movie_data.cellROI_data(ii).tracks(:,4));
         end
@@ -181,7 +181,7 @@ function [] = prepData(app)
     app.movie_data = convertLoColiToKinetics(app.movie_data);
     
     %loop over cells
-    for ii = 1:size(app.movie_data.cellROI_data)
+    for ii = 1:size(app.movie_data.cellROI_data, 1)
         %only consider cells that have track data
         if ~isempty(app.movie_data.cellROI_data(ii).tracks)
             %store the data to be concatenated with the current tracks matrix

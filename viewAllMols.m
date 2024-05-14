@@ -57,7 +57,7 @@ function [] = viewAllMols(app)
         %obtain all mol_IDs for current cell
         curr_molIDs = unique(app.movie_data.cellROI_data(ii).tracks(:,4));
         
-        for jj = 1:size(curr_molIDs)
+        for jj = 1:size(curr_molIDs, 1)
             mol_list(count, 1) = ii;
             mol_list(count, 2) = curr_molIDs(jj);
             count = count+1;

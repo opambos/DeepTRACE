@@ -162,7 +162,7 @@ function [] = drawStateDiagram(state_names, state_occupancies, transition_matrix
     end
     
     %draw the circles and labels
-    for ii = 1:size(circle_centres)
+    for ii = 1:size(circle_centres, 1)
         rectangle(h_ax, 'Position', [circle_centres(ii,1)-radii(ii), circle_centres(ii,2)-radii(ii), 2*radii(ii), 2*radii(ii)], 'Curvature', [1, 1], 'FaceColor', [1 1 1], 'EdgeColor', state_colours(ii,:), 'LineWidth', 2);
         text(circle_centres(ii, 1), circle_centres(ii, 2), state_names{ii}, 'HorizontalAlignment', 'center', 'FontSize', 16, 'Color', state_colours(ii,:));
     end

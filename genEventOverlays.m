@@ -101,7 +101,7 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
         curr_events = getStateExits(curr_mol, state);
         
         %write state exits to data_out aligned at the len_max + 1
-        for jj = 1:size(curr_events)
+        for jj = 1:size(curr_events, 1)
             data_out(count_out, (len_max + 1 - curr_events(jj,2) + curr_events(jj,1)):(len_max + 1 + curr_events(jj,3) - curr_events(jj,2))) =...
                 curr_mol(curr_events(jj,1):curr_events(jj,3),featureID)';
             count_out = count_out + 1;
@@ -111,7 +111,7 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
         curr_events = getStateEntrances(curr_mol, state);
         
         %write the entrances to data_in aligned at the len_max + 1
-        for jj = 1:size(curr_events)
+        for jj = 1:size(curr_events, 1)
             data_in(count_in, (len_max - curr_events(jj,2) + curr_events(jj,1)):(len_max + curr_events(jj,3) - curr_events(jj,2))) =...
                 curr_mol(curr_events(jj,1):curr_events(jj,3),featureID)';
             count_in = count_in + 1;

@@ -121,19 +121,18 @@ function [] = repopulateEventLabeller(app)
     %pull video from the correct FITS file
     app.movie_data.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)));
     
-    %display the first video frame
-    imagesc(app.movie_data.current_video(:,:,1), 'parent', app.UIAxes_image_event_labeller); %imagesc(app.movie_data.current_video(:,:,1), 'parent', app.UIAxes_image_event_labeller, [app.movie_data.params.dr_lo app.movie_data.params.dr_hi]);
-    axis(app.UIAxes_image_event_labeller, 'equal');
-    axis(app.UIAxes_image_event_labeller, 'off');
-    colormap(app.UIAxes_image_event_labeller, gray(256));
-    
-    %populate the track viewer component
-    regenerateTrackViewer(app);
-    
+
     %update the state positions
     app.movie_data.state.labeller_track_pos     = 1;
     app.movie_data.state.labeller_frame_video   = 1;
     app.movie_data.state.labelled_so_far        = 0;
+
+    %display the first video frame (or initialise the handle if this is the first run)
+    app.updateVideoFrame(app.movie_data.state.labeller_frame_video);
+    
+    %populate the track viewer component
+    regenerateTrackViewer(app);
+    
 
     %reset frame slider
     app.Slider_event_labeller.Value             = 0;

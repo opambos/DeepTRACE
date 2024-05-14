@@ -114,8 +114,11 @@ function loadAnalysis(app)
             end
         end
     end
-    
+
     %clear the existing event labelling buttons
     delete(app.Event_label_buttons.Children);
+    
+    app.textout.Value = "A previous analysis file has been loaded. " + ...
+        "To continue labelling molecules press the [Begin] button in the [Human annotation tab].";
     
 end

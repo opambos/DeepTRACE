@@ -74,14 +74,14 @@ function [movie_data] = genAllOverlays(movie_data, border, bitdepth)
         if x_lo < 1
             x_lo = 1;
         end
-        if x_hi > size(img,2)
-            x_hi = size(img,2);
+        if x_hi > size(img,1)
+            x_hi = size(img,1);
         end
         if y_lo < 1
             y_lo = 1;
         end
-        if y_hi > size(img,1)
-            y_hi = size(img,1);
+        if y_hi > size(img,2)
+            y_hi = size(img,2);
         end
         
         movie_data.cellROI_data(ii).overlay = img(x_lo:x_hi, y_lo:y_hi);

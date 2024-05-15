@@ -80,5 +80,6 @@ end
 function eventLabelButtonCallback(app, btn)
     app.movie_data.state.current_label = btn.Text;
     addPartialVisualLabel(app);
+    focus(app.InVivoKineticsUIFigure);
 end
 

@@ -29,6 +29,12 @@ function [] = regenerateLabelButtons(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
+%This function generates an array of buttons and labels (column 1 labels,
+%column 2 is buttons) inside the label state selection panel during
+%runtime inside a grid. This grid dynamically resizes, rescaling its
+%contents based on the available space, for example by adjusting button
+%width and height.
+%
 %Inputs
 %------
 %app    (handle)    main GUI handle
@@ -39,7 +45,7 @@ function [] = regenerateLabelButtons(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%eventLabelButtonCallback() - button callback local to this .m file
+%eventLabelButtonCallback()
 %addPartialVisualLabel()    - called from local callback function
     
     %delete existing buttons
@@ -76,10 +82,4 @@ function [] = regenerateLabelButtons(app)
     end
 end
 
-
-function eventLabelButtonCallback(app, btn)
-    app.movie_data.state.current_label = btn.Text;
-    addPartialVisualLabel(app);
-    focus(app.InVivoKineticsUIFigure);
-end
 

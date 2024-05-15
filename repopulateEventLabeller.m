@@ -118,10 +118,9 @@ function [] = repopulateEventLabeller(app)
     text_pc = strcat(num2str(app.movie_data.state.event_labeller_current_ID), '/', num2str(size(app.movie_data.results.VisuallyLabelled.LabelledMols,1)), ' mols (', num2str(100*app.movie_data.state.event_labeller_current_ID/size(app.movie_data.results.VisuallyLabelled.LabelledMols,1), '%.1f'), '%)');
     text(app.UIAxes_labelling_progress, app.UIAxes_labelling_progress.XLim(2)/2, 0.5, text_pc, 'HorizontalAlignment', 'center');
     
-    %pull video from the correct FITS file
-    app.movie_data.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)));
+    %pull video from the correct video file
+    app.movie_data.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1);
     
-
     %update the state positions
     app.movie_data.state.labeller_track_pos     = 1;
     app.movie_data.state.labeller_frame_video   = 1;
@@ -133,7 +132,6 @@ function [] = repopulateEventLabeller(app)
     %populate the track viewer component
     regenerateTrackViewer(app);
     
-
     %reset frame slider
-    app.Slider_event_labeller.Value             = 0;
+    app.Slider_event_labeller.Value = 0;
 end

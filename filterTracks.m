@@ -187,7 +187,7 @@ function [track_conflicts, overlaps] = identifyOverlaps(tracks_file, buffer)
     overlaps        = [];                       %column vector that stores every frame number of overlap between tracks (even if mem param causes no loc to be present in a frame)
     
     %loop over all track_IDs
-    for ii = 1:size(track_list)
+    for ii = 1:size(track_list, 1)
         %find limits of screened track
         lim_lo =   min(tracks_file(tracks_file(:,4) == track_list(ii), 3));     %first frame of the frame series to search
         lim_hi =   max(tracks_file(tracks_file(:,4) == track_list(ii), 3));     %last frame of a the frame series to search

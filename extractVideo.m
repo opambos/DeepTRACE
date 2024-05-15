@@ -69,9 +69,9 @@ function [video] = extractVideo(ffpath, ffname, frame_lo, frame_hi, x_lo, x_hi, 
     
     %extract file extension
     [~, ~, ext] = fileparts(ffname);
-    ext = lower(ext);
-    if strcmp(ext, '.tif') || strcmp(ext, '.tiff')
-        file_type = '.tif';
+    ext = lower(string(ext));
+    if strcmp(ext, ".tif") || strcmp(ext, ".tiff")
+        file_type = ".tif";
     else
         file_type = ext;
     end
@@ -80,13 +80,13 @@ function [video] = extractVideo(ffpath, ffname, frame_lo, frame_hi, x_lo, x_hi, 
     
     %extract cropped region of video
     switch file_type
-        case '.fits'
+        case ".fits"
             import matlab.io.*
             fptr = fits.openFile(char(fullfile(ffpath,ffname)));    %17/06/2022: char() as this can be passed as a cell array
             video = fits.readImg(fptr, [y_lo x_lo frame_lo], [y_hi x_hi frame_hi]);
             fits.closeFile(fptr);
             
-        case '.tif'
+        case ".tif"
             tif_meta = imfinfo(char(fullfile(ffpath, ffname)));
             N_frames = numel(tif_meta);
             

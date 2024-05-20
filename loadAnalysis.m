@@ -1,5 +1,6 @@
 function loadAnalysis(app)
-%Save the current analysis to file, Oliver Pambos, 20/02/2024.
+%Load an existing DeepTRACKS analysis file, and configure the GUI control
+%state to reflect the saved state, Oliver Pambos, 20/02/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
@@ -28,20 +29,23 @@ function loadAnalysis(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%This function moves the file load functionality out of the main GUI code
-%to further modularise the code.
+%This function modularizes the file loading functionality for the GUI. It
+%loads a saved DeepTRACKS analysis file, updates the GUI controls to
+%reflect the saved state, and ensures that the core analysis data is loaded
+%correctly.
 %
-%This function loops over the saved GUI states, and updates any entries
-%that have a corresponding control in the current GUI.
+%This function distinguishes between different file types using the
+%'filtered_track_IDs' field, which is always present after data preparation
+%in DeepTRACKS, and absent in files output from input pipelines such as
+%LoColi. While a versioning field could be introduced, it would necessitate
+%updating all older saved files, which may not be practical.
 %
-%Note that currently the field 'filtered_track_IDs' is used to distinguish
-%the difference between a LoColi file and an InVivoKinetics save file as
-%this field only exists following data preparation, and must exists in all
-%versions of InVivoKinetics. While it is possible to introduce a new field
-%to hold for example the version number, this would require coding a
-%fallback option as the structs of save files from time-consuming analyses
-%done by multiple human annotators during development would also have to be
-%updated.
+%Exception handling ensures that even if there are changes to the GUI
+%components between versions, the core saved data (app.movie_data) is
+%loaded correctly. If a component is not found, the function will not
+%proceed to load further components and the user will need to manually
+%reconfigure the GUI controls, or load a valid configuration file
+%separately.
 %
 %Input
 %-----
@@ -55,8 +59,13 @@ function loadAnalysis(app)
 %-----------------------------------------
 %None
     
-    %ask user to select file
-    [file, path] = uigetfile('*.mat', 'Select the Analysis File');
+    %track GUI loading errors
+    gui_load_error      = false;
+    gui_config_missing  = false;
+
+    %user provides DeepTRACKS analysis file
+    app.textout.Value = "Please select a DeepTRACKS analysis file,";
+    [file, path] = uigetfile({'*.mat', 'DeepTRACKS analysis file (.mat)'}, 'Select a DeepTRACKS analysis file.');
     %check user didn't cancel
     if isequal(file, 0) || isequal(path, 0)
         return;
@@ -78,47 +87,61 @@ function loadAnalysis(app)
     
     %check if the file contains the config data, if so load it
     if ~isfield(loaded_data, 'GUI_config')
-        app.textout.Value = "The file did not contain GUI configuration options. " + ...
+        gui_config_missing = true;
+    else
+        try
+            %update the GUI components with the loaded state
+            components = loaded_data.GUI_config;
+            fields = fieldnames(components);
+            for ii = 1:length(fields)
+                component_name = fields{ii};
+                if isprop(app, component_name)
+                    component = app.(component_name);
+                    
+                    %if it's a dropdown box, search for a saved items list in the loaded data and update the current values
+                    if isa(component, 'matlab.ui.control.DropDown')
+                        var_name = strcat(component_name, '_Items');
+                        if iscell(loaded_data.GUI_config.(var_name))
+                            app.(component_name).Items = loaded_data.GUI_config.(var_name);
+                        end
+                    end
+                    
+                    %if it's recognised, update it in the active GUI
+                    if isa(component, 'matlab.ui.control.NumericEditField') || ...  %numeric entry (non-spinner)
+                        isa(component, 'matlab.ui.control.TextArea') || ...         %text area
+                        isa(component, 'matlab.ui.control.Spinner')  || ...         %spinner
+                        isa(component, 'matlab.ui.control.CheckBox') || ...         %check box
+                        isa(component, 'matlab.ui.control.DropDown')                %dropdown box
+                        
+                        %load component value
+                        component.Value = components.(component_name);
+                    end
+                end
+            end
+        catch ME
+            gui_load_error = true;
+            warning(ME.identifier, 'Error updating GUI components. Some settings may not be restored: %s', ME.message);
+        end
+    end
+    
+    %clear the existing event labelling buttons
+    delete(app.Event_label_buttons.Children);
+    
+    %notify user regarding loaded data state
+    if gui_load_error
+        app.textout.Value = "Warning: Not all GUI settings were restored, " + ...
+            "likely due to the analysis file either being saved using an older version of the software or file corruption, " + ...
+            "however the critical saved analysis data was loaded successfully.";
+    elseif gui_config_missing
+        app.textout.Value = "The loaded file did not contain GUI configuration options. " + ...
             "This may have been saved using an older version of the software. " + newline + ...
             "The file has been loaded without the GUI settings configuration, " + ...
             "however if you have a saved user configuratin file you can load " + ...
             "this separately using the `Load configuration` button. " + newline + ...
             "Note that resaving your file will resolve this issue in the future.";
     else
-        %update the GUI components with the loaded state
-        components = loaded_data.GUI_config;
-        fields = fieldnames(components);
-        for ii = 1:length(fields)
-            component_name = fields{ii};
-            if isprop(app, component_name)
-                component = app.(component_name);
-                
-                %if it's a dropdown box, search for a saved items list in the loaded data and update the current values
-                if isa(component, 'matlab.ui.control.DropDown')
-                    var_name = strcat(component_name, '_Items');
-                    if iscell(loaded_data.GUI_config.(var_name))
-                        app.(component_name).Items = loaded_data.GUI_config.(var_name);
-                    end
-                end
-                
-                %if it's recognised, update it in the active GUI
-                if isa(component, 'matlab.ui.control.NumericEditField') || ...  %numeric entry (non-spinner)
-                    isa(component, 'matlab.ui.control.TextArea') || ...         %text area
-                    isa(component, 'matlab.ui.control.Spinner')  || ...         %spinner
-                    isa(component, 'matlab.ui.control.CheckBox') || ...         %check box
-                    isa(component, 'matlab.ui.control.DropDown')                %dropdown box
-                    
-                    %load component value
-                    component.Value = components.(component_name);
-                end
-            end
-        end
+        app.textout.Value = "A previous analysis file has been loaded. " + ...
+            "To continue labelling molecules press the [Begin] button in the [Human annotation tab].";
     end
-
-    %clear the existing event labelling buttons
-    delete(app.Event_label_buttons.Children);
-    
-    app.textout.Value = "A previous analysis file has been loaded. " + ...
-        "To continue labelling molecules press the [Begin] button in the [Human annotation tab].";
     
 end

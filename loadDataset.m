@@ -125,9 +125,8 @@ function [] = loadLoColiData(app)
 %
 %
 %Loads data from the LoColi SMLM analysis pipeline native to the Gene
-%Machines group at Oxford. This code was moved from the main the main GUI
-%file to modularise the code, enabling generalisation prior to public
-%release.
+%Machines group at Oxford. This code was moved from the main GUI file to
+%modularise the code, enabling generalisation prior to public release.
 %
 %Inputs
 %------
@@ -143,27 +142,36 @@ function [] = loadLoColiData(app)
     
     %user provides LoColi file
     app.textout.Value = 'Please select the LoColi data file';
-    [temp_name, temp_path] = uigetfile();
-    if temp_name ~= 0
-        temp_struct     = load([temp_path '/' temp_name]);
-
+    [temp_file, temp_path] = uigetfile({'*.mat', 'Select a LoColi file (*.mat)'}, 'Load a LoColi data file');
+    if isequal(temp_file, 0) || isequal(temp_path, 0)
+        app.textout.Value = "No LoColi file was provided by user.";
+        return;
+    end
+    
+    temp_struct = load(fullfile(temp_path, temp_file));
+    
+    try
         %verify file is a valid LoColi output
         if ~isstruct(temp_struct) || isempty(fieldnames(temp_struct)) || ~isfield(temp_struct, "movie_data") ||...
                 ~isfield(temp_struct.movie_data, "cellROI_data") || ~isfield(temp_struct.movie_data.cellROI_data, "tracks")
             
-            app.text_out.Value = "This is not a valid LoColi file. Please try again.";
+            errordlg('This is not a valid LoColi file. Please try again.', 'Invalid LoColi file');
+            app.textout.Value = "This is not a valid LoColi file. Please try again.";
             return;
         else
             %if file is valid, load into app handles
             app.movie_data  = temp_struct.movie_data;
             focus(app.InVivoKineticsUIFigure);
-            app.textout.Value = 'Please choose a sensible name for the dataset';
-            app.movie_data.params.title = inputdlg({'Please choose a sensible name for the dataset'}, 'Name this dataset', [1 80], {temp_name});
+            app.textout.Value = "Please choose a sensible name for the dataset";
+            app.movie_data.params.title = inputdlg({'Please choose a sensible name for the dataset'}, 'Name this dataset', [1 80], {temp_file});
             app.movie_data.params.pipeline = "LoColi";
             app.CurrentlyloadeddatasetTextArea.Value = app.movie_data.params.title;
-
-            app.movie_data.params.pipeline = "LoColi";
+    
+            app.textout.Value = "A data file from the LoColi analysis pipeline has been loaded successfully.";
         end
+    catch ME
+        warning(ME.identifier, 'Error loading LoColi file: %s', ME.message);
+        app.textout.Value = "An error occurred while loading the LoColi file. Please ensure the file is valid and try again.";
     end
 end
 
@@ -227,8 +235,9 @@ function [] = loadSeparateSegTracks(app)
 %renumberTracksByCell()     - local to this .m file
     
     %user provides reference image
-    app.textout.Value = "Please provide a reference image for the dataset. Typically this is a phase contrast or brightfield image. If you do not have one, please provide a single frame image from the fluorescence movie";
-    [temp_file, temp_path] = uigetfile({'*.tif;*.tiff;*.fits', 'Supported files (*.tif, *.tiff, *.fits)'},  'Select a reference image file');
+    app.textout.Value = "Please provide a reference image for the full field of view. Typically this is a phase contrast or brightfield image. " + ...
+        "If you do not have one, please provide a single frame image from the fluorescence movie";
+    [temp_file, temp_path] = uigetfile({'*.tif;*.tiff;*.fits', 'Select a reference image (*.tif, *.tiff, *.fits)'},  'Select a reference image for the field of view');
     if isequal(temp_file, 0) || isequal(temp_path, 0)
         app.textout.Value = "No reference image was provided by user.";
         return;
@@ -249,18 +258,33 @@ function [] = loadSeparateSegTracks(app)
     
     %user provides segmentation file
     app.textout.Value = "Please provide a file containing segmented cell boundaries.";
-    [temp_file, temp_path] = uigetfile({'*.dat;*.csv;*.mat', 'Supported files (*.dat, *.csv, *.mat)'},  'Select a segmentation file');
+    [temp_file, temp_path] = uigetfile({'*.dat;*.csv;*.mat', 'Segmented cell boundaries (*.dat, *.csv, *.mat)'},  'Select a segmentation file');
     if isequal(temp_file, 0) || isequal(temp_path, 0)
         app.textout.Value = "No segmentation file was provided by user.";
         return;
     end
-    
-    %load the data
-    seg_data = load([temp_path '/' temp_file]);
+
+    %get file extension and read segmentation data
+    [~, ~, ext] = fileparts(temp_file);
+    try
+        switch lower(ext)
+            case '.mat'
+                seg_data = load(fullfile(temp_path, temp_file));
+            case {'.dat', '.csv'}
+                seg_data = readtable(fullfile(temp_path, temp_file));
+            otherwise
+                error('Unsupported file format.');
+        end
+    catch ME
+        warning(ME.identifier, 'Error loading segmentation file: %s', ME.message);
+        errordlg("There was a problem loading the selected file. Please ensure the file is valid and try again.", "File Load Error");
+        app.textout.Value = "Error: Please start again with loading the file.";
+        return;
+    end
     
     %keep track of segmentation type
     app.movie_data.params.seg_type = "Unknown";
-
+    
     %check whether file is a MicrobeTracker file, Oufti file, or pixel mask
     if isstruct(seg_data) && isfield(seg_data, "cellList")
         app.movie_data.params.seg_type = "MicrobeTracker";
@@ -269,11 +293,12 @@ function [] = loadSeparateSegTracks(app)
     elseif isstruct(seg_data) && isfield(seg_data, "meshData")
         app.movie_data.params.seg_type = "Oufti";
         
-    elseif ismatrix(seg_data)
+    elseif isnumeric(seg_data) && ismatrix(seg_data)
         app.movie_data.params.seg_type = "Pixel mask";
         
     else
-        app.textout.Value = "The loaded segmentation file type was not recognised";
+        app.textout.Value = "The segmentation file provided is not valid. Please load data again.";
+        errordlg("The segmentation file provided was not recognised, please try again.", "Invalid segmentation file");
         return;
     end
     
@@ -289,7 +314,7 @@ function [] = loadSeparateSegTracks(app)
     
     %prompt user to input tracking data
     app.textout.Value = "Please select a valid tracks file (e.g. *.csv)";
-    [temp_file, temp_path] = uigetfile({'*.tracks;*.csv;*.mat', 'Supported files (*.tracks, *.csv, *.mat)'},  'Select a tracking file');
+    [temp_file, temp_path] = uigetfile({'*.tracks;*.csv;*.mat', 'Tracking data (*.tracks, *.csv, *.mat)'},  'Select a tracking file');
     if isequal(temp_file, 0) || isequal(temp_path, 0)
         app.textout.Value = "No tracking file was provided by user.";
         return;
@@ -297,15 +322,22 @@ function [] = loadSeparateSegTracks(app)
     
     %load the data
     tracks_pathname = fullfile(temp_path, temp_file);    
-
+    
     %keep track of segmentation type
     app.movie_data.params.tracks_type = "Unknown";
     
     % << placeholder for track filetype decision code >>
-
+    
     
     %currnetly hardcoded to TrackMate
-    tracks_data = loadTrackMateData(app, tracks_pathname);
+    try
+        tracks_data = loadTrackMateData(app, tracks_pathname);
+    catch ME
+        app.textout.Value = "There was a error loading the selected tracking file. Please check the file carefully and try again.";
+        warning(ME.identifier, 'Error loading tracking data: %s', ME.message);
+        errordlg('There was an error with the selected tracking file. Please check the file carefully and try again.', 'Error loading tracking file');
+        return;
+    end
     
     %<< placeholder here to apply pixel offset GUI >>
     
@@ -315,6 +347,10 @@ function [] = loadSeparateSegTracks(app)
     
     %renumber mol_IDs such that they are local to each cell as the combination [cell_ID molID] is unique
     renumberTracksByCell(app);
+
+    if ~isempty(app.movie_data)
+        app.textout.Value = "Data was loaded successfully. Please now proceed to data preparation via the [Prepare] tab.";
+    end
 end
 
 
@@ -623,7 +659,16 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
 %flipTracksInY()    - local to this .m file
     
     %read in tracks_data
-    tracks_data = readtable(tracks_pathname);
+    try
+        tracks_data = readtable(tracks_pathname);
+    catch ME
+        warning(ME.identifier, 'Error loading TrackMate data: %s', ME.message);
+        errordlg('There was a problem loading the selected tracks file. Please start again with loading the file(s).', 'File Load Error');
+        
+        %return an empty value to indicate failure
+        reformatted_tracks = [];
+        return;
+    end
     
     %delete any completely empty columns
     tracks_data = tracks_data(:, any(~ismissing(tracks_data)));

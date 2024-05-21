@@ -86,6 +86,7 @@ function [] = exportNotes(app)
     original_text   = app.DataanalysisnotesTextArea.Value;
     formatted_text  = strjoin(original_text, '\n');
     
+    app.textout.Value = "Please select a file name and location for your analysis notes.";
     switch app.NotesexportformatDropDown.Value
         case "PDF (.pdf)"
             %suggested filename

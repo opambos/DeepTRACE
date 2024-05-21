@@ -1,4 +1,4 @@
-function [] = filterTracks(app)
+function [filter_status] = filterTracks(app)
 %Filter tracks to ensure there is only one track per cell, Oliver Pambos,
 %11/09/2020.
 %oliver.pambos@physics.ox.ac.uk
@@ -41,11 +41,26 @@ function [] = filterTracks(app)
 %
 %Inputs
 %------
-%app    (handle)    main GUI handle
+%app            (handle)    main GUI handle
 %
 %Output
 %------
-%None
+%filter_status  (str)       reports the status of the filtering process to
+%                               the calling function; this ensures user is
+%                               notified adequately, and enables downstream
+%                               data preparation processes to be cancelled
+%                               inside calling function without having to
+%                               return error(). Values are,
+%                                   "Failed" - default
+%                                   "Cancelled by user" - use opts to
+%                                       cancel when localisation data is
+%                                       unavailable
+%                                   "Filtered by localisations" -
+%                                       successful filtering against all
+%                                       localisations in same cell
+%                                   "Successfully truncated by tracks" -
+%                                       overlapping tracks were truncated
+%                                   ""
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
@@ -55,20 +70,46 @@ function [] = filterTracks(app)
 %identifyShortTracks()  - local to this .m file
 %applyMemoryParameter() - local to this .m file
     
+    app.textout.Value   = "Track filtering process is in progress. This may take some time to complete.";
+    filter_status       = "Failed";
+    
     %remove cells that contain no tracks
     app.movie_data = removeEmptyCells(app.movie_data);
     
     %use current state of dropdown boxes to control a switch statement for how the tracks should be filtered
     selection_ID = [app.FilteringmethodDropDown.Value '_' app.FilteragainstDropDown.Value];
     
+    %if user has asked to filter against localisations and there is no localisation data
+    if (strcmp(selection_ID, 'truncate_localisations') || strcmp(selection_ID, 'eliminate_localisations')) && ~isfield(app.movie_data.cellROI_data, "localizationData")
+        continue_filtering = questdlg('Localization data is not available for your dataset. Would you like to continue filtering against all tracks instead?', ...
+        'Localization Data Not Available', ...
+        'Continue', 'Cancel', 'Cancel');
+        
+        %ask user whether to continue filtering
+        switch continue_filtering
+            case 'Continue'
+                %re-task the code to filter against tracks
+                parts = strsplit(selection_ID, '_');
+                selection_ID = [parts{1} '_tracks'];
+            case 'Cancel'
+                filter_status = "Cancelled by user";
+                app.textout.Value = 'Track filtering was canceled by user, due to lack of localization data.';
+                return;
+        end
+    end
+    
+    %record filtering method
+    app.movie_data.params.filtering_method  = selection_ID;
+
     switch selection_ID
         case {'truncate_localisations', 'eliminate_localisations'}
             
             app.movie_data = filterByAllLocs(app.movie_data, app.FiltertoleranceSpinner.Value);
+            filter_status = "Filtered by localisations";
             
         case 'truncate_tracks'
             
-            f = waitbar(0,'1','Name','Filtering tracks....');
+            f = waitbar(0,'Processing tracks; please wait....','Name','Filtering tracks');
             %identify clashing tracks, and short tracks
             %loop over all cells
             for ii = 1:size(app.movie_data.cellROI_data,1)
@@ -96,10 +137,11 @@ function [] = filterTracks(app)
                 waitbar(ii/size(app.movie_data.cellROI_data,1), f, strcat('Processing cell #', num2str(ii), {' '}, 'of', {' '}, num2str(size(app.movie_data.cellROI_data,1))));
             end
             close(f);
+            filter_status = "Successfully truncated by tracks";
             
         case 'eliminate_tracks'
             
-            f = waitbar(0,'1','Name','Filtering tracks....');
+            f = waitbar(0,'Processing tracks, please wait....','Name','Filtering tracks');
             %identify clashing tracks, and short tracks
             %loop over all cells
             for ii = 1:size(app.movie_data.cellROI_data,1)
@@ -122,6 +164,7 @@ function [] = filterTracks(app)
                 waitbar(ii/size(app.movie_data.cellROI_data,1), f, strcat('Processing cell #', num2str(ii), {' '}, 'of', {' '}, num2str(size(app.movie_data.cellROI_data,1))));
             end
             close(f);
+            filter_status = "Successfully eliminated by tracks";
 
         case {'keep all_tracks', 'keep all_localisations'}
             %currently do nothing
@@ -440,7 +483,7 @@ function [movie_data] = filterByAllLocs(movie_data, tolerance)
 %-----------------------------------------
 %None
     
-    f = waitbar(0,'1','Name','Filtering tracks....');
+    f = waitbar(0,'Processing tracks, please wait....','Name','Filtering tracks');
     %loop over cells
     for ii = 1:size(movie_data.cellROI_data,1)
         %get list of molecule IDs in current cell
@@ -455,7 +498,7 @@ function [movie_data] = filterByAllLocs(movie_data, tolerance)
             track_lo = min(movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj,1), 3));
             track_hi = max(movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj,1), 3));
             
-            %obtain reduced track list corresponding to the time period of the trajectory; also only taking (frame, x, y)
+            %obtain reduced localisation list corresponding to the time period of the trajectory; also only taking (frame, x, y)
             loc_subset = movie_data.cellROI_data(ii).localizationData((movie_data.cellROI_data(ii).localizationData(:,1) >= track_lo) &...
                 (movie_data.cellROI_data(ii).localizationData(:,1) <= track_hi), 1:3);
             %reorder to be consistent with trajectory columns (x, y, frame)

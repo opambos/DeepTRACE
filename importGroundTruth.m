@@ -84,40 +84,55 @@ function [] = importGroundTruth(app)
         frame_col = 3;
     end
     
-    %get files containing ground truth from the user; note all data must be numeric
-    [file_list, path] = uigetfile({'*.tsv;*.dat;*.txt', 'Data Files (*.tsv, *.dat, *.txt)'}, ...
+    %user provides files containing ground truth; note all data must be numeric
+    app.textout.Value = "Please select the file(s) containing ground truth data.";
+    [file_list, path] = uigetfile({'*.tsv;*.dat;*.txt', 'Ground truth data (*.tsv, *.dat, *.txt)'}, ...
                                   'Select the data file', 'MultiSelect', 'on');
     if isequal(file_list, 0)
         disp('User selected Cancel');
-    else
-        %ensure file_list is cell array when only one file selected
-        if ischar(file_list)
-            file_list = {file_list};
-        end
-        
-        if size(file_list,2) ~= size(app.movie_data.params.frame_offsets,2)
-            error('Number of selected files does not match the number of videos');
-        end
-        
-        %prompt user to verify file order
-        file_list = confirmVideoOrder(file_list);
-        
-        %read data from each file and apply frame_offsets
-        all_data = [];
-        for i = 1:size(file_list,2)
-            full_path = fullfile(path, file_list{i});
-            opts = detectImportOptions(full_path, 'FileType', 'text', 'Delimiter', '\t');
-            dataTbl = readtable(full_path, opts);
-            curr_ground_truth = table2array(dataTbl);
-            
-            %add frame_offsets to column 2
-            curr_ground_truth(:,2) = curr_ground_truth(:,2) + app.movie_data.params.frame_offsets(i);
-            
-            %concatenate all the data
-            all_data = [all_data; curr_ground_truth];
-        end
-        ground_truth = all_data;
+        return;
     end
+
+    %ensure file_list is cell array when only one file selected
+    if ischar(file_list)
+        file_list = {file_list};
+    end
+    
+    if size(file_list,2) ~= size(app.movie_data.params.frame_offsets,2)
+        app.textout.Value = "The number of ground truth files does not match the number of videos, please try again.";
+        warning("Number of ground truth files provided by user did not match the number of videos");
+        errordlg("Number of selected files does not match the number of videos, please try again", "Mismatch Error");
+        return;
+    end
+    
+    %prompt user to verify file order
+    file_list = confirmVideoOrder(file_list);
+    
+    %print the file order to screen
+    message = {'Ground truth files in the following order:'};
+    
+    %append each entry to the message, and display file order
+    for idx = 1:numel(file_list)
+        message{end+1} = sprintf('%d. ''%s''', idx, file_list{idx});
+    end
+    app.textout.Value = message;
+    
+    %read data from each file and apply frame_offsets
+    all_data = [];
+    for i = 1:size(file_list,2)
+        full_path = fullfile(path, file_list{i});
+        opts = detectImportOptions(full_path, 'FileType', 'text', 'Delimiter', '\t');
+        dataTbl = readtable(full_path, opts);
+        curr_ground_truth = table2array(dataTbl);
+        
+        %add frame_offsets to column 2
+        curr_ground_truth(:,2) = curr_ground_truth(:,2) + app.movie_data.params.frame_offsets(i);
+        
+        %concatenate all the data
+        all_data = [all_data; curr_ground_truth];
+    end
+    ground_truth = all_data;
+    
     
     %clear any existing ground truth data
     if isfield(app.movie_data, "results") && isfield(app.movie_data.results, "GroundTruth")

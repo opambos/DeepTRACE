@@ -51,13 +51,6 @@ function saveAnalysis(app)
 %-----------------------------------------
 %None
     
-    %get the filename and location to write to
-    [file, path] = uiputfile(strcat(app.movie_data.params.title, '_kinetics_analysis.mat'));
-    %check user doesn't press cancel
-    if isequal(file, 0) || isequal(path, 0)
-        return;
-    end
-    
     %copy all of the analysis data
     movie_data = app.movie_data;
     
@@ -91,5 +84,22 @@ function saveAnalysis(app)
     end
     
     %save data and components to file
-    save(fullfile(path, file), 'movie_data', 'GUI_config');
+    %user selects output file
+    app.textout.Value = "Please provide a name and location to save your progress as a DeepTRACKS analysis file.";
+    [file, path] = uiputfile(strcat(app.movie_data.params.title, '_kinetics_analysis.mat'));
+    %check user doesn't press cancel
+    if isequal(file, 0) || isequal(path, 0)
+        app.textout.Value = "Save operation cancelled by user";
+        return;
+    else
+        %save analysis, and verify whether this was successful
+        try
+            save(fullfile(path, file), 'movie_data', 'GUI_config');
+            app.textout.Value = "DeepTRACKS analysis file saved successfully.";
+        catch ME
+            app.textout.Value = "Failed to save DeepTRACKS analysis file. " + ...
+                "This may be due to insufficient disk space, or you may not have sufficient administrative rights " + ...
+                "to write data to the requested location: " + ME.message;
+        end
+    end
 end

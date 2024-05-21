@@ -75,11 +75,14 @@ function [] = prepData(app)
 %promptUserForMissingParams()   - local to this .m file
     
     %obtain fluorescence videos and ask user to confirm chronological order
-    [file, path, filterIndex] = uigetfile({'*.fits;*.FITS;*.tif;*.TIF;*.tiff;*.TIFF', 'Video Files (*.fits, *.FITS, *.tif, *.TIF, *.tiff, *.TIFF)'}, 'Select raw video files:', 'MultiSelect', 'on');
+    app.textout.Value = "Please provide fluorescence video files.";
+    [file, path, filterIndex] = uigetfile({'*.fits;*.FITS;*.tif;*.TIF;*.tiff;*.TIFF', 'Fluorescence video files (*.fits, *.FITS, *.tif, *.TIF, *.tiff, *.TIFF)'}, 'Select raw video files:', 'MultiSelect', 'on');
     if filterIndex == 0
         disp('User did not select a file.');
         return;
     end
+    
+    app.textout.Value = "please re-order the fluorescence video files into chronological order.";
     
     %confirm chronological order of videos
     if iscell(file)
@@ -94,6 +97,7 @@ function [] = prepData(app)
     
     %return if filenames are inconsistent
     if ~consistent
+        errordlg('File extension of selected fluorescence videos are inconsistent. Exiting data preparation. Please try again.', 'Inconsistent file extensions');
         app.textout.Value = "File extensions of the selected fluorescence video files are inconsistent; data has not been prepared for analysis.";
         return;
     end
@@ -103,7 +107,8 @@ function [] = prepData(app)
         file_ext = ".tif";
     end
     
-    switch lower(file_ext) 
+    %load video files
+    switch lower(file_ext)
         case ".fits"
             %obtain frame rate from KCT value in FITS file header
             if iscell(app.movie_data.params.ffFile)
@@ -156,9 +161,26 @@ function [] = prepData(app)
     
     %prompt for any missing parameters
     app.movie_data.params = promptUserForMissingParams(app.movie_data.params);
-
+    
     %filter tracks
-    filterTracks(app);
+    filter_status = filterTracks(app);
+
+    %notify user of filtering outcome; only proceed if successful
+    if strcmp(filter_status, "Cancelled by user")
+        app.textout.Value = "Track filtering was canceled by user, due to lack of localization data.";
+        return;
+    elseif strcmp(filter_status, "Filtered by localisations")
+        app.textout.Value = "Tracks were filtered against all localisations associated with their parent cell.";
+    elseif strcmp(filter_status, "Successfully truncated by tracks")
+        app.textout.Value = "Tracks were filtered by truncation against all tracks associated with their parent cell.";
+    elseif strcmp(filter_status, "Successfully eliminated by tracks")
+        app.textout.Value = "Tracks were filtered by elimination against all tracks associated with their parent cell.";
+    else
+        app.textout.Value = "Track filtering failed due to an known error. Please try again.";
+        warning("Track filtering failed due to an known error. Please try again");
+        errordlg("Track filtering failed due to an known error. Please try again", "Track filtering failed");
+        return;
+    end
     
     %register all filtered track IDs
     file_ext = waitbar(0,'1','Name','Preparing data: registering filtered tracks');
@@ -177,8 +199,10 @@ function [] = prepData(app)
     waitbar(3/3, file_ext, 'Computing distances to membrane (window will close on completion)');
     app.movie_data = computeLocMemDists(app.movie_data);
     
-    %add all StormTracker data to the tracks matrix
-    app.movie_data = convertLoColiToKinetics(app.movie_data);
+    if strcmp(app.movie_data.params.pipeline, "LoColi")
+        %add all StormTracker data to the tracks matrix
+        app.movie_data = convertLoColiToKinetics(app.movie_data);
+    end
     
     %loop over cells
     for ii = 1:size(app.movie_data.cellROI_data, 1)
@@ -260,6 +284,11 @@ function [] = prepData(app)
                                                'class label'};
     
     close(file_ext);
+
+    app.textout.Value = "Data preparation is complete." + newline + ...
+        "Please proceed to either the [Human annotation] tab to manual annotate data, " + ...
+        "or the [ML classification] tab to annotate data using an appropriate pre-trained model, " + ...
+        "or the [Load/Save] tab to import ground truth data.";
 end
 
 
@@ -365,7 +394,8 @@ function params = promptUserForMissingParams(params)
 %copy using MATLAB's str2double() function. The result of this conversion
 %determines whether to perform conversion. This approach eliminates the
 %need for a lookup table of possible parameters
-%string inputs in future, input parsing will be necessary to identify
+%string inputs in future, input parsing will be necessary to
+%identifyoverovo
 %non-numeric characters in the input. This allows for flexible handling of
 %various input types without relying on hardcoded values or a lookup table
 %of formats for all possible parameters. This eliminates hardcoding, more

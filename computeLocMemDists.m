@@ -1,4 +1,4 @@
-function [movie_data] = computeLocMemDists(movie_data)
+function [] = computeLocMemDists(app)
 %Compute distance to membrane for every frame of every tracked molecule,
 %Oliver Pambos, 19/12/2021.
 %oliver.pambos@physics.ox.ac.uk
@@ -29,10 +29,10 @@ function [movie_data] = computeLocMemDists(movie_data)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%Uses the distance-to-membrane code I wrote for my SuperCell in 2018. This
-%function computes the distance of each localistion to the nearest point of
-%any line within the associated cell mesh by repeatedly calling
-%findPiontToMeshDist(), also developed for SuperCell in 2018.   
+%Uses distance-to-membrane code I wrote for a previous project in 2018.
+%This function computes the distance of each localistion to the nearest
+%point of any line within the associated cell mesh by repeatedly calling
+%findPiontToMeshDist(), also developed for the same project in 2018.
 %
 %Input
 %-----
@@ -45,18 +45,21 @@ function [movie_data] = computeLocMemDists(movie_data)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %findPointToMeshDist()
-
+    
+    h_progress  = waitbar(0,'Preparing....','Name','Computing distances to membrane');
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    
     %loop over every cell
-    for i = 1:size(movie_data.cellROI_data, 1)
+    for ii = 1:N_cells
+        N_cols = size(app.movie_data.cellROI_data(ii).tracks, 2);
+        waitbar(ii/N_cells, h_progress, sprintf('Computing distances for cell %d of %d', ii, N_cells));
         %loop over all tracked localisations
-        for j = 1:size(movie_data.cellROI_data(i).tracks, 1)
+        for jj = 1:size(app.movie_data.cellROI_data(ii).tracks, 1)
             %compute distance to nearest membrane for every localisation
-            movie_data.cellROI_data(i).tracks(j,5) = findPointToMeshDist(movie_data.cellROI_data(i).tracks(j,1), movie_data.cellROI_data(i).tracks(j,2), movie_data.cellROI_data(i).ROIVertices);
-            %compute distance to nearest pole for every localisation
-            poledists = [ pdist([movie_data.cellROI_data(i).tracks(j,1:2); movie_data.cellROI_data(i).mesh(1,1:2)]);...
-                          pdist([movie_data.cellROI_data(i).tracks(j,1:2); movie_data.cellROI_data(i).mesh(end,1:2)]) ];
-            movie_data.cellROI_data(i).tracks(j,6) = min(poledists);
+            app.movie_data.cellROI_data(ii).tracks(jj, N_cols+1) = findPointToMeshDist(app.movie_data.cellROI_data(ii).tracks(jj,1), app.movie_data.cellROI_data(ii).tracks(jj,2), app.movie_data.cellROI_data(ii).ROIVertices);
         end
+        
     end
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Distance to nearest membrane'];
+    close(h_progress);
 end
-

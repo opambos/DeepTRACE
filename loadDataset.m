@@ -30,12 +30,12 @@ function [] = loadDataset(app)
 %
 %This function generalises the data input formats to non-native pipelines
 %beyond the StormTracker (localisation) - LoColi (tracking) pipeline for
-%which DeepTRACKS was designed.
+%which DeepTRACKS was originally designed.
 %
 %Prompts the user to load new data, which can be in the format of either a
 %composite datafile from common pipelines, or as separate segmentation or
 %tracking files. This code performs the bulk of restructuring of the
-%varoius types of input data to make it compatible with the DeepTRACKS
+%various types of input data to make it compatible with the DeepTRACKS
 %pipeline.
 %
 %Current implementation enables input of StormTracker or TrackMate for
@@ -167,7 +167,7 @@ function [] = loadLoColiData(app)
             app.movie_data.params.pipeline = "LoColi";
             app.CurrentlyloadeddatasetTextArea.Value = app.movie_data.params.title;
     
-            app.textout.Value = "A data file from the LoColi analysis pipeline has been loaded successfully.";
+            app.textout.Value = "A data file from the LoColi analysis pipeline has been loaded successfully. Please now proceed to data preparation via the [Prepare] tab.";
         end
     catch ME
         warning(ME.identifier, 'Error loading LoColi file: %s', ME.message);

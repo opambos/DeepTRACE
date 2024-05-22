@@ -57,8 +57,5 @@ function [angles] = computeStepAnglesRelToCell(track, cell_poles)
         if angles(ii,1) > 90
             angles(ii,1) = abs(180 - angles(ii,1));
         end
-        
-        title(num2str(angles(ii,1)));
     end
-    
 end

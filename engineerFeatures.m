@@ -55,11 +55,21 @@ function [] = engineerFeatures(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
+%engineerCellCoords()
 %computeStepAngles()
 %computeStepAnglesRelToCell()
 %computeLocMemDists()
 %computeLocPoleDists()
     
+    %==============================
+    %Obligatory engineered features
+    %==============================
+    %compute cell coordinates for all tracked localisations in dataset
+    engineerCellCoords(app)
+    
+    %============================
+    %Optional engineered features
+    %============================
     %loop over cells, engineering features; a future update will replace this loop with conditional calls to the selected engineered features
     for ii = 1:size(app.movie_data.cellROI_data, 1)
         %only consider cells that have track data
@@ -128,6 +138,9 @@ function [] = engineerFeatures(app)
     %compute distance-to-pole for every tracked localisation in dataset
     computeLocPoleDists(app);
     
+    %============
+    %Class labels
+    %============
     %set class labels for all mols to -1 (could have been done outside of this list)
     for ii = 1:size(app.movie_data.cellROI_data, 1)
         app.movie_data.cellROI_data(ii).tracks = cat(2, app.movie_data.cellROI_data(ii).tracks, (-1).*ones(size(app.movie_data.cellROI_data(ii).tracks, 1), 1));

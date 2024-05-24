@@ -177,19 +177,26 @@ function [longitude, latitude, longitude_abs, latitude_abs, beyond_mesh] = conve
         %obtain the relevant two midline points
         A = midline(closest_segment, 1:2);
         B = midline(closest_segment+1, 1:2);
+
+        if longitude == 1
+            [A, B] = deal(B, A);
+        end
         
         %compute distance projected along this virual line (longitude_abs) extending beyond the cell pole,
         %and the perpendicular distance from this line (latitude_abs)
         [longitude_abs, latitude_abs] = findCoordsBeyondPole(x, y, A, B);
         if strcmp(side, "right")
-            latitude = latitude_abs / ((norm(D - A) + norm(E - B))/2);
+            latitude_abs = -latitude_abs;
         end
+        latitude     = latitude_abs / ((norm(D - A) + norm(E - B))/2);
         
         %longitudinal distance is negative if it is before the first pole
         if closest_segment == 1
             longitude_abs = (-1) * longitude_abs;
+        elseif closest_segment == size(midline, 1) - 1
+            longitude_abs = longitude_abs + contour_len;
         end
-
+        
         %normalise
         longitude = longitude_abs / contour_len;
     end

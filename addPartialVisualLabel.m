@@ -55,6 +55,8 @@ function [] = addPartialVisualLabel(app)
         app.textout.Value = 'You have already assigned that step. If you have made a mistake, you can repeat the labelling by clicking the (Undo label) button.';
         return
     else
+        col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, "Time from start of trajectory (s)");
+        
         %get state being requested
         app.movie_data.state.current_label_number = strcmp(app.movie_data.state.current_label, app.movie_data.params.class_names);
         app.movie_data.state.current_label_number = find(app.movie_data.state.current_label_number, 1); %error handling required when the human annotation system first runs to make sure that there is only one of each class name; this will be addressed in a future version
@@ -67,10 +69,10 @@ function [] = addPartialVisualLabel(app)
         %update the status bar above plot to show selected diffusive state
         if app.movie_data.state.labelled_so_far == 0
             left    = 0;
-            width   = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(pos,16);
+            width   = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(pos,col_t);
         else
-            left    = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(app.movie_data.state.labelled_so_far,16);
-            width   = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(pos,16) - app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(app.movie_data.state.labelled_so_far,16);
+            left    = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(app.movie_data.state.labelled_so_far,col_t);
+            width   = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(pos,col_t) - app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(app.movie_data.state.labelled_so_far,col_t);
         end
         rectangle(app.UIAxes_event_labeller_status, 'Position', [left, 0, width, 1], 'EdgeColor','none', 'FaceColor', app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number,:));
         

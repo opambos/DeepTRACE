@@ -46,36 +46,33 @@ function [angles] = computeStepAngles(track)
     %pre-allocate
     angles = zeros(size(track,1), 2);
     
-    for i = 2:size(track,1)
+    for ii = 2:size(track,1)
         %compute angle relative to FOV x-axis
-        angles(i,1) = atan2(track(i,2) - track(i-1,2), track(i,1) - track(i-1,1));
+        angles(ii,1) = atan2(track(ii,2) - track(ii-1,2), track(ii,1) - track(ii-1,1));
 
         %compute angle relative to previous step
-        if i>2
+        if ii > 2
             %these statements should have been used for calc relative to FOV as calc is repeated
-            x1 = track(i-2,1);
-            x2 = track(i-1,1);
-            x3 = track(i,1);
-            y1 = track(i-2,2);
-            y2 = track(i-1,2);
-            y3 = track(i,2);
+            x1 = track(ii-2,1);
+            x2 = track(ii-1,1);
+            x3 = track(ii,1);
+            y1 = track(ii-2,2);
+            y2 = track(ii-1,2);
+            y3 = track(ii,2);
             
             %compile three most recent localisations, and translate such
             %that second point is at origin
-            curr_pts = [x1, y1; x2, y2; x3, y3];
-            curr_pts(:,1) = curr_pts(:,1) - curr_pts(2,1);
-            curr_pts(:,2) = curr_pts(:,2) - curr_pts(2,2);
-            
+            curr_pts        = [x1, y1; x2, y2; x3, y3];
+            curr_pts(:,1)   = curr_pts(:,1) - curr_pts(2,1);
+            curr_pts(:,2)   = curr_pts(:,2) - curr_pts(2,2);
+
             %rotate such that previous step was along +ve x-axis
-            theta = rad2deg(angles(i-1,1));
-            R = [cosd(theta) -sind(theta); sind(theta) cosd(theta)];
-            curr_pts = curr_pts*R;
+            theta       = angles(ii-1,1);
+            R           = [cos(theta) -sin(theta); sin(theta) cos(theta)];
+            curr_pts    = curr_pts * R;
             
-            %compute rotation angle of displacement of molecule (-ve is counter clockwise, +ve is clockwise)
-            angles(i,2) = -atan2d(curr_pts(3,2), curr_pts(3,1));
+            %compute rotation angle of displacement of molecule
+            angles(ii,2) = atan2(curr_pts(3,2), curr_pts(3,1));
         end
     end
-    
-    angles(:,2) = deg2rad(angles(:,2)); %once testing complete swap -atan2d for -atan2, cosd and sind for cos and sin, etc., above to work in radians
-    
 end

@@ -52,7 +52,7 @@ function [] = engineerCellCoords(app)
 %convertToCellCoords()
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing cellcular coordinates for all molecules');
+    h_progress  = waitbar(0,'Preparing....','Name','Computing cellular coordinates for all molecules');
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing cellular coordinates for cell %d of %d', ii, N_cells));
         
@@ -67,11 +67,10 @@ function [] = engineerCellCoords(app)
             contour_len = contour_len + pdist([midline(jj,:); midline(jj+1,:)]);
         end
         
-        %this part needs to be moved outside of this .m file completely to the
-        %calling function as these regions are used many times for each cell
+        %obtain left and right hittest regions of the cell mesh
         mesh_left = [midline(2:end-1,:); flipud(app.movie_data.cellROI_data(ii).mesh(:, 1:2))];
         mesh_right = [app.movie_data.cellROI_data(ii).mesh(:, 3:4); flipud(midline(2:end-1,:))];
-
+        
         %pre-allocate matrix to hold all coordinate data for current track [longitude, latitude, longitude_abs, latitude_abs]
         track_coord_data = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), 4);
         

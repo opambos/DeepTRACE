@@ -57,7 +57,7 @@ function [] = computeLocPoleDists(app)
             %compute distance to nearest pole for every localisation
             poledists = [ pdist([app.movie_data.cellROI_data(ii).tracks(jj,1:2); app.movie_data.cellROI_data(ii).mesh(1,1:2)]);...
                           pdist([app.movie_data.cellROI_data(ii).tracks(jj,1:2); app.movie_data.cellROI_data(ii).mesh(end,1:2)]) ];
-            app.movie_data.cellROI_data(ii).tracks(jj, N_cols+1) = min(poledists);
+            app.movie_data.cellROI_data(ii).tracks(jj, N_cols+1) = min(poledists) .* app.movie_data.params.px_scale;
         end
         
     end

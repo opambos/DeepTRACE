@@ -33,11 +33,25 @@ function [d_min] = findPointToMeshDist(x, y, mesh)
 %This code finds the minimum distance between a cell mesh defined by a
 %series of vertices, and a single point
 %
+%Note that the mesh used here is reformattted from a microbeTracker mesh to
+%an Nx2 matrix of (x,y) coordinates which links back to its start point.
+%Manipulation of this mesh is performed in computeLocMemDists() such that
+%the matrix manipulation occurs only once for each cell/mesh in order to
+%minimise computational overhead.
+%
 %Inputs
 %------
 %x      (float)     x position of point
 %y      (float)     y position of point
-%mesh   (matrix)    series of vertices making up cell mesh
+%mesh   (matrix)    series of vertices making up cell mesh reformatted as
+%                       an Nx2 matrix of (x,y) coords for which the final
+%                       step links back to the first, see note above
+%
+%%Output
+%------
+%d_min  (float)     minimum distance between the reference point (x,y) and
+%                       the mesh including both vertices and connecting
+%                       line segments
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
@@ -46,23 +60,18 @@ function [d_min] = findPointToMeshDist(x, y, mesh)
     %error checking
     if size(mesh, 1) < 2
         disp('Error: cell mesh contains fewer than two vertices.');
+        return;
     end
     
     %calculate minimum distance to first line to initialise variable
     d_min = findPointToLine(x, y, mesh(1,:), mesh(2,:));
     
     %loop over all remaining lines in mesh keeping track of smallest dist
-    for i = 2:size(mesh, 1) - 1
-        if findPointToLine(x, y, mesh(i,:), mesh(i+1,:)) < d_min
-            d_min = findPointToLine(x, y, mesh(i,:), mesh(i+1,:));
+    for ii = 2:size(mesh, 1) - 1
+        if findPointToLine(x, y, mesh(ii,:), mesh(ii+1,:)) < d_min
+            d_min = findPointToLine(x, y, mesh(ii,:), mesh(ii+1,:));
         end
     end
-    
-    %finally complete the mesh (check final loop back to first point)
-    if findPointToLine(x, y, mesh(1,:), mesh(end,:)) < d_min
-        d_min = findPointToLine(x, y, mesh(1,:), mesh(end,:));
-    end
-    
 end
 
 function [d] = findPointToLine(x, y, A, B)
@@ -130,4 +139,3 @@ function [d] = findPointToLine(x, y, A, B)
         end
     end
 end
-

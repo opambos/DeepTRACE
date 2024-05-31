@@ -83,6 +83,8 @@ function [] = engineerFeatures(app)
 %engineerRelativeStepAngle()            - local to this .m file
 %engineerStepAngleRelImage()            - local to this .m file
 %engineerStepAngleRelCell()             - local to this .m file
+%engineerSpotSize()                     - local to this .m file
+%engineerSpotArea()                     - local to this .m file
     
     %==============================
     %Obligatory engineered features
@@ -92,7 +94,7 @@ function [] = engineerFeatures(app)
 
     %convert localisation data to nm
     engineerPosInNm(app);
-
+    
     %============================
     %Optional engineered features
     %============================
@@ -125,6 +127,12 @@ function [] = engineerFeatures(app)
     
     %compute distance-to-pole for every tracked localisation in dataset
     computeLocPoleDists(app);
+    
+    %compute spot size
+    engineerSpotSize(app);
+
+    %compute spot area
+    engineerSpotArea(app);
     
     %compute step angle relative to previous step for all steps in dataset
     engineerRelativeStepAngle(app);
@@ -401,9 +409,6 @@ function [] = engineerExperimentTime(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%Slight performance overhead noted in handling 'new_col'; pre-allocation
-%could improve efficiency. Currently, this is not a bottleneck.
-%
 %Input
 %-----
 %app    (handle)    main GUI handle
@@ -574,11 +579,10 @@ function [] = engineerTimeFromReferencePoints(app)
             for kk = 1:size(app.movie_data.params.t_ref_points, 1)
                 curr_ref_times(:,kk) = (app.movie_data.cellROI_data(ii).tracks(:, 3) ./ app.movie_data.params.frame_rate) - app.movie_data.params.t_ref_points{kk, 1};
             end
+            
+            %append new data
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, curr_ref_times];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, curr_ref_times];
     end
     
     %write the new column titles
@@ -986,5 +990,153 @@ function [] = engineerStepAngleRelCell(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step angle relative to cell axis (degrees)'];
+    close(h_progress);
+end
+
+
+function [] = engineerSpotSize(app)
+%Feature engineering for spot size of all tracked localisations, Oliver
+%Pambos, 31/05/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerSpotSize
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Computes double the square root of the sum of the squares of the standard
+%deviation in the major an minor axes of the Gaussian fitting process
+%during localisation.
+%
+%Input
+%-----
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %find the required columns
+    col_std_major = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
+    col_std_minor = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation minor axis");
+    if col_std_minor == 0 || col_std_major == 0
+        warndlg("Warning: Unable to find suitable columns in tracks file for standard deviation of localisations. Feature engineering for spot size has been skipped.", 'Warning: unable to engineer feature', 'modal');
+        return;
+    end
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    h_progress  = waitbar(0,'Preparing....','Name','Computing spot size for all tracked localisations');
+    
+    for ii = 1:N_cells
+        waitbar(ii/N_cells, h_progress, sprintf('Computing spot sizes in cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+            %compute spot sizes and append to tracks matrix
+            new_col = 2 .* (sqrt((app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* app.movie_data.params.px_scale).^2 + (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* app.movie_data.params.px_scale).^2));
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Spot size (nm)'];
+    close(h_progress);
+end
+
+
+function [] = engineerSpotArea(app)
+%Feature engineering for spot area of all tracked localisations, Oliver
+%Pambos, 31/05/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerSpotArea
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Computes the spot area using the formula A = pi * a * b, where a and be
+%are the standard deviation in the major an minor axes of the Gaussian
+%fitting process during localisation.
+%
+%Input
+%-----
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    col_std_major = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
+    col_std_minor = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation minor axis");
+    
+    if col_std_minor == 0 || col_std_major == 0
+        warndlg("Warning: Unable to find suitable columns in tracks file for standard deviation of localisations. Feature engineering for spot area has been skipped.", 'Warning: unable to engineer feature', 'modal');
+        return;
+    end
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    h_progress  = waitbar(0,'Preparing....','Name','Computing spot size for all tracked localisations');
+    
+    for ii = 1:N_cells
+        waitbar(ii/N_cells, h_progress, sprintf('Computing spot sizes in cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+            %compute spot sizes and append to tracks matrix
+            new_col = pi .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* app.movie_data.params.px_scale) .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* app.movie_data.params.px_scale);
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Spot area (nm^2)'];
     close(h_progress);
 end

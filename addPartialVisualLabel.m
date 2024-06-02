@@ -158,7 +158,6 @@ function [] = addPartialVisualLabel(app)
                 
                 %load next molecule, and reset everything
                 app.movie_data.state.labelled_so_far = 0;
-                app.Slider_event_labeller.Value      = 0;
                 app.movie_data.state.event_labeller_current_ID = app.movie_data.state.event_labeller_current_ID + 1;
                 repopulateEventLabeller(app);
             end

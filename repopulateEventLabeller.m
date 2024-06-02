@@ -73,7 +73,6 @@ function [] = repopulateEventLabeller(app)
     plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature),...
         'LineWidth', app.LinethicknessSpinner.Value, 'Color', app.LinecolourDropDown.Value, 'Tag', 'step_trace');
     hold(app.UIAxes_event_labeller, 'on');
-    xline(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_t), 'LineWidth', app.IndicatorthicknessSpinner.Value, 'Tag', 'current_pos');
     app.movie_data.state.labeller_frame = 1;    %keep track of which frame is currently being displayed, this is incredibly important for performance on slower machine as it greatly reduces number of calls to imagesc()
     app.CellIDTextArea.Value =  num2str(cell_ID);
     app.MolIDTextArea.Value  =  num2str(mol_ID);
@@ -94,7 +93,6 @@ function [] = repopulateEventLabeller(app)
     %place red circle to highlight next labelling point - hardcoded feature/column IDs will be replaced in a future version
     scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_feature), 'ro', 'Tag', 'current_loc');
     box(app.UIAxes_event_labeller, 'on');
-    app.Slider_event_labeller.Limits = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,app.movie_data.state.col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,app.movie_data.state.col_t)];
     
     %prevent user being able to drag/zoom/etc.
     disableDefaultInteractivity(app.UIAxes_event_labeller);
@@ -132,6 +130,6 @@ function [] = repopulateEventLabeller(app)
     %populate the track viewer component
     regenerateTrackViewer(app);
     
-    %reset frame slider
-    app.Slider_event_labeller.Value = 0;
+    %regenerate the draggable line
+    setupDraggableLine(app);
 end

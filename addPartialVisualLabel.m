@@ -46,6 +46,7 @@ function [] = addPartialVisualLabel(app)
 %-----------------------------------------
 %condenseStateSequence()
 %repopulateEventLabeller()
+%drawStateRectangle()       - local to this .m file
     
     pos = app.movie_data.state.labeller_track_pos;
     
@@ -114,18 +115,9 @@ function [] = addPartialVisualLabel(app)
                 end
             end
         end
-        %draw the state indicator rectangle
-        rectangle(app.UIAxes_event_labeller_status, 'Position', [left, 0, width, 1], 'EdgeColor','none', 'FaceColor', app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number,:));
         
-        %decide whether to use black or white text based on the luminance of the background colour of the box; I was tired of difficult to read text; crude but functional
-        luminance = 0.2126*app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number,1) + 0.7152*app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number,2) + 0.0722*app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number,3);
-        if luminance > 0.5
-            text_color = [0 0 0];
-        else
-            text_color = [1 1 1];
-        end
-        text(app.UIAxes_event_labeller_status, left + width/2, 0.5, app.movie_data.state.current_label, 'HorizontalAlignment', 'center', 'Color', text_color);
-        drawnow;
+        %draw the rectangle with label
+        drawStateRectangle(app, left, width, app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number, :), app.movie_data.state.current_label);
         
         %keep track of new position
         app.movie_data.state.labelled_so_far = pos;
@@ -204,4 +196,80 @@ function [] = addPartialVisualLabel(app)
             end
         end
     end
+end
+
+
+function drawStateRectangle(app, left, width, colour, state_str)
+%Illustrate a state in the human annoation system with a coloured rectangle
+%and name label, Oliver Pambos, 03/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: drawStateRectangle
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Much of this code was moved from an earlier version inside
+%addPartialVisualLabel(). This function generates a rectangle, text, and
+%colour associated with a human annotated state. It also assigns a
+%button-down action to both the rectangle and the text that enables the
+%user to identify a state by clicking; this highlights the corresponding
+%region of the main plot, and is implemented via the custom-written public
+%method rectangleButtonDown(), and the illustration is automatically
+%removed from the main plot via the public method removeHighlight().
+%
+%Inputs
+%------
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%app    (handle)    main GUI handle
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %draw the state indicator rectangle
+    rect = rectangle(app.UIAxes_event_labeller_status, 'Position', [left, 0, width, 1], 'EdgeColor','none', 'FaceColor', app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number,:));
+    
+    %set the button down action for the rectangle
+    rect.ButtonDownFcn = @(src, event) rectangleButtonDown(app, left, left + width, colour, state_str);
+    
+    %decide whether to use black or white text based on the luminance of the background colour of the box; I was tired of difficult to read text; crude but functional
+    luminance = 0.2126*app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number, 1) + 0.7152*app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number, 2) + 0.0722*app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number, 3);
+    if luminance > 0.5
+        text_color = [0 0 0];
+    else
+        text_color = [1 1 1];
+    end
+    
+    %generate the text
+    txt = text(app.UIAxes_event_labeller_status, left + width/2, 0.5, app.movie_data.state.current_label, 'HorizontalAlignment', 'center', 'Color', text_color);
+    
+    %assign the text an action that executes the same code as the rectangle
+    txt.ButtonDownFcn = @(src, event) rectangleButtonDown(app, left, left + width, colour, state_str);
+    
+    drawnow;
 end

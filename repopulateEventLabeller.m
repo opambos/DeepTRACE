@@ -65,12 +65,12 @@ function [] = repopulateEventLabeller(app)
     %state features
     app.movie_data.state.col_t = find(strcmp(app.movie_data.params.column_titles.tracks, 'Time from start of trajectory (s)'));
     app.movie_data.state.col_feature = find(strcmp(app.movie_data.params.column_titles.tracks, app.FeatureDropDown.Value));
-
+    
     %set the y-axis label
     ylabel(app.UIAxes_event_labeller, app.FeatureDropDown.Value);
     
     %plot the next molecule - note that column/feature ID for time and step size are currently hardcoded which will change in a future version
-    plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature),...
+    plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, app.movie_data.state.col_feature),...
         'LineWidth', app.LinethicknessSpinner.Value, 'Color', app.LinecolourDropDown.Value, 'Tag', 'step_trace');
     hold(app.UIAxes_event_labeller, 'on');
     app.movie_data.state.labeller_frame = 1;    %keep track of which frame is currently being displayed, this is incredibly important for performance on slower machine as it greatly reduces number of calls to imagesc()
@@ -132,4 +132,7 @@ function [] = repopulateEventLabeller(app)
     
     %regenerate the draggable line
     setupDraggableLine(app);
+
+    %return keyboard focus to the human annotation system
+    focus(app.InVivoKineticsUIFigure);
 end

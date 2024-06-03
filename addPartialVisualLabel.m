@@ -56,7 +56,10 @@ function [] = addPartialVisualLabel(app)
         return
     else
         col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, "Time from start of trajectory (s)");
-        
+
+        %write matrix to local variable for readability
+        curr_track = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol;
+
         %get state being requested
         app.movie_data.state.current_label_number = strcmp(app.movie_data.state.current_label, app.movie_data.params.class_names);
         app.movie_data.state.current_label_number = find(app.movie_data.state.current_label_number, 1); %error handling required when the human annotation system first runs to make sure that there is only one of each class name; this will be addressed in a future version
@@ -64,16 +67,54 @@ function [] = addPartialVisualLabel(app)
         app.textout.Value = strcat('user is manually assigning a state to', {' '}, app.movie_data.state.current_label, {' and the label number is '}, num2str(app.movie_data.state.current_label_number));
         
         %assign the label to results data
-        app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(app.movie_data.state.labelled_so_far+1:pos,end) = app.movie_data.state.current_label_number;
-
+        curr_track(app.movie_data.state.labelled_so_far+1:pos,end) = app.movie_data.state.current_label_number;
+        app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol = curr_track;
+        
         %update the status bar above plot to show selected diffusive state
         if app.movie_data.state.labelled_so_far == 0
-            left    = 0;
-            width   = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(pos,col_t);
+            left = 0;
+            if pos == size(curr_track, 1)
+                width = curr_track(end, col_t);
+            else
+                width = (curr_track(pos, col_t) + curr_track(pos + 1, col_t)) / 2;
+            end
+            
         else
-            left    = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(app.movie_data.state.labelled_so_far,col_t);
-            width   = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(pos,col_t) - app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(app.movie_data.state.labelled_so_far,col_t);
+            %if the state is a continuation of a preceeding one that is the same replace both with one label; else make a new label
+            if curr_track(app.movie_data.state.labelled_so_far, end) == app.movie_data.state.current_label_number
+                left_idx = find(curr_track(1:pos, end) ~= app.movie_data.state.current_label_number, 1, 'last');
+                if isempty(left_idx)
+                    left = 0;
+                else
+                    left = (curr_track(left_idx, col_t) + curr_track(left_idx + 1, col_t)) / 2;
+                end
+
+                %ensure width of state illustration bar does not exceed end of track
+                if pos >= size(curr_track, 1)
+                    width = curr_track(end, col_t) - left;
+                else
+                    width   = ((curr_track(pos, col_t) + curr_track(pos + 1, col_t)) / 2) - left;
+                end
+
+                %prevent width from exceeding plot if state extends to end of track
+                if left + width > curr_track(end, col_t)
+                    width = curr_track(end, col_t) - left;
+                end
+                
+                %delete most recent rectangle in state labeller
+                if ~isempty(app.UIAxes_event_labeller_status.Children)
+                    delete(app.UIAxes_event_labeller_status.Children(1:2));
+                end
+            else
+                left = (curr_track(app.movie_data.state.labelled_so_far, col_t) + curr_track(app.movie_data.state.labelled_so_far + 1, col_t)) / 2;
+                if pos < size(curr_track, 1)
+                    width = ((curr_track(pos, col_t) + curr_track(pos + 1, col_t)) / 2) - left;
+                else
+                    width = curr_track(end, col_t) - left;
+                end
+            end
         end
+        %draw the state indicator rectangle
         rectangle(app.UIAxes_event_labeller_status, 'Position', [left, 0, width, 1], 'EdgeColor','none', 'FaceColor', app.movie_data.params.event_label_colours(app.movie_data.state.current_label_number,:));
         
         %decide whether to use black or white text based on the luminance of the background colour of the box; I was tired of difficult to read text; crude but functional
@@ -90,11 +131,11 @@ function [] = addPartialVisualLabel(app)
         app.movie_data.state.labelled_so_far = pos;
         
         %if it's the end of the trajectory
-        if pos == size(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol, 1)
+        if pos == size(curr_track, 1)
             %complete the classification: add a date, compute the condensed state sequence
-            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified  =  datestr(now, 'dd/mm/yy-HH:MM:SS');
+            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified  = datestr(now, 'dd/mm/yy-HH:MM:SS');
             app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.User            = app.UserEditField.Value;
-            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.EventSequence   = condenseStateSequence(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.Mol(:,end));
+            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.EventSequence   = condenseStateSequence(curr_track(:,end));
             
             %if user asked illustration to happen after labelling, then do this now
             if app.IllustrateafterlabellingCheckBox.Value == 1

@@ -85,7 +85,7 @@ function [] = plotMore(app)
     title_max_len = 25;
     
     %find the time column
-    col_t = find(strcmp(app.movie_data.params.column_titles.tracks, "Time from start of trajectory (s)"));
+    col_t = find(strcmp(app.movie_data.params.column_titles.tracks, "Time from start of track (s)"));
     
     %loop over the time series plots to display in left-hand column
     for ii = 1:length(checked_nodes)

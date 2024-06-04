@@ -83,7 +83,7 @@ function [] = undoLabel(app)
     end
     
     %move the draggable line back to the first unannotated frame
-    col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, "Time from start of trajectory (s)");
+    col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, "Time from start of track (s)");
     x_pos = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.Mol(state_start_idx, col_t);
     app.draggable_line.Position = [x_pos, min(ylim(app.UIAxes_event_labeller)); x_pos, max(ylim(app.UIAxes_event_labeller))];
     

@@ -207,7 +207,7 @@ function [] = engineerPosInNm(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Converting localisation data for cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute x and y in nm
             new_cols = app.movie_data.cellROI_data(ii).tracks(:,1:2) .* app.movie_data.params.px_scale;
         end
@@ -274,7 +274,7 @@ function [] = engineerStepSize(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing time steps for cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
 
@@ -353,7 +353,7 @@ function [] = engineerTimeStep(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing time steps for cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
 
@@ -427,7 +427,7 @@ function [] = engineerExperimentTime(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing elapsed time for tracks in cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute times and append to tracks matrix
             new_col = app.movie_data.cellROI_data(ii).tracks(:, 3) ./ app.movie_data.params.frame_rate;
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
@@ -492,7 +492,7 @@ function [] = engineerTimeFromTrackStart(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing elapsed time for tracks in cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
 
@@ -571,7 +571,7 @@ function [] = engineerTimeFromReferencePoints(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing reference time(s) for tracks in cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %pre-allocate
             curr_ref_times = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), size(app.movie_data.params.t_ref_points, 1));
 
@@ -655,7 +655,7 @@ function [] = engineerDistanceFromTrackStart(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing distance travelled in cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
             
@@ -736,7 +736,7 @@ function [] = engineerCumulativeDistanceTravelled(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing distance from start of track in cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
             
@@ -813,7 +813,7 @@ function [] = engineerRelativeStepAngle(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing step angles relative to previous step for cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
 
@@ -891,7 +891,7 @@ function [] = engineerStepAngleRelImage(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing step angles relative to image for cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
 
@@ -969,7 +969,7 @@ function [] = engineerStepAngleRelCell(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing step angles relative to cell for cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
 
@@ -1055,7 +1055,7 @@ function [] = engineerSpotSize(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing spot sizes in cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute spot sizes and append to tracks matrix
             new_col = 2 .* (sqrt((app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* app.movie_data.params.px_scale).^2 + (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* app.movie_data.params.px_scale).^2));
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
@@ -1129,7 +1129,7 @@ function [] = engineerSpotArea(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing spot sizes in cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute spot sizes and append to tracks matrix
             new_col = pi .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* app.movie_data.params.px_scale) .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* app.movie_data.params.px_scale);
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];

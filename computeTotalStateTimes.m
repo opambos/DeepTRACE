@@ -39,8 +39,8 @@ function [state_times, state_proportions] = computeTotalStateTimes(movie_data)
 %statistics as one. This negligible effect may be handled in a future
 %update by computing compute the time between frames - this would be less
 %computationally efficient but could be achieved by introducing logic
-%operating on a call to diff() which passes the 'time from start of
-%trajectory' column.
+%operating on a call to diff() which passes the 'time from start of track'
+%column.
 %
 %Inputs
 %------

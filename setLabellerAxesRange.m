@@ -44,23 +44,45 @@ function [] = setLabellerAxesRange(app)
 %-----------------------------------------
 %None
     
-    %set the y-axis range
-    lim_hi = max(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature));
-    if isfield(app.movie_data.params, "reference_lines") && max(app.movie_data.params.reference_lines) > lim_hi
-        lim_hi = max(app.movie_data.params.reference_lines);
-    end
-    if app.SetlowerlimttozeroCheckBox.Value
-        lim_lo = 0;
-        ylim(app.UIAxes_event_labeller, [lim_lo lim_hi+((lim_hi - lim_lo)*(0.05))]);
-    else
-        lim_lo = min(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature));
-        if isfield(app.movie_data.params, "reference_lines") && min(app.movie_data.params.reference_lines) < lim_lo
-            lim_lo = min(app.movie_data.params.reference_lines);
+    %================
+    %set y-axis range
+    %================
+    if app.FixupperlimitCheckBox.Value
+        if app.SetlowerlimttozeroCheckBox.Value
+            %fixed upper and lower limit (to zero)
+            lim_lo = 0;
+        else
+            %fixed upper limit, variable lower limit
+            lim_lo = min(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature));
         end
+
+        lim_hi = app.YaxisupperlimitSpinner.Value;
         ylim(app.UIAxes_event_labeller, [lim_lo - ((lim_hi - lim_lo)*(0.05)) lim_hi+((lim_hi - lim_lo)*(0.05))]);
+    
+    else
+        %find highest y-value from the data points and reference lines; could be computed in single call to max()
+        lim_hi = max(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature));
+        if isfield(app.movie_data.params, "reference_lines") && max(app.movie_data.params.reference_lines) > lim_hi
+            lim_hi = max(app.movie_data.params.reference_lines);
+        end
+        
+        if app.SetlowerlimttozeroCheckBox.Value
+            %variable upper limit, but lower limit fixed to zero
+            lim_lo = 0;
+            ylim(app.UIAxes_event_labeller, [lim_lo lim_hi+((lim_hi - lim_lo)*(0.05))]);
+        else
+            %variable lower and upper limit
+            lim_lo = min(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:,app.movie_data.state.col_feature));
+            if isfield(app.movie_data.params, "reference_lines") && min(app.movie_data.params.reference_lines) < lim_lo
+                lim_lo = min(app.movie_data.params.reference_lines);
+            end
+            ylim(app.UIAxes_event_labeller, [lim_lo - ((lim_hi - lim_lo)*(0.05)), lim_hi+((lim_hi - lim_lo)*(0.05))]);
+        end
     end
     
+    %================
     %set x-axis range
-    app.UIAxes_event_labeller.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,app.movie_data.state.col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,app.movie_data.state.col_t)];
-    
+    %================
+    col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)');
+    app.UIAxes_event_labeller.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1, col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end, col_t)];
 end

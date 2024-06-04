@@ -56,7 +56,7 @@ function [] = addPartialVisualLabel(app)
         app.textout.Value = 'You have already assigned that step. If you have made a mistake, you can repeat the labelling by clicking the (Undo label) button.';
         return
     else
-        col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, "Time from start of trajectory (s)");
+        col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, "Time from start of track (s)");
 
         %write matrix to local variable for readability
         curr_track = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol;

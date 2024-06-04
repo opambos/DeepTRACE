@@ -49,6 +49,7 @@ function [] = repopulateEventLabeller(app)
     
     %load next mol, which is a callback to the next mol button
     
+
     %clear the axes and cell_ID and mol_ID display boxes
     cla(app.UIAxes_event_labeller);
     cla(app.UIAxes_event_labeller_status);
@@ -63,14 +64,14 @@ function [] = repopulateEventLabeller(app)
     
     %obtain time and user-selected feature column; also write them to the
     %state features
-    app.movie_data.state.col_t = find(strcmp(app.movie_data.params.column_titles.tracks, 'Time from start of trajectory (s)'));
+    col_t = find(strcmp(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)'));
     app.movie_data.state.col_feature = find(strcmp(app.movie_data.params.column_titles.tracks, app.FeatureDropDown.Value));
     
     %set the y-axis label
     ylabel(app.UIAxes_event_labeller, app.FeatureDropDown.Value);
     
     %plot the next molecule - note that column/feature ID for time and step size are currently hardcoded which will change in a future version
-    plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, app.movie_data.state.col_feature),...
+    plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, app.movie_data.state.col_feature),...
         'LineWidth', app.LinethicknessSpinner.Value, 'Color', app.LinecolourDropDown.Value, 'Tag', 'step_trace');
     hold(app.UIAxes_event_labeller, 'on');
     app.movie_data.state.labeller_frame = 1;    %keep track of which frame is currently being displayed, this is incredibly important for performance on slower machine as it greatly reduces number of calls to imagesc()
@@ -91,7 +92,7 @@ function [] = repopulateEventLabeller(app)
     setLabellerAxesRange(app)
 
     %place red circle to highlight next labelling point - hardcoded feature/column IDs will be replaced in a future version
-    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_feature), 'ro', 'Tag', 'current_loc');
+    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_feature), 'ro', 'Tag', 'current_loc', 'SizeData', 100, 'LineWidth', 1.5);
     box(app.UIAxes_event_labeller, 'on');
     
     %prevent user being able to drag/zoom/etc.
@@ -102,7 +103,7 @@ function [] = repopulateEventLabeller(app)
     %set up the status bar above the trajectory labeller
     axis(app.UIAxes_event_labeller_status, 'off');
     app.UIAxes_event_labeller_status.YLim = [0 1];
-    app.UIAxes_event_labeller_status.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1,app.movie_data.state.col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end,app.movie_data.state.col_t)];
+    app.UIAxes_event_labeller_status.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1, col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end, col_t)];
     inpos  = app.UIAxes_event_labeller.InnerPosition;
     outpos = app.UIAxes_event_labeller.OuterPosition;
     app.UIAxes_event_labeller_status.InnerPosition = [inpos(1), outpos(2)+outpos(4), inpos(3), 20];

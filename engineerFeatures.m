@@ -210,10 +210,10 @@ function [] = engineerPosInNm(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute x and y in nm
             new_cols = app.movie_data.cellROI_data(ii).tracks(:,1:2) .* app.movie_data.params.px_scale;
-        end
 
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
+        end
     end
     
     %update column titles accordingly
@@ -269,7 +269,7 @@ function [] = engineerStepSize(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing all time steps in all tracks');
+    h_progress  = waitbar(0,'Preparing....','Name','Computing foall time steps in all tracks');
     
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing time steps for cell %d of %d', ii, N_cells));
@@ -289,10 +289,11 @@ function [] = engineerStepSize(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = [new_col; curr_steps];
             end
+
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+       
     end
     
     %update column titles accordingly
@@ -366,10 +367,10 @@ function [] = engineerTimeStep(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_time_steps);
             end
+
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
     end
     
     %update column titles accordingly
@@ -505,10 +506,11 @@ function [] = engineerTimeFromTrackStart(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_intervals);
             end
+
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
         
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
     end
     
     %update column titles accordingly
@@ -668,10 +670,10 @@ function [] = engineerDistanceFromTrackStart(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_dists);
             end
+
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
     end
     
     %update column titles accordingly
@@ -749,10 +751,10 @@ function [] = engineerCumulativeDistanceTravelled(app)
                 %compute the cumulative sum for each step in track, and concatenate this for the current molecule into the new column
                 new_col = cat(1, new_col, cumsum(curr_steps));
             end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
     end
     
     %update column titles accordingly
@@ -827,10 +829,10 @@ function [] = engineerRelativeStepAngle(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = [new_col; curr_angles];
             end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
     end
     
     %update column titles accordingly
@@ -905,10 +907,10 @@ function [] = engineerStepAngleRelImage(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = [new_col; curr_angles];
             end
+
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
     end
     
     %update column titles accordingly
@@ -982,10 +984,11 @@ function [] = engineerStepAngleRelCell(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = [new_col; curr_angles];
             end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
         
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
     end
     
     %update column titles accordingly

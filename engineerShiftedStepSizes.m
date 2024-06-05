@@ -70,13 +70,20 @@ function [] = engineerShiftedStepSizes(app)
     frames_before   = int32((-1) .* app.movie_data.state.frames_before);
     frames_after    = int32(app.movie_data.state.frames_after);
     
+    %if the user provides no time shift in either direction, notify them,
+    %and skip remaining actions
+    if frames_before == 0 && frames_after == 0
+        warndlg("You have selected no relative time shift in either direction; feature engineering for time shift will not be implemented.", "Skipping time shift feature engineering", "modal");
+        return;
+    end
+
     N_cells = size(app.movie_data.cellROI_data, 1);
     h_progress  = waitbar(0,'Preparing....','Name','Computing time-shifted step sizes');
     
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing shifted step sizes for for cell %d of %d', ii, N_cells));
         
-        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_cols = [];
 
@@ -122,10 +129,10 @@ function [] = engineerShiftedStepSizes(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_cols = [new_cols; shifted_steps];
             end
+
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
         end
-        
-        %append to tracks matrix
-        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
     end
     
     %generate column titles to add

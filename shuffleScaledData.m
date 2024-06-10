@@ -101,6 +101,7 @@ function [] = shuffleScaledData(app)
             %loop through matrices, reorder, then overwrite original mols with shuffled mols
             for ii = 1:N_mol
                 shuffled_matrices{ii, 1} = app.movie_data.results.FeatureScaledData.LabelledMols{random_order(ii), 1};
+            
             end
             app.movie_data.results.FeatureScaledData.LabelledMols = shuffled_matrices;
             

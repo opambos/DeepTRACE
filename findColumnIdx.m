@@ -46,7 +46,7 @@ function varargout = findColumnIdx(titles, varargin)
 %readability, and reduces repetitive calls.
 %
 %Example usage,
-%[frame_col, stepsize_col] = findFeatureColumn(app.movie_data.params.column_titles.tracks, 'Frame', 'Step size (nm)')
+%[frame_col, stepsize_col] = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Frame', 'Step size (nm)')
 %
 %Inputs
 %------
@@ -80,5 +80,3 @@ function varargout = findColumnIdx(titles, varargin)
         varargout{ii} = idx;
     end
 end
-
-

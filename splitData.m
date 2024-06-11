@@ -85,11 +85,6 @@ function [] = splitData(app)
             %rescale the reference data to produce original features (apply inverse transform of feature scaling)
             invertScalingTransform(app);
             
-            %remove non-feature columns from data used by ML model
-            app.movie_data.results.train_data = app.movie_data.results.train_data(:,[app.movie_data.models.temp_params.feature_cols, end]);
-            app.movie_data.results.val_data = app.movie_data.results.val_data(:,[app.movie_data.models.temp_params.feature_cols, end]);
-            app.movie_data.results.test_data = app.movie_data.results.test_data(:,[app.movie_data.models.temp_params.feature_cols, end]);
-            
         case "Molecule"
             N_mol = size(app.movie_data.results.FeatureScaledData.LabelledMols, 1);
             
@@ -107,6 +102,7 @@ function [] = splitData(app)
             for ii = 1:size(app.movie_data.results.test_data, 1)
                 app.movie_data.models.temp_params.test_mols(ii, 1) = app.movie_data.results.test_data{ii, 1}.CellID;
                 app.movie_data.models.temp_params.test_mols(ii, 2) = app.movie_data.results.test_data{ii, 1}.MolID;
+                app.movie_data.models.temp_params.test_mols(ii, 3) = app.movie_data.results.test_data{ii, 1}.source_data;
             end
             
             %concatenate all data types to produce reference datasets for fast plotting; note that these reference datasets retain all
@@ -137,8 +133,7 @@ function [] = splitData(app)
             %structures during development, and will be streamlined in a
             %future version
             %-----------------------------------------------------------
-            feature_cols    = app.movie_data.models.temp_params.feature_cols;
-            final_col_index = size(app.movie_data.results.train_data{1}.Mol, 2);
+            N_features = size(app.movie_data.results.train_data{1}.Mol, 2) - 1;
             
             %calculate max rows for each data set (lengths of trajectories)
             max_rows_train  = max(cellfun(@(x) size(x.Mol, 1), app.movie_data.results.train_data));
@@ -147,25 +142,25 @@ function [] = splitData(app)
             max_rows = max([max_rows_train; max_rows_val; max_rows_test]);
             
             %preallocate 3D matrices with zeros
-            train_data_temp = zeros(max_rows, length(feature_cols) + 2, size(app.movie_data.results.train_data, 1));
-            val_data_temp   = zeros(max_rows, length(feature_cols) + 2, size(app.movie_data.results.val_data, 1));
-            test_data_temp  = zeros(max_rows, length(feature_cols) + 2, size(app.movie_data.results.test_data, 1));
+            train_data_temp = zeros(max_rows, N_features + 2, size(app.movie_data.results.train_data, 1));
+            val_data_temp   = zeros(max_rows, N_features + 2, size(app.movie_data.results.val_data, 1));
+            test_data_temp  = zeros(max_rows, N_features + 2, size(app.movie_data.results.test_data, 1));
             
             %copy only selected features columns of training, validation, and test data into 3D matrices, concatenate with column containing
             %binary mask of padding (data-containing rows are 1s, padding are 0s), and finally concatenate with visual labels
             for ii = 1:size(app.movie_data.results.train_data, 1)
                 mol = app.movie_data.results.train_data{ii}.Mol;
-                mol = [mol(:, feature_cols), ones(size(mol, 1), 1), mol(:, final_col_index)];
+                mol = [mol(:, 1:N_features), ones(size(mol, 1), 1), mol(:, end)];
                 train_data_temp(1:size(mol, 1), :, ii) = mol;
             end
             for ii = 1:size(app.movie_data.results.val_data, 1)
                 mol = app.movie_data.results.val_data{ii}.Mol;
-                mol = [mol(:, feature_cols), ones(size(mol, 1), 1), mol(:, final_col_index)];
+                mol = [mol(:, 1:N_features), ones(size(mol, 1), 1), mol(:, end)];
                 val_data_temp(1:size(mol, 1), :, ii) = mol;
             end
             for ii = 1:size(app.movie_data.results.test_data, 1)
                 mol = app.movie_data.results.test_data{ii}.Mol;
-                mol = [mol(:, feature_cols), ones(size(mol, 1), 1), mol(:, final_col_index)];
+                mol = [mol(:, 1:N_features), ones(size(mol, 1), 1), mol(:, end)];
                 test_data_temp(1:size(mol, 1), :, ii) = mol;
             end
             
@@ -252,7 +247,6 @@ function invertScalingTransform(app)
     
     %extract scaling method and feature columns
     method          = app.movie_data.models.temp_params.feature_scaling;
-    feature_cols    = app.movie_data.models.temp_params.feature_cols;
     
     switch method
         case "None"
@@ -263,11 +257,13 @@ function invertScalingTransform(app)
             mean_values     = app.movie_data.models.temp_params.feature_means;
             stdev_values    = app.movie_data.models.temp_params.feature_stds;
             
-            for ii = 1:length(feature_cols)
-                app.movie_data.results.ref_train_data(:, feature_cols(ii))      = app.movie_data.results.ref_train_data(:, feature_cols(ii)) * stdev_values(ii) + mean_values(ii);
-                app.movie_data.results.ref_val_data(:, feature_cols(ii))        = app.movie_data.results.ref_val_data(:, feature_cols(ii)) * stdev_values(ii) + mean_values(ii);
-                app.movie_data.results.ref_test_data(:, feature_cols(ii))       = app.movie_data.results.ref_test_data(:, feature_cols(ii)) * stdev_values(ii) + mean_values(ii);
-                app.movie_data.results.ref_labelled_data(:, feature_cols(ii))   = app.movie_data.results.ref_labelled_data(:, feature_cols(ii)) * stdev_values(ii) + mean_values(ii);
+            for ii = 1:size(app.movie_data.results.ref_train_data, 2) - 1
+                app.movie_data.results.ref_train_data(:, ii)      = app.movie_data.results.ref_train_data(:, ii) * stdev_values(ii) + mean_values(ii);
+                if ~isempty(app.movie_data.results.ref_val_data)
+                    app.movie_data.results.ref_val_data(:, ii)    = app.movie_data.results.ref_val_data(:, ii) * stdev_values(ii) + mean_values(ii);
+                end
+                app.movie_data.results.ref_test_data(:, ii)       = app.movie_data.results.ref_test_data(:, ii) * stdev_values(ii) + mean_values(ii);
+                app.movie_data.results.ref_labelled_data(:, ii)   = app.movie_data.results.ref_labelled_data(:, ii) * stdev_values(ii) + mean_values(ii);
             end
             
         case "Normalise (0-1)"
@@ -275,11 +271,13 @@ function invertScalingTransform(app)
             min_values = app.movie_data.models.temp_params.feature_mins;
             max_values = app.movie_data.models.temp_params.feature_maxs;
 
-            for ii = 1:length(feature_cols)
-                app.movie_data.results.ref_train_data(:, feature_cols(ii))      = (app.movie_data.results.ref_train_data(:, feature_cols(ii)) * (max_values(ii) - min_values(ii))) + min_values(ii);
-                app.movie_data.results.ref_val_data(:, feature_cols(ii))        = (app.movie_data.results.ref_val_data(:, feature_cols(ii)) * (max_values(ii) - min_values(ii))) + min_values(ii);
-                app.movie_data.results.ref_test_data(:, feature_cols(ii))       = (app.movie_data.results.ref_test_data(:, feature_cols(ii)) * (max_values(ii) - min_values(ii))) + min_values(ii);
-                app.movie_data.results.ref_labelled_data(:, feature_cols(ii))   = (app.movie_data.results.ref_labelled_data(:, feature_cols(ii)) * (max_values(ii) - min_values(ii))) + min_values(ii);
+            for ii = 1:size(app.movie_data.results.ref_train_data, 2) - 1
+                app.movie_data.results.ref_train_data(:, ii)      = (app.movie_data.results.ref_train_data(:, ii) * (max_values(ii) - min_values(ii))) + min_values(ii);
+                if ~isempty(app.movie_data.results.ref_val_data)
+                    app.movie_data.results.ref_val_data(:, ii)    = (app.movie_data.results.ref_val_data(:, ii) * (max_values(ii) - min_values(ii))) + min_values(ii);
+                end
+                app.movie_data.results.ref_test_data(:, ii)       = (app.movie_data.results.ref_test_data(:, ii) * (max_values(ii) - min_values(ii))) + min_values(ii);
+                app.movie_data.results.ref_labelled_data(:, ii)   = (app.movie_data.results.ref_labelled_data(:, ii) * (max_values(ii) - min_values(ii))) + min_values(ii);
             end
             
         otherwise

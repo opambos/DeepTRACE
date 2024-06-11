@@ -114,14 +114,18 @@ function [success] = scaleLabelledFeatures(app)
                 feature_cols(jj) = findColumnIdx(app.movie_data.params.column_titles.tracks, app.movie_data.models.temp_params.feature_names(jj));
             end
             
-            %transfer only training feature cols and label col from currently loaded human annotated data to FeatureScaledData
-            for jj = 1:length(app.movie_data.results.VisuallyLabelled)
-                cols_to_keep = [feature_cols, size(app.movie_data.results.VisuallyLabelled{jj, 1}.Mol, 2)];    
-                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.Mol = app.movie_data.results.VisuallyLabelled{jj, 1}.Mol(:, cols_to_keep);
-            end
-            
+            %keep record of data souce being current file
             app.movie_data.results.FeatureScaledData.source_file{1, 1} = 'Currently loaded data';
 
+            %transfer only training feature cols and label col from currently loaded human annotated data to FeatureScaledData
+            for jj = 1:size(app.movie_data.results.VisuallyLabelled.LabelledMols, 1)
+                cols_to_keep = [feature_cols, size(app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.Mol, 2)];
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.Mol            = app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.Mol(:, cols_to_keep);
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.CellID         = app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.CellID;
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.MolID          = app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.MolID;
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.source_data    = 1;
+            end
+            
         case 'Ground truth'
             %find column indices of feature cols
             feature_cols = zeros(1, size(app.movie_data.models.temp_params.feature_names, 2));
@@ -129,14 +133,18 @@ function [success] = scaleLabelledFeatures(app)
                 feature_cols(jj) = findColumnIdx(app.movie_data.params.column_titles.tracks, app.movie_data.models.temp_params.feature_names(jj));
             end
             
-            %transfer only training feature cols and label col from currently loaded ground truth data to FeatureScaledData
-            for jj = 1:length(app.movie_data.results.GroundTruth)
-                cols_to_keep = [feature_cols, size(app.movie_data.results.GroundTruth{jj, 1}.Mol, 2)];    
-                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.Mol = app.movie_data.results.GroundTruth{jj, 1}.Mol(:, cols_to_keep);
-            end
-            
+            %keep record of data souce being current file
             app.movie_data.results.FeatureScaledData.source_file{1, 1} = 'Currently loaded data';
 
+            %transfer only training feature cols and label col from currently loaded ground truth data to FeatureScaledData
+            for jj = 1:size(app.movie_data.results.GroundTruth.LabelledMols, 1)
+                cols_to_keep = [feature_cols, size(app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.Mol, 2)];
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.Mol            = app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.Mol(:, cols_to_keep);
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.CellID         = app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.CellID;
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.MolID          = app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.MolID;
+                app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.source_data    = 1;
+            end
+            
         case 'Human annotations (mulitple experiments)'
             popup = SelectTrainingFilesPopUp(app);
             uiwait(popup.UIFigure);
@@ -156,6 +164,9 @@ function [success] = scaleLabelledFeatures(app)
                     feature_cols(jj) = findColumnIdx(app.movie_data.params.column_titles.tracks, app.movie_data.models.temp_params.feature_names(jj));
                 end
                 
+                %keep record of user including data from current file
+                app.movie_data.results.FeatureScaledData.source_file{1, 1} = 'Currently loaded data';
+                
                 %transfer only training feature cols and label col from currently loaded human annotated data to FeatureScaledData
                 for jj = 1:length(app.movie_data.results.VisuallyLabelled.LabelledMols)
                     cols_to_keep = [feature_cols, size(app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.Mol, 2)];    
@@ -163,7 +174,6 @@ function [success] = scaleLabelledFeatures(app)
                     app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.CellID         = app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.CellID;
                     app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.MolID          = app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.MolID;
                     app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.source_data    = 1;
-                    app.movie_data.results.FeatureScaledData.source_file{1, 1}                  = 'Currently loaded data';
                 end
                 
                 %loop over all external files, loading the data
@@ -255,7 +265,7 @@ function [success] = scaleLabelledFeatures(app)
     
     %write the souce files to the temp params struct for future access
     app.movie_data.models.temp_params.source_file = app.movie_data.results.FeatureScaledData.source_file;
-
+    
     %erase any trajectories from scaled data that have not been fully labelled
     del_idx = [];
     for jj = 1:size(app.movie_data.results.FeatureScaledData.LabelledMols, 1)
@@ -318,7 +328,7 @@ function [success] = scaleLabelledFeatures(app)
                     app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.Mol(:, col) = normalized_data;
                 end
             end
-
+            
             success = true;
             
         otherwise

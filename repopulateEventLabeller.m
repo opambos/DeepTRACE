@@ -46,6 +46,8 @@ function [] = repopulateEventLabeller(app)
 %illustrateMol()
 %plotColourTrack()
 %setLabellerAxRanges()
+%regenerateTrackViewer()
+%setupDraggableLine()
     
     %load next mol, which is a callback to the next mol button
     
@@ -58,9 +60,14 @@ function [] = repopulateEventLabeller(app)
     app.CellIDTextArea.Value = '';
     app.MolIDTextArea.Value = '';
     
+    %update the state positions
+    app.movie_data.state.labeller_track_pos     = 1;
+    app.movie_data.state.labeller_frame_video   = 1;
+    app.movie_data.state.labelled_so_far        = 0;
+
     %simplifying code
     cell_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.CellID;
-    mol_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
+    mol_ID  = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
     
     %obtain time and user-selected feature column; also write them to the
     %state features
@@ -91,8 +98,8 @@ function [] = repopulateEventLabeller(app)
     %set ranges for axes of the human annotation system
     setLabellerAxesRange(app)
 
-    %place red circle to highlight next labelling point - hardcoded feature/column IDs will be replaced in a future version
-    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.labelled_so_far+1,1}.Mol(1,app.movie_data.state.col_feature), 'ro', 'Tag', 'current_loc', 'SizeData', 100, 'LineWidth', 1.5);
+    %place red circle to highlight next labelling point
+    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1,app.movie_data.state.col_feature), 'ro', 'Tag', 'current_loc', 'SizeData', 100, 'LineWidth', 1.5);
     box(app.UIAxes_event_labeller, 'on');
     
     %prevent user being able to drag/zoom/etc.
@@ -119,11 +126,6 @@ function [] = repopulateEventLabeller(app)
     
     %pull video from the correct video file
     app.movie_data.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1);
-    
-    %update the state positions
-    app.movie_data.state.labeller_track_pos     = 1;
-    app.movie_data.state.labeller_frame_video   = 1;
-    app.movie_data.state.labelled_so_far        = 0;
 
     %display the first video frame (or initialise the handle if this is the first run)
     app.updateVideoFrame(app.movie_data.state.labeller_frame_video);

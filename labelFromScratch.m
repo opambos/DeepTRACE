@@ -56,7 +56,7 @@ function [] = labelFromScratch(app)
     
     %exit early if user either presses cancel, closes the dialogue box, or doesn't enter anything
     if isempty(class_names_input) || isempty(class_names_input{1})
-        error("Warning in labelFromScratch: Either user cancelled or closed the class name definition dialogue, or they entered an empty input.");
+        error("labelFromScratch:UserOmittedClassNames", "Warning in labelFromScratch: Either user cancelled or closed the class name definition dialogue, or they entered an empty input.");
     else
         app.movie_data.params.class_names = class_names_input;
     end

@@ -71,7 +71,10 @@ function [] = repopulateEventLabeller(app)
     
     %obtain time and user-selected feature column; also write them to the
     %state features
-    col_t = find(strcmp(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)'));
+    col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)');
+    if col_t == 0
+        error("repopulateEventLabeller:MissingTimeColumn", "The required time column ('Time from start of track (s)') is missing from the dataset.");
+    end
     app.movie_data.state.col_feature = find(strcmp(app.movie_data.params.column_titles.tracks, app.FeatureDropDown.Value));
     
     %set the y-axis label

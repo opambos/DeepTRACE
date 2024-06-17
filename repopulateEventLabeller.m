@@ -51,9 +51,8 @@ function [] = repopulateEventLabeller(app)
     
     %load next mol, which is a callback to the next mol button
     
-
     %clear the axes and cell_ID and mol_ID display boxes
-    cla(app.UIAxes_event_labeller);
+    cla(app.UIAxes_event_labeller, 'reset');
     cla(app.UIAxes_event_labeller_status);
     cla(app.UIAxes_labelling_progress);
     cla(app.UIAxes_event_labeller_mesh);
@@ -64,35 +63,76 @@ function [] = repopulateEventLabeller(app)
     app.movie_data.state.labeller_track_pos     = 1;
     app.movie_data.state.labeller_frame_video   = 1;
     app.movie_data.state.labelled_so_far        = 0;
-
-    %simplifying code
-    cell_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.CellID;
-    mol_ID  = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
     
-    %obtain time and user-selected feature column; also write them to the
-    %state features
+    %find column indices
     col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)');
     if col_t == 0
         error("repopulateEventLabeller:MissingTimeColumn", "The required time column ('Time from start of track (s)') is missing from the dataset.");
     end
-    app.movie_data.state.col_feature = find(strcmp(app.movie_data.params.column_titles.tracks, app.FeatureDropDown.Value));
     
-    %set the y-axis label
-    ylabel(app.UIAxes_event_labeller, app.FeatureDropDown.Value);
+    col_primary     = findColumnIdx(app.movie_data.params.column_titles.tracks, app.PrimaryFeatureDropDown.Value);
+    app.movie_data.state.col_feature = col_primary;
+    if col_primary == 0
+        error("repopulateEventLabeller:MissingPrimaryFeature", "The primary feature column is missing in the column titles of the dataset.");
+    end
     
-    %plot the next molecule - note that column/feature ID for time and step size are currently hardcoded which will change in a future version
-    plot(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(:, app.movie_data.state.col_feature),...
-        'LineWidth', app.LinethicknessSpinner.Value, 'Color', app.LinecolourDropDown.Value, 'Tag', 'step_trace');
+    col_secondary   = findColumnIdx(app.movie_data.params.column_titles.tracks, app.SecondaryFeatureDropDown.Value);
+    if col_secondary ~= 0
+        app.movie_data.state.col_feature_secondary = col_secondary;
+    end
+    if ~strcmp(app.SecondaryFeatureDropDown.Value, '<< None >>') && col_secondary == 0
+        error("repopulateEventLabeller:MissingPrimaryFeature", "The secondary feature column is missing in the column titles of the dataset.");
+    end
+    
+    %simplifying code
+    cell_ID         = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.CellID;
+    mol_ID          = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
+    curr_mol        = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol;
+    
+    %plot time series for primary feature on left y-axis
+    yyaxis(app.UIAxes_event_labeller, 'left');
     hold(app.UIAxes_event_labeller, 'on');
-    app.movie_data.state.labeller_frame = 1;    %keep track of which frame is currently being displayed, this is incredibly important for performance on slower machine as it greatly reduces number of calls to imagesc()
-    app.CellIDTextArea.Value =  num2str(cell_ID);
-    app.MolIDTextArea.Value  =  num2str(mol_ID);
+    grid(app.UIAxes_event_labeller, 'on');
+    box(app.UIAxes_event_labeller, 'on');
+    ylabel(app.UIAxes_event_labeller, app.PrimaryFeatureDropDown.Value);
+    xlabel(app.UIAxes_event_labeller, 'Time (s)');
+    app.UIAxes_event_labeller.FontSize  = 16;
+    plot(app.UIAxes_event_labeller, curr_mol(:, col_t), curr_mol(:, col_primary), 'LineWidth', app.PrimaryLinethicknessSpinner.Value, 'Color', app.PrimaryLinecolourDropDown.Value, 'Tag', 'step_trace');
+    app.UIAxes_event_labeller.YColor    = app.PrimaryLinecolourDropDown.Value;
+    app.movie_data.state.labeller_frame = 1;    %keep track of which frame is currently being displayed; important for performance on slower machine as it greatly reduces number of calls to imagesc()
+    app.CellIDTextArea.Value            =  num2str(cell_ID);
+    app.MolIDTextArea.Value             =  num2str(mol_ID);
+    
+    %optionally plot time series for secondary feature; otherwise set the right yyaxis components identical to left
+    if ~strcmp(app.SecondaryFeatureDropDown.Value, '<< None >>')
+        yyaxis(app.UIAxes_event_labeller, 'right');
+        plot(app.UIAxes_event_labeller, curr_mol(:, col_t), curr_mol(:, col_secondary), 'LineWidth', app.SecondaryLinethicknessSpinner.Value, 'Color', [0.5 0.5 0.5], 'Tag', 'secondary_trace', 'LineStyle', ':');
+        ylabel(app.UIAxes_event_labeller, app.SecondaryFeatureDropDown.Value);
+        app.UIAxes_event_labeller.YColor = [0.5 0.5 0.5];
+        
+        %also disable interactive tools in secondary axis while this is convenient
+        disableDefaultInteractivity(app.UIAxes_event_labeller);
+        app.UIAxes_event_labeller.Toolbar.Visible = 'off';
+        
+        yyaxis(app.UIAxes_event_labeller, 'left');
+    else
+        yyaxis(app.UIAxes_event_labeller, 'left');
+        y_limits_left = ylim(app.UIAxes_event_labeller);
+        yyaxis(app.UIAxes_event_labeller, 'right');
+        ylim(app.UIAxes_event_labeller, y_limits_left);
+        app.UIAxes_event_labeller.YColor = 'k';
+
+        %also disable interactive tools in secondary axis while this is convenient
+        disableDefaultInteractivity(app.UIAxes_event_labeller);
+        app.UIAxes_event_labeller.Toolbar.Visible = 'off';
+
+        yyaxis(app.UIAxes_event_labeller, 'left');
+    end
     
     %plot the reference lines (if they exist)
     if isfield(app.movie_data.params, 'reference_lines')
         %ensure user hasn't added duplicates
         app.movie_data.params.reference_lines = unique(app.movie_data.params.reference_lines);
-        %yline(app.UIAxes_event_labeller, app.movie_data.params.reference_lines, 'r--', string(app.movie_data.params.reference_lines));
         for ii = 1:size(app.movie_data.params.reference_lines,1)
             yline(app.UIAxes_event_labeller, app.movie_data.params.reference_lines, '--', string(app.movie_data.params.reference_lines) + "  ", 'Color', app.ReferencelinecolourDropDown.Value, 'LineWidth', app.ReferencelinethicknessSpinner.Value);
         end
@@ -100,10 +140,21 @@ function [] = repopulateEventLabeller(app)
     
     %set ranges for axes of the human annotation system
     setLabellerAxesRange(app)
-
+    
     %place red circle to highlight next labelling point
-    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1,app.movie_data.state.col_feature), 'ro', 'Tag', 'current_loc', 'SizeData', 100, 'LineWidth', 1.5);
+    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1,col_primary), 'ro', 'Tag', 'current_loc', 'SizeData', 100, 'LineWidth', 1.5);
     box(app.UIAxes_event_labeller, 'on');
+    
+    %ensure secondary y-axis scale matches primary
+    if strcmp(app.SecondaryFeatureDropDown.Value, '<< None >>')
+        yyaxis(app.UIAxes_event_labeller, 'left');
+        y_limits_left = ylim(app.UIAxes_event_labeller);
+        yyaxis(app.UIAxes_event_labeller, 'right');
+        ylim(app.UIAxes_event_labeller, y_limits_left);
+        app.UIAxes_event_labeller.YTickLabel = {};
+        app.UIAxes_event_labeller.YColor = [0.5 0.5 0.5];
+        yyaxis(app.UIAxes_event_labeller, 'left');
+    end
     
     %prevent user being able to drag/zoom/etc.
     disableDefaultInteractivity(app.UIAxes_event_labeller);
@@ -113,7 +164,7 @@ function [] = repopulateEventLabeller(app)
     %set up the status bar above the trajectory labeller
     axis(app.UIAxes_event_labeller_status, 'off');
     app.UIAxes_event_labeller_status.YLim = [0 1];
-    app.UIAxes_event_labeller_status.XLim = [app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(1, col_t) app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol(end, col_t)];
+    app.UIAxes_event_labeller_status.XLim = [curr_mol(1, col_t) curr_mol(end, col_t)];
     inpos  = app.UIAxes_event_labeller.InnerPosition;
     outpos = app.UIAxes_event_labeller.OuterPosition;
     app.UIAxes_event_labeller_status.InnerPosition = [inpos(1), outpos(2)+outpos(4), inpos(3), 20];

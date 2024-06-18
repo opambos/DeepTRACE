@@ -72,6 +72,7 @@ function [] = engineerFeatures(app)
 %computeLocMemDists()
 %computeLocPoleDists()
 %computeStepAngles()
+%compileMSDMatrixFast()
 %engineerPosInNm()                      - local to this .m file
 %engineerTimeStep()                     - local to this .m file
 %engineerExperimentTime()               - local to this .m file
@@ -85,6 +86,8 @@ function [] = engineerFeatures(app)
 %engineerStepAngleRelCell()             - local to this .m file
 %engineerSpotSize()                     - local to this .m file
 %engineerSpotArea()                     - local to this .m file
+%engineerLocalDStar()                   - local to this .m file
+    
     
     %==============================
     %Obligatory engineered features
@@ -142,6 +145,9 @@ function [] = engineerFeatures(app)
     
     %compute step angle relative to cell major axis for all steps in dataset
     engineerStepAngleRelCell(app);
+    
+    %compute the local diffusion coefficient around every tracked localisation
+    engineerLocalDStar(app);
     
     %============
     %Class labels
@@ -1141,5 +1147,135 @@ function [] = engineerSpotArea(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Spot area (nm^2)'];
+    close(h_progress);
+end
+
+
+
+
+function [] = engineerLocalDStar(app)
+%Feature engineering for local apparent diffusion coefficient for all
+%tracked localisations, Oliver Pambos, 17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalDStar
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This algorithm computes D* from an MSD using all available points within
+%the a user-defined range of frames either side of the reference point.
+%
+%In not requiring a full set of points in the MSD curve, this approach
+%enables the system to trade accuracy at the start and end points of the
+%track in order to obtain values even towards the ends of the track.
+%
+%The feature name in column titles has intentionally not included the
+%window size enabling the user to choose the region over which the MSD is
+%computed independently between different experiments; combining the
+%results.
+%
+%A future version of this code may introduce weighting of the fitting
+%process to increase the relative impact of smaller time shifts, as the
+%goal here is changepoint detection/segmentation. Another future change may
+%be to introduce imputation of NaN values, which would be replaced by the
+%next nearest known value, or an average of the nearest known value before
+%and after.
+%
+%Note that this replaces an earlier prototype version which obtained local
+%diffusion coefficient using only step sizes between the reference point
+%and all available other points in the frame window, but not allowing the
+%pairwise contributions from non-reference points. The initial idea was to
+%consider only the distance of the reference point to all other points in
+%the small window. However this new version considers temporally-proximal
+%pairwise steps to contain more useful information, particularly when exact
+%changepoint detection is not the main goal, as is the case for separating
+%bound particles from very slowly moving but mobile whose step sizes are
+%smaller than the localisation precision. I may later re-introduce my
+%earlier, deprecated code as an option here.
+%
+%
+%Input
+%-----
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%compileMSDMatrixFast()
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    app.movie_data.state.local_dstar_win_size = 0;
+
+    %obtain window size from user
+    popup = SelectLocalDiffusionParamsPopUp(app);
+    uiwait(popup.SelectLocalDiffusionParamsFigure);
+    window_size = app.movie_data.state.local_dstar_win_size;
+    
+    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing local D* for all tracks');
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local D* for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                curr_Dstar  = zeros(size(curr_track, 1), 1);
+                
+                for kk = 1:size(curr_track, 1)
+                    %obtain local window of track
+                    lim_lo = curr_track(kk, 3) - window_size;
+                    lim_hi = curr_track(kk, 3) + window_size;
+
+                    curr_window         = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    curr_window(:, 1:2) = curr_window(:, 1:2) .* (app.movie_data.params.px_scale / 1000);
+                    
+                    %compute the MSD matrix
+                    msd_result = compileMSDMatrixFast(curr_window, 1/app.movie_data.params.frame_rate, window_size);
+                    
+                    %calculate D* = MSD / 4t; also adding a point at (0, 0)
+                    p = polyfit([0; msd_result(:, 3)], [0; msd_result(:, 1)], 1);
+                    curr_Dstar(kk, 1) = p(1) / 4;
+                end
+                new_col = [new_col; curr_Dstar];
+            end
+            
+            %a future version may impute NaNs here by taking the mean of nearest known values
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Local D* (um^2/s)'];
     close(h_progress);
 end

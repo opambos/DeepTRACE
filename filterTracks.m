@@ -73,9 +73,6 @@ function [filter_status] = filterTracks(app)
     app.textout.Value   = "Track filtering process is in progress. This may take some time to complete.";
     filter_status       = "Failed";
     
-    %remove cells that contain no tracks
-    app.movie_data = removeEmptyCells(app.movie_data);
-    
     %use current state of dropdown boxes to control a switch statement for how the tracks should be filtered
     selection_ID = [app.FilteringmethodDropDown.Value '_' app.FilteragainstDropDown.Value];
     
@@ -100,7 +97,7 @@ function [filter_status] = filterTracks(app)
     
     %record filtering method
     app.movie_data.params.filtering_method  = selection_ID;
-
+    
     switch selection_ID
         case {'truncate_localisations', 'eliminate_localisations'}
             
@@ -418,6 +415,9 @@ function [movie_data] = removeEmptyCells(movie_data)
 %RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
+%
+%This function is currently deprecated. It was previously called at the
+%start of filterTracks().
 %
 %Inputs
 %------

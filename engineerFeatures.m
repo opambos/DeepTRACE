@@ -91,6 +91,9 @@ function [] = engineerFeatures(app)
 %engineerRollingMeanStepSizeDelta()     - local to this .m file
 %engineerRollingStdDevStepSizeDelta()   - local to this .m file
 %engineerRollingStdDevPosnDelta()       - local to this .m file
+%engineerRollingDispersionChange()      - local to this .m file
+%engineerRollingCentroidDisplacement()  - local to this .m file
+    
     
     
     %==============================
@@ -166,6 +169,12 @@ function [] = engineerFeatures(app)
     %compute rolling window delta for standard deviation of position
     engineerRollingStdDevPosnDelta(app);
     
+    %compute rolling window of change in dispersion
+    engineerRollingDispersionChange(app);
+    
+    %compute rolling window of displacement between position centroids
+    engineerRollingCentroidDisplacement(app);
+
     
     %============
     %Class labels
@@ -1169,8 +1178,6 @@ function [] = engineerSpotArea(app)
 end
 
 
-
-
 function [] = engineerLocalDStar(app)
 %Feature engineering for local apparent diffusion coefficient for all
 %tracked localisations, Oliver Pambos, 17/06/2024.
@@ -1439,10 +1446,8 @@ function [] = engineerRollingDStarDelta(app)
                         Dstar_ratio(kk) = Dstar_right / Dstar_left;
                         Dstar_delta(kk) = Dstar_right - Dstar_left;
                     else
-                        %rolling D* comparisons set to zero if insufficient data
-                        Dstar_ratio(kk) = 0;
-                        Dstar_delta(kk) = 0;
-                    end
+                        %future interpolation/imputation to replace zeros when there is insufficient data
+                   end
                 end
 
                 %append ratio and delta for current track to others in same cell
@@ -1559,9 +1564,7 @@ function [] = engineerRollingMeanStepSizeDelta(app)
                         mean_ratio(kk) = mean_right / mean_left;
                         mean_delta(kk) = mean_right - mean_left;
                     else
-                        %if there aren't enough points in one of the windows set ratio and delta to zero; this may be later replaced with interpolation/imputation
-                        mean_ratio(kk) = 0;
-                        mean_delta(kk) = 0;
+                        %future interpolation/imputation to replace zeros when there is insufficient data
                     end
                 end
                 
@@ -1685,9 +1688,7 @@ function [] = engineerRollingStdDevStepSizeDelta(app)
                         std_ratio(kk) = std_right / std_left;
                         std_delta(kk) = std_right - std_left;
                     else
-                        %if there aren't enough points in one of the windows set ratio and delta to zero; this may be later replaced with interpolation/imputation
-                        std_ratio(kk) = 0;
-                        std_delta(kk) = 0;
+                        %future interpolation/imputation to replace zeros when there is insufficient data
                     end
                 end
                 
@@ -1741,11 +1742,11 @@ function [] = engineerRollingStdDevPosnDelta(app)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%This function computes the difference between mean step sizes in two small
-%adjacent windows around each localisation in all tracks of the dataset.
-%The localisation itself is included in the second (right hand) window.
-%The ratio and difference are calculated as right/left and right - left
-%respectively.
+%This function computes the difference between mean step sizes in two
+%small adjacent windows around each localisation in all tracks of the
+%dataset. The localisation itself is included in the second (right hand)
+%window. The ratio and difference are calculated as right/left and
+%right - left respectively.
 %
 %
 %Input
@@ -1808,9 +1809,7 @@ function [] = engineerRollingStdDevPosnDelta(app)
                         std_ratio(kk) = std_right / std_left;
                         std_delta(kk) = std_right - std_left;
                     else
-                        %if there aren't enough points in one of the windows set ratio and delta to zero; this may be later replaced with interpolation/imputation
-                        std_ratio(kk) = 0;
-                        std_delta(kk) = 0;
+                        %future interpolation/imputation to replace zeros when there is insufficient data
                     end
                 end
                 
@@ -1830,5 +1829,249 @@ function [] = engineerRollingStdDevPosnDelta(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling stdev position ratio', 'Rolling stdev position delta (nm)', 'Rolling stdev position delta absolute'];
+    close(h_progress);
+end
+
+
+function [] = engineerRollingDispersionChange(app)
+%Feature engineering for the rolling difference in spread of localisations
+%between a pair of adjacent sliding windows, Oliver Pambos, 03/07/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerRollingDispersionChange
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This function computes the difference between the dispersion of
+%coordinates of two small adjacent windows around each localisation in
+%all tracks of the dataset. The localisation itself is included in the
+%second (right hand) window. The ratio and difference are calculated as
+%right/left and right - left respectively.
+%
+%Note that calcaulations here are performed in nm rather than pixels to
+%expand the capability of models trained on the delta feature to be
+%applied to datasets recorded using other optical systems.
+%
+%
+%Input
+%-----
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    app.movie_data.state.local_dstar_win_size = 0;
+    
+    %obtain window size from user
+    popup = SelectLocalDiffusionParamsPopUp(app);
+    uiwait(popup.SelectLocalDiffusionParamsFigure);
+    window_size = app.movie_data.state.local_dstar_win_size;
+    
+    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling dispersion changes');
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling dipersion for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            cell_disp_ratio = [];
+            cell_disp_delta = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                disp_ratio = zeros(size(curr_track, 1), 1);
+                disp_delta = zeros(size(curr_track, 1), 1);
+                
+                for kk = 3:size(curr_track, 1) - 1
+                    %define frame number limits for the window pair
+                    lims_left  = [curr_track(kk, 3) - window_size, curr_track(kk, 3) - 1];
+                    lims_right = [curr_track(kk, 3), curr_track(kk, 3) + window_size - 1];
+                    
+                    %construct window pair
+                    win_left  = curr_track(curr_track(:, 3) >= lims_left(1) & curr_track(:, 3) <= lims_left(2), 1:3);
+                    win_right = curr_track(curr_track(:, 3) >= lims_right(1) & curr_track(:, 3) <= lims_right(2), 1:3);
+                    
+                    %compute dispersion if enough points exist in both windows
+                    if size(win_left, 1) > 1 && size(win_right, 1) > 1
+                        %convert to nm (using a universal scale enables models to be trained with this feature on one system and applied to another)
+                        win_left(:, 1:2)  = win_left(:, 1:2) .* app.movie_data.params.px_scale;
+                        win_right(:, 1:2) = win_right(:, 1:2) .* app.movie_data.params.px_scale;
+                        
+                        %compute centroids of each window
+                        centroid_left   = mean(win_left(:, 1:2));
+                        centroid_right  = mean(win_right(:, 1:2));
+                        
+                        %compute mean distance from centroid to each point in windows (Centroid-Based Dispersion)
+                        disp_left  = mean(sqrt(sum((win_left(:, 1:2) - centroid_left).^2, 2)));
+                        disp_right = mean(sqrt(sum((win_right(:, 1:2) - centroid_right).^2, 2)));
+                        
+                        disp_ratio(kk) = disp_right / disp_left;
+                        disp_delta(kk) = disp_right - disp_left;
+                    else
+                        %future interpolation/imputation to replace zeros when there is insufficient data
+                    end
+                end
+                
+                %append ratio and delta for current track to others in same cell
+                cell_disp_ratio = [cell_disp_ratio; disp_ratio];
+                cell_disp_delta = [cell_disp_delta; disp_delta];
+            end
+            
+            %compute the absolute mean ratio (inidicates singificance of changepoint)
+            cell_disp_delta_abs = abs(cell_disp_delta);
+
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, cell_disp_ratio, cell_disp_delta, cell_disp_delta_abs];
+        end
+    end
+    
+    %update col titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling dispersion ratio', 'Rolling dispersion delta', 'Rolling dispersion delta absolute'];
+    close(h_progress);
+end
+
+
+function [] = engineerRollingCentroidDisplacement(app)
+%Feature engineering for the distance between centroids of a collection of
+%localisations in window pairs around the current point, Oliver Pambos,
+%04/07/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerRollingCentroidDisplacement
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This function computes the distance between centroids of points taken in
+%two windows either side of the current frame in all tracks of the dataset.
+%The reference localisation itself is used in the second (right hand)
+%window only. The displacement is calculated as right - left.
+%
+%Note that calcaulations here are performed in nm rather than pixels to
+%expand the capability of models trained on this feature to be applied to
+%datasets recorded using other optical systems.
+%
+%
+%Input
+%-----
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    app.movie_data.state.local_dstar_win_size = 0;
+
+    %obtain window size from user
+    popup = SelectLocalDiffusionParamsPopUp(app);
+    uiwait(popup.SelectLocalDiffusionParamsFigure);
+    window_size = app.movie_data.state.local_dstar_win_size;
+    
+    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing centroid displacement for all tracks');
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling centroid displacement for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            cell_displacement = [];
+            cell_mean_delta = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                displacement = zeros(size(curr_track, 1), 1);
+                
+                %loop over track, omitting first and last point
+                for kk = 3:size(curr_track, 1) - 1
+                    %obtain frame number limits for the window pair - see header notes
+                    lims_left  = [curr_track(kk, 3) - window_size, curr_track(kk, 3) - 1];
+                    lims_right = [curr_track(kk, 3), curr_track(kk, 3) + window_size - 1];
+                    
+                    %construct the window pair
+                    win_left  = curr_track(curr_track(:, 3) >= lims_left(1) & curr_track(:, 3) <= lims_left(2), 1:3);
+                    win_right = curr_track(curr_track(:, 3) >= lims_right(1) & curr_track(:, 3) <= lims_right(2), 1:3);
+                    
+                    %if enough points exist compute mean ratio and delta
+                    if size(win_left, 1) > 1 && size(win_right, 1) > 1
+                        %convert to nm (using a universal scale enables models to be trained with this feature on one system and applied to another)
+                        win_left(:, 1:2)  = win_left(:, 1:2) .* app.movie_data.params.px_scale;
+                        win_right(:, 1:2) = win_right(:, 1:2) .* app.movie_data.params.px_scale;
+                        
+                        %compute centroids of each window
+                        centroid_left   = mean(win_left(:, 1:2));
+                        centroid_right  = mean(win_right(:, 1:2));
+                        
+                        displacement(kk) = sqrt((centroid_right(2) - centroid_left(2))^2 + (centroid_right(1) - centroid_left(1))^2);
+                    else
+                        %future interpolation/imputation to replace zeros when there is insufficient data
+                    end
+                end
+                
+                %append ratio and delta for current track to others in same cell
+                cell_displacement = [cell_displacement; displacement];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, cell_displacement];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling centroid displacement (nm)'];
     close(h_progress);
 end

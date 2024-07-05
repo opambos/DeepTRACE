@@ -95,6 +95,9 @@ function [] = engineerFeatures(app)
 %engineerRollingCentroidDisplacement()  - local to this .m file
     
     
+    %obtain window size from user
+    popup = FeatureEngineeringMenu(app);
+    uiwait(popup.FeatureEngineeringMenuUIFigure);
     
     %==============================
     %Obligatory engineered features
@@ -105,76 +108,120 @@ function [] = engineerFeatures(app)
     %convert localisation data to nm
     engineerPosInNm(app);
     
-
+    
     %============================
     %Optional engineered features
     %============================
     %compute step sizes between localisations in all tracks
-    engineerStepSize(app);
-
+    if ismember('Step size', app.movie_data.state.selected_features)
+        engineerStepSize(app);
+    end
+    
     %compute the time steps between localisations in all tracks
-    engineerTimeStep(app);
+    if ismember('Time step from previous localisation', app.movie_data.state.selected_features)
+        engineerTimeStep(app);
+    end
     
     %compute time from start of experiment
-    engineerExperimentTime(app);
+    if ismember('Time since start of experiment', app.movie_data.state.selected_features)
+        engineerExperimentTime(app);
+    end
     
     %compute the time from start of track for all tracked localisations
-    engineerTimeFromTrackStart(app);
+    if ismember('Time from start of track', app.movie_data.state.selected_features)
+        engineerTimeFromTrackStart(app);
+    end
     
     %compute time from all reference points
-    engineerTimeFromReferencePoints(app);
+    if ismember('Set experiment reference timepoints', app.movie_data.state.selected_features)
+        engineerTimeFromReferencePoints(app);
+    end
     
     %compute distance of current point from start of track
-    engineerDistanceFromTrackStart(app);
+    if ismember('Current distance from start of track', app.movie_data.state.selected_features)
+        engineerDistanceFromTrackStart(app);
+    end
     
     %compute cumulative distance travelled since start of track
-    engineerCumulativeDistanceTravelled(app);
+    if ismember('Cumulative distance travelled', app.movie_data.state.selected_features)
+        engineerCumulativeDistanceTravelled(app);
+    end
     
     %compute all shifted step sizes requested by user
-    engineerShiftedStepSizes(app);
+    if ismember('Time shifted step sizes', app.movie_data.state.selected_features)
+        engineerShiftedStepSizes(app);
+    end
     
     %compute distance-to-membrane for every tracked localisation in dataset
-    computeLocMemDists(app);
+    if ismember('Distance to cell membrane', app.movie_data.state.selected_features)
+        computeLocMemDists(app);
+    end
     
     %compute distance-to-pole for every tracked localisation in dataset
-    computeLocPoleDists(app);
+    if ismember('Distance to nearest cell pole', app.movie_data.state.selected_features)
+        computeLocPoleDists(app);
+    end
     
     %compute spot size
-    engineerSpotSize(app);
+    if ismember('Spot size', app.movie_data.state.selected_features)
+        engineerSpotSize(app);
+    end
     
     %compute spot area
-    engineerSpotArea(app);
+    if ismember('Spot area', app.movie_data.state.selected_features)
+        engineerSpotArea(app);
+    end
     
     %compute step angle relative to previous step for all steps in dataset
-    engineerRelativeStepAngle(app);
+    if ismember('Step angle relative to previous step', app.movie_data.state.selected_features)
+        engineerRelativeStepAngle(app);
+    end
     
     %compute step angle relative to image for all steps in dataset
-    engineerStepAngleRelImage(app);
+    if ismember('Step angle relative to field of view', app.movie_data.state.selected_features)
+        engineerStepAngleRelImage(app);
+    end
     
     %compute step angle relative to cell major axis for all steps in dataset
-    engineerStepAngleRelCell(app);
+    if ismember('Step angle relative to cell major axis', app.movie_data.state.selected_features)
+        engineerStepAngleRelCell(app);
+    end
     
     %compute the local diffusion coefficient around every tracked localisation
-    engineerLocalDStar(app);
+    if ismember('Local diffusion coefficient', app.movie_data.state.selected_features)
+        engineerLocalDStar(app);
+    end
     
     %compute rolling window delta for local D*
-    engineerRollingDStarDelta(app);
-
+    if ismember('Local change in diffusion coefficient', app.movie_data.state.selected_features)
+        engineerRollingDStarDelta(app);
+    end
+    
     %compute rolling window delta for mean step size
-    engineerRollingMeanStepSizeDelta(app);
+    if ismember('Local change in mean step size', app.movie_data.state.selected_features)
+        engineerRollingMeanStepSizeDelta(app);
+    end
     
     %compute rolling window delta for standard deviation of step size
-    engineerRollingStdDevStepSizeDelta(app);
+    if ismember('Local change in standard deviation of step sizes', app.movie_data.state.selected_features)
+        engineerRollingStdDevStepSizeDelta(app);
+    end
     
     %compute rolling window delta for standard deviation of position
-    engineerRollingStdDevPosnDelta(app);
+    if ismember('Local change in standard deviation of positions', app.movie_data.state.selected_features)
+        engineerRollingStdDevPosnDelta(app);
+    end
     
     %compute rolling window of change in dispersion
-    engineerRollingDispersionChange(app);
+    if ismember('Local change in dispersion of positions', app.movie_data.state.selected_features)
+        engineerRollingDispersionChange(app);
+    end
     
     %compute rolling window of displacement between position centroids
-    engineerRollingCentroidDisplacement(app);
-
+    if ismember('Local displacement in centroid of localisations', app.movie_data.state.selected_features)
+        engineerRollingCentroidDisplacement(app);
+    end
+    
     
     %============
     %Class labels

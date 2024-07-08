@@ -1,5 +1,5 @@
 function [] = displayTrackAnnotations(app)
-%Display the differences between annotations, Oliver Pambos, 05/07/2024.
+%Display and compare track annotations, Oliver Pambos, 05/07/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
@@ -29,7 +29,7 @@ function [] = displayTrackAnnotations(app)
 %
 %
 %This funciton populates the annotation inspector UIAxes component with
-%annotations for comparison.
+%annotations for inspection and comparison.
 %
 %This code has been adapted from an earlier external tool used for
 %visualisation, inspection, and data exploration of saved analysis files
@@ -51,18 +51,40 @@ function [] = displayTrackAnnotations(app)
     %obtain column indices
     [col_t, col_stepsize] = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)', 'Step size (nm)');
     
-    %check data exists
-    if ~isfield(app.movie_data.results, 'VisuallyLabelled') || ~isfield(app.movie_data.results, 'BiLSTMLabelled')
-        app.textout.Value = "One of the annotation datasets does not exist";
-        return;
+    %use a map between the user selectable text and actual struct names
+    annotation_map = containers.Map(...
+    {'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
+    {'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
+    
+    %get selected annotations from the checkbox tree
+    selected_nodes = app.CompareAnnotationsTree.CheckedNodes;
+    selected_annotations = {selected_nodes.Text};
+    
+    %check data exists for all selected annotations
+    available_annotations = fieldnames(app.movie_data.results);
+    for ii = 1:size(selected_annotations,2)
+        struct_name = annotation_map(selected_annotations{ii});
+        if ~ismember(struct_name, available_annotations)
+            app.textout.Value = sprintf("Annotation dataset %s does not exist", selected_annotations{ii});
+            return;
+        end
     end
     
     %extract labels
-    human_labels = extractLabels(app.movie_data.results.VisuallyLabelled.LabelledMols, col_t, col_stepsize);
-    model_labels = extractLabels(app.movie_data.results.BiLSTMLabelled.LabelledMols, col_t, col_stepsize);
+    all_labels = struct();
+    for ii = 1:size(selected_annotations,2)
+        annotation_name = selected_annotations{ii};
+        struct_name = annotation_map(annotation_name);
+        all_labels.(struct_name) = extractLabels(app.movie_data.results.(struct_name).LabelledMols, col_t, col_stepsize);
+    end
     
-    %find common tracks between human and model annotations
-    common_tracks = findCommonTracks(human_labels, model_labels);
+    %find common tracks among all selected annotations
+    annotation_fields = fieldnames(all_labels);
+    if isscalar(annotation_fields)
+        common_tracks = cell2mat(cellfun(@(x) [x.CellID, x.MolID], all_labels.(annotation_fields{1}), 'UniformOutput', false));
+    else
+        common_tracks = findCommonTracks(all_labels.(annotation_fields{1}), all_labels.(annotation_fields{2:end}));
+    end
     
     if isempty(common_tracks)
         disp('No common tracks found.');
@@ -74,21 +96,29 @@ function [] = displayTrackAnnotations(app)
     selected_track = common_tracks(idx, :);
     
     %extract the selected track data
-    human_track_data = findTrackData(human_labels, selected_track);
-    model_track_data = findTrackData(model_labels, selected_track);
+    track_data = struct();
+    for field_names = fieldnames(all_labels)'
+        track_data.(field_names{1}) = findTrackData(all_labels.(field_names{1}), selected_track);
+    end
     
-    %plotting
+    %plot track data
     ax = app.AnnotationUIAxes;
     reset(ax);
     yyaxis(ax, 'left');
-    plot(ax, human_track_data.Time, human_track_data.StepSize, 'k-', 'LineWidth', 1.5, 'DisplayName', 'Step Size');
+    first_annotation = annotation_fields{1};
+    plot(ax, track_data.(first_annotation).Time, track_data.(first_annotation).StepSize, 'k-', 'LineWidth', 1.5, 'DisplayName', 'Step Size');
     ylabel(ax, 'Step size (nm)', 'FontSize', 18);
     
+    %plot labels on right axis
     yyaxis(ax, 'right');
     hold(ax, 'on');
-    plot(ax, human_track_data.Time, human_track_data.Labels - 0.01, 'b--', 'LineWidth', 1.5, 'DisplayName', 'Human Annotations');
-    plot(ax, model_track_data.Time, model_track_data.Labels + 0.01, 'g--', 'LineWidth', 1.5, 'Color', [0, 0.5, 0], 'DisplayName', 'BiLSTM Annotations');
-    xlim(ax, [0 max(human_track_data.Time)]);
+    color_map = lines(size(fieldnames(track_data), 1));
+    ii = 1;
+    for field_names = fieldnames(track_data)'
+        plot(ax, track_data.(field_names{1}).Time, track_data.(field_names{1}).Labels + 0.01 * ii, '--', 'LineWidth', 1.5, 'DisplayName', field_names{1}, 'Color', color_map(ii, :));
+        ii = ii + 1;
+    end
+    xlim(ax, [0 max(track_data.(first_annotation).Time)]);
     ylim(ax, [0.5 2.5]);
     set(ax, 'ytick', 1:length(app.movie_data.params.class_names), 'yticklabel', app.movie_data.params.class_names, 'FontSize', 18);
     ylabel(ax, 'Annotations', 'FontSize', 18);
@@ -168,8 +198,8 @@ function [labels] = extractLabels(LabelledMols, col_t, col_stepsize)
 end
 
 
-function [common] = findCommonTracks(human, model)
-%Finds the tracks in common between two annotation sets, Oliver Pambos,
+function [common] = findCommonTracks(varargin)
+%Finds the tracks in common between annotation sets, Oliver Pambos,
 %05/07/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -205,12 +235,12 @@ function [common] = findCommonTracks(human, model)
 %
 %Inputs
 %------
-%human  (cell)  cell array of human annotations
-%model  (cell)  cell array of model annotations
+%varargin   (cell)  variable number of input cell arrays, one for each set
+%                       annotation source
 %
 %Output
 %------
-%common (mat)   Nx2 matrix of tracks that are common to both annotation
+%common (mat)   Nx2 matrix of tracks that are common to all annotation
 %                   datasets, columns are,
 %                       col1: Cell ID
 %                       col2: Mol ID
@@ -219,9 +249,16 @@ function [common] = findCommonTracks(human, model)
 %-----------------------------------------
 %None
     
-    human_keys = cell2mat(cellfun(@(x) [x.CellID, x.MolID], human, 'UniformOutput', false));
-    model_keys = cell2mat(cellfun(@(x) [x.CellID, x.MolID], model, 'UniformOutput', false));
-    common = intersect(human_keys, model_keys, 'rows');
+    if nargin < 2
+        error('At least two sets of annotations are required');
+    end
+    
+    common_keys = cell2mat(cellfun(@(x) [x.CellID, x.MolID], varargin{1}, 'UniformOutput', false));
+    for ii = 2:nargin
+        model_keys = cell2mat(cellfun(@(x) [x.CellID, x.MolID], varargin{ii}, 'UniformOutput', false));
+        common_keys = intersect(common_keys, model_keys, 'rows');
+    end
+    common = common_keys;
 end
 
 

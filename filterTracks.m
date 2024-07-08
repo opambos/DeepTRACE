@@ -486,46 +486,48 @@ function [movie_data] = filterByAllLocs(movie_data, tolerance)
     f = waitbar(0,'Processing tracks, please wait....','Name','Filtering tracks');
     %loop over cells
     for ii = 1:size(movie_data.cellROI_data,1)
-        %get list of molecule IDs in current cell
-        mol_list = unique(movie_data.cellROI_data(ii).tracks(:,4));
-        
-        %keep a list of trajectories to filter
-        filter_list = [];
-        
-        %loop over trajectories
-        for jj = 1:size(mol_list,1)
-            %obtain first and last frame in the trajectory
-            track_lo = min(movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj,1), 3));
-            track_hi = max(movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj,1), 3));
+        if ~isempty(movie_data.cellROI_data(ii).tracks)
+            %get list of molecule IDs in current cell
+            mol_list = unique(movie_data.cellROI_data(ii).tracks(:,4));
             
-            %obtain reduced localisation list corresponding to the time period of the trajectory; also only taking (frame, x, y)
-            loc_subset = movie_data.cellROI_data(ii).localizationData((movie_data.cellROI_data(ii).localizationData(:,1) >= track_lo) &...
-                (movie_data.cellROI_data(ii).localizationData(:,1) <= track_hi), 1:3);
-            %reorder to be consistent with trajectory columns (x, y, frame)
-            loc_subset = loc_subset(:,[2 3 1]);
+            %keep a list of trajectories to filter
+            filter_list = [];
             
-            %obtain trajectory
-            curr_track = (movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj), 1:3));
-
-            %check if there are any localisations in the cell in this time range that do not correspond to the trajectory
-            match = ismember(loc_subset, curr_track, 'rows');
-            unmatched_locs = loc_subset(~match, :);
-            
-            % decide whether to add trajectory to filter list
-            if size(unmatched_locs, 1) > tolerance
-                filter_list = [filter_list jj];
+            %loop over trajectories
+            for jj = 1:size(mol_list,1)
+                %obtain first and last frame in the trajectory
+                track_lo = min(movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj,1), 3));
+                track_hi = max(movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj,1), 3));
+                
+                %obtain reduced localisation list corresponding to the time period of the trajectory; also only taking (frame, x, y)
+                loc_subset = movie_data.cellROI_data(ii).localizationData((movie_data.cellROI_data(ii).localizationData(:,1) >= track_lo) &...
+                    (movie_data.cellROI_data(ii).localizationData(:,1) <= track_hi), 1:3);
+                %reorder to be consistent with trajectory columns (x, y, frame)
+                loc_subset = loc_subset(:,[2 3 1]);
+                
+                %obtain trajectory
+                curr_track = (movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == mol_list(jj), 1:3));
+    
+                %check if there are any localisations in the cell in this time range that do not correspond to the trajectory
+                match = ismember(loc_subset, curr_track, 'rows');
+                unmatched_locs = loc_subset(~match, :);
+                
+                % decide whether to add trajectory to filter list
+                if size(unmatched_locs, 1) > tolerance
+                    filter_list = [filter_list jj];
+                end
             end
-        end
-        
-        %add the short tracks to the filter list - I'm not sure this is ever used
-        short_tracks = identifyShortTracks(movie_data.cellROI_data(ii).tracks, movie_data.params.min_track_len);
-        filter_list = [filter_list short_tracks'];
-        filter_list = unique(filter_list);
-        
-        %filter trajectories from current cell
-        if ~isempty(filter_list)
-            for jj = 1:size(filter_list, 2)
-                movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == filter_list(jj), :) = [];
+            
+            %add the short tracks to the filter list - I'm not sure this is ever used
+            short_tracks = identifyShortTracks(movie_data.cellROI_data(ii).tracks, movie_data.params.min_track_len);
+            filter_list = [filter_list short_tracks'];
+            filter_list = unique(filter_list);
+            
+            %filter trajectories from current cell
+            if ~isempty(filter_list)
+                for jj = 1:size(filter_list, 2)
+                    movie_data.cellROI_data(ii).tracks(movie_data.cellROI_data(ii).tracks(:,4) == filter_list(jj), :) = [];
+                end
             end
         end
         waitbar(ii/size(movie_data.cellROI_data,1), f, strcat('Processing cell #', num2str(ii), {' '}, 'of', {' '}, num2str(size(movie_data.cellROI_data,1))));

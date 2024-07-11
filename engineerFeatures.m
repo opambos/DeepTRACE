@@ -93,11 +93,16 @@ function [] = engineerFeatures(app)
 %engineerRollingStdDevPosnDelta()       - local to this .m file
 %engineerRollingDispersionChange()      - local to this .m file
 %engineerRollingCentroidDisplacement()  - local to this .m file
+%engineerFramesFromEnds()               - local to this .m file
     
     
     %obtain window size from user
     popup = FeatureEngineeringMenu(app);
     uiwait(popup.FeatureEngineeringMenuUIFigure);
+    
+    if ismember('Smoothed step size', app.movie_data.state.selected_features)
+        engineerSmoothedStepSize(app);
+    end
     
     %==============================
     %Obligatory engineered features
@@ -220,6 +225,10 @@ function [] = engineerFeatures(app)
     %compute rolling window of displacement between position centroids
     if ismember('Local displacement in centroid of localisations', app.movie_data.state.selected_features)
         engineerRollingCentroidDisplacement(app);
+    end
+    
+    if ismember('Proximity to ends of track', app.movie_data.state.selected_features)
+        engineerFramesFromEnds(app);
     end
     
     
@@ -2120,5 +2129,201 @@ function [] = engineerRollingCentroidDisplacement(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling centroid displacement (nm)'];
+    close(h_progress);
+end
+
+
+function [] = engineerFramesFromEnds(app)
+%Feature engineering for the number of frames from start and end of the
+%track, Oliver Pambos, 09/07/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerFramesFromEnds
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%The features engineered here compute the number of frames from the current
+%point to the start and end of the track. The goal here is to better learn
+%the edge effects that occur when contextual information is limited at the
+%track ends.
+%
+%This function produces four new features including both the raw number of
+%captured localisations between each point and the start and end of the
+%track, and the frame offset between the start and end of the track. The
+%localisation offset is perhaps more useful here as the objective is to
+%capture the amount of contextual information is available around each
+%point, which is relatively independent of the memory parameter. However,
+%missed frames may reduce the certainty with which each annotation can be
+%assigned, and so both parameters for each end of the track are included.
+%
+%The new feature columns added are,
+%   col1: Localisations from track start
+%   col2: Localisations from track end
+%   col3: Frames from track start
+%   col4: Frames from track end
+%
+%Input
+%-----
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    h_progress  = waitbar(0,'Preparing....','Name','Computing proximity to track ends');
+    
+    for ii = 1:N_cells
+        waitbar(ii/N_cells, h_progress, sprintf('Computing track end proximity in cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            %pre-allocate new cols
+            new_cols    = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), 4);
+            %keep track of where to insert new data into new_cols each time
+            idx_start   = 1;
+
+            %loop over all filtered molecules in cell
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
+                
+                %calculate features
+                rows_from_start = (0:size(curr_track, 1) - 1)';             %col1: rows from track start
+                rows_from_end = flipud(rows_from_start);                    %col2: rows from track end
+                frames_from_start = curr_track(:, 3) - curr_track(1, 3);    %col3: frames from track start
+                frames_from_end = curr_track(end, 3) - curr_track(:, 3);    %col4: frames from track end
+                
+                %horizontally concat new cols
+                idx_end = idx_start + size(curr_track, 1) - 1;
+                new_cols(idx_start:idx_end, :) = [rows_from_start, rows_from_end, frames_from_start, frames_from_end];
+                idx_start = idx_end + 1;
+            end
+            
+            %append new data to current cell's tracks data
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
+        end
+    end
+    
+    %update column titles accordingly
+    additional_titles = {'Localisations from track start', 'Localisations from track end', 'Frames from track start', 'Frames from track end'};
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, additional_titles];
+    close(h_progress);
+end
+
+
+function [] = engineerSmoothedStepSize(app)
+%Feature engineering for smoothed step sizes, Oliver Pambos, 09/07/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerSmoothedStepSize
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This function generates smoothed step sizes using a moving average with a
+%window size defined by the user.
+%
+%Input
+%-----
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %get the step size input for smoothing from user using pop-up app
+    popup = SetWindowSizeStepSmoothingPopUp(app);
+    uiwait(popup.UIFigure);
+    window_size = app.movie_data.state.step_smoothing_win_size;
+
+    if window_size == 0
+        app.textout.Value = "User chose to cancel feature engineering for smoothed step sizes";
+        return;
+    end
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    h_progress  = waitbar(0,'Preparing....','Name','Computing smoothed steps for all tracks');
+
+    for ii = 1:N_cells
+        waitbar(ii/N_cells, h_progress, sprintf('Computing smoothed steps for cell %d of %d', ii, N_cells));
+
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            %pre-allocate
+            new_cols = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), 1);
+            idx_start = 1;
+
+            %loop over all filtered molecules in the current cell
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
+
+                %compute step sizes
+                curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* app.movie_data.params.px_scale];
+                
+                %smooth step sizes using moving average
+                smoothed_steps = smoothdata(curr_steps, 'movmean', window_size);
+                
+                %insert smoothed steps into appropriate rows
+                idx_end = idx_start + size(curr_track, 1) - 1;
+                new_cols(idx_start:idx_end, 1) = smoothed_steps;
+                idx_start = idx_end + 1;
+            end
+            
+            %append new data to current cell's tracks data
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Smoothed step size (nm)'];
     close(h_progress);
 end

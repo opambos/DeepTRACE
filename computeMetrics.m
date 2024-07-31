@@ -1,4 +1,4 @@
-function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] = computeMetrics(model, data, labels)
+function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] = computeMetrics(model, data, labels, show_plot)
 %Compute the metrics, and generate confusion matrix, Oliver Pambos,
 %03/02/2024.
 %%oliver.pambos@physics.ox.ac.uk
@@ -64,18 +64,45 @@ function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] =
     N_classes       = length(all_classes);
     confusion_mat   = zeros(N_classes, N_classes);
     
-    %loop over all spans
-    for ii = 1:numel(data)
-        %predict labels
-        predicted_labels = classify(model, data{ii});
-        actual_labels    = labels{ii};
-        
-        %update confusion matrix
-        for jj = 1:length(predicted_labels)
-            actual_class_idx    = find(all_classes == string(actual_labels(jj)));
-            predicted_class_idx = find(all_classes == string(predicted_labels(jj)));
-            confusion_mat(actual_class_idx, predicted_class_idx) = confusion_mat(actual_class_idx, predicted_class_idx) + 1;
+    app.LossfunctionDropDown.Value = "Transition and class weighted";  %hacky while testing
+    switch app.LossfunctionDropDown.Value
+        case "Class weighted"
+            %loop over all spans
+            for ii = 1:numel(data)
+                %predict labels
+                predicted_labels = classify(model, data{ii});
+                actual_labels    = labels{ii};
+                
+                %update confusion matrix
+                for jj = 1:length(predicted_labels)
+                    actual_class_idx    = find(all_classes == string(actual_labels(jj)));
+                    predicted_class_idx = find(all_classes == string(predicted_labels(jj)));
+                    confusion_mat(actual_class_idx, predicted_class_idx) = confusion_mat(actual_class_idx, predicted_class_idx) + 1;
+                end
+            end
+
+        case "Transition and class weighted"
+        for ii = 1:size(data, 1)
+            data{ii} = double(transpose(data{ii}));
+            labels{ii} = categorical(transpose(labels{ii}));
         end
+
+        %loop over all spans
+        for ii = 1:numel(data)
+            %predict labels
+            predicted_probs = predict(model, data{ii});
+            [~, max_indices] = max(predicted_probs, [], 2);
+            predicted_labels = categorical(all_classes(max_indices));
+            actual_labels    = labels{ii};
+            
+            %update confusion matrix
+            for jj = 1:length(predicted_labels)
+                actual_class_idx    = find(all_classes == string(actual_labels(jj)));
+                predicted_class_idx = find(all_classes == string(predicted_labels(jj)));
+                confusion_mat(actual_class_idx, predicted_class_idx) = confusion_mat(actual_class_idx, predicted_class_idx) + 1;
+            end
+        end
+        
     end
 
     %store metrics for each class
@@ -113,10 +140,12 @@ function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] =
     %calculate overall accuracy
     accuracy = sum(diag(confusion_mat)) / sum(confusion_mat(:));
     
-    %generate visual confusion matrix
-    figure;
-    confusion_chart = confusionchart(confusion_mat, all_classes, 'FontSize', 18);
-    confusion_chart.Title = 'Confusion Matrix';
-    %confusion_chart.RowSummary = 'row-normalized';
-    %confusion_chart.ColumnSummary = 'column-normalized';
+    if show_plot
+        %generate visual confusion matrix
+        figure;
+        confusion_chart = confusionchart(confusion_mat, all_classes, 'FontSize', 18);
+        confusion_chart.Title = 'Confusion Matrix';
+        %confusion_chart.RowSummary = 'row-normalized';
+        %confusion_chart.ColumnSummary = 'column-normalized';
+    end
 end

@@ -1,4 +1,4 @@
-function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] = computeMetricsPadded(model, data, labels)
+function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] = computeMetricsPadded(model, data, labels, show_plot)
 %Compute the metrics for padded datasets, and generate confusion matrix,
 %Oliver Pambos, 03/02/2024.
 %%oliver.pambos@physics.ox.ac.uk
@@ -131,8 +131,10 @@ function [accuracy, mean_precision, mean_recall, mean_f1_score, confusion_mat] =
 
     %calculate overall accuracy
     accuracy = sum(diag(confusion_mat)) / N_nonpadded;
-
-    %generate visual confusion matrix
-    confusion_chart = confusionchart(confusion_mat, all_classes, 'FontSize', 18);
-    confusion_chart.Title = 'Confusion Matrix';
+    
+    if show_plot
+        %generate visual confusion matrix
+        confusion_chart = confusionchart(confusion_mat, all_classes, 'FontSize', 18);
+        confusion_chart.Title = 'Confusion Matrix';
+    end
 end

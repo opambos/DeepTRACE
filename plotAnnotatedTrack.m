@@ -210,19 +210,22 @@ function [] = plotTrackByColor(ax, track_data, event_label_colours, overlay_offs
             end_idx = end_idx + 1;
         end
         
-        %include first point of next state to connect segments
-        if end_idx < size(states, 1)
-            end_idx = end_idx + 1;
+        %correct endpoint if it's run into the next state
+        if states(end_idx - 1) ~= states(end_idx)
+            end_idx = end_idx - 1;
         end
         
+        %include the last point of the previous state, unless it was first point, because step sizes are essentially a measure of movement from the previous frame
+        start_idx = max(1, start_idx - 1);
+
         %lookup color of current segment
-        color = event_label_colours(states(start_idx), :);
+        color = event_label_colours(states(end_idx), :);
         
         %plot the segment
         plot(ax, x(start_idx:end_idx), y(start_idx:end_idx), 'Color', color, 'LineWidth', 1.5);
         
         %move to next segment
-        start_idx = end_idx;
+        start_idx = end_idx + 1;
     end
     
     hold(ax, 'off');

@@ -51,12 +51,16 @@ function [accuracy, precision, recall, f1_score] = compareLabels(app)
     %for certain dataset sizes by instead placing the switch statement
     %around ML_mol inside main loop - placed here for clarity
     switch app.movie_data.models.current_model
-        case "Long Short-Term Memory"
+        case "LSTM"
             ML_labelled = app.movie_data.results.LSTMLabelled.LabelledMols;
         case "GRU"
             ML_labelled = app.movie_data.results.GRULabelled.LabelledMols;
+        case "BiLSTM"
+            ML_labelled = app.movie_data.results.BiLSTMLabelled.LabelledMols;
+        case "BiGRU"
+            ML_labelled = app.movie_data.results.BiGRULabelled.LabelledMols;
         otherwise
-            % << exception handling here >>
+            app.textout.Value = "Performance metrics could not be performed as model was not recognised.";
             return;
     end
     

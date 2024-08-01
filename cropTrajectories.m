@@ -69,21 +69,33 @@ function [] = cropTrajectories(app, dataset, ignore_start, ignore_end)
             for ii = 1:numel(app.movie_data.results.FeatureScaledData.LabelledMols)
                 app.movie_data.results.FeatureScaledData.LabelledMols{ii, 1}.Mol = app.movie_data.results.FeatureScaledData.LabelledMols{ii, 1}.Mol(ignore_start+1 : end-ignore_end, :);
             end
-
+            
         case "GRU_labelled"
             %remove the relevant rows
             for ii = 1:numel(app.movie_data.results.GRULabelled.LabelledMols)
                 app.movie_data.results.GRULabelled.LabelledMols{ii, 1}.Mol = app.movie_data.results.GRULabelled.LabelledMols{ii, 1}.Mol(ignore_start+1 : end-ignore_end, :);
             end
-
+            
         case "LSTM_labelled"
             %remove the relevant rows
             for ii = 1:numel(app.movie_data.results.LSTMLabelled.LabelledMols)
                 app.movie_data.results.LSTMLabelled.LabelledMols{ii, 1}.Mol = app.movie_data.results.LSTMLabelled.LabelledMols{ii, 1}.Mol(ignore_start+1 : end-ignore_end, :);
             end
             
+        case "BiGRU_labelled"
+            %remove the relevant rows
+            for ii = 1:numel(app.movie_data.results.BiGRULabelled.LabelledMols)
+                app.movie_data.results.BiGRULabelled.LabelledMols{ii, 1}.Mol = app.movie_data.results.BiGRULabelled.LabelledMols{ii, 1}.Mol(ignore_start+1 : end-ignore_end, :);
+            end
+            
+        case "BiLSTM_labelled"
+            %remove the relevant rows
+            for ii = 1:numel(app.movie_data.results.BiLSTMLabelled.LabelledMols)
+                app.movie_data.results.BiLSTMLabelled.LabelledMols{ii, 1}.Mol = app.movie_data.results.BiLSTMLabelled.LabelledMols{ii, 1}.Mol(ignore_start+1 : end-ignore_end, :);
+            end
+            
         otherwise
-
+            
     end
     
     %keep a record of this operation with the trained model

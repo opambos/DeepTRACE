@@ -1,4 +1,4 @@
-function [] = computeAnnotationMetrics(app)
+function [] = computeAnnotationMetrics(app, structs_to_use)
 %Computes the metrics for annotations, Oliver Pambos, 17/07/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -44,6 +44,25 @@ function [] = computeAnnotationMetrics(app)
 %one annotation source for each model type (the results struct only
 %contains one BiLSTM annotation, one GRU model annotation, etc.).
 %
+%This function has been generalised to replace compareLabels.m when called
+%from the ClassifywithmodelButtonPushed callback to prevent repetition in
+%the code, and also to produce clearer display and macro-averaged metrics
+%for arbitrary number of classes. This necessitates the optional input
+%structs_to_use, which skips the checking of user input checkbox selection
+%in this scenario.
+%
+%The call to cropTracjectories() in labelWithSlidingWindow.m is currently
+%disabled pending a future update of this function, which correctly aligns
+%the cropped trajectories with the ground truth reference labels. This
+%offset occurs when tracks are cropped due to the engineered features used
+%(e.g. it is not possible to annotate the first loc if step size is a
+%feature as there is no information of the step size from the previous
+%frame). This update will not rely on the stored row vector 'removed_rows',
+%but rather perform direct comparison to frame numbers. This may introduce
+%complexity as this function computes metrics for the annotations from
+%multiple sources in the same function call, and each set of annotations
+%may contain different removed rows based on the engineered features used.
+%
 %
 %Inputs
 %------
@@ -62,26 +81,28 @@ function [] = computeAnnotationMetrics(app)
     {'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
     {'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
     
-    %get selected annotations from GUI checkbox tree
-    selected_nodes = app.CompareAnnotationsTree.CheckedNodes;
-    selected_annotations = {selected_nodes.Text};
-    
-    %check data exists for all selected annotations
-    structs_to_use = {};
-    available_annotations = fieldnames(app.movie_data.results);
-    for ii = 1:size(selected_annotations,2)
-        struct_name = annotation_map(selected_annotations{ii});
-        if ~ismember(struct_name, available_annotations)
-            app.textout.Value = sprintf("Annotation dataset %s does not exist", selected_annotations{ii});
-            return;
-        else
-            structs_to_use = cat(1, structs_to_use, struct_name);
+    %if f'n called from [Compute metrics] tab, work out which annotation sets to use from GUI checkbox tree; otherwise rely on structs_to_use input
+    if nargin < 2
+        selected_nodes = app.CompareAnnotationsTree.CheckedNodes;
+        selected_annotations = {selected_nodes.Text};
+        
+        %check data exists for all selected annotations
+        structs_to_use = {};
+        available_annotations = fieldnames(app.movie_data.results);
+        for ii = 1:size(selected_annotations,2)
+            struct_name = annotation_map(selected_annotations{ii});
+            if ~ismember(struct_name, available_annotations)
+                app.textout.Value = sprintf("Annotation dataset %s does not exist", selected_annotations{ii});
+                return;
+            else
+                structs_to_use = cat(1, structs_to_use, struct_name);
+            end
         end
     end
     
     %extract labels
     all_labels = struct();
-    for ii = 1:size(selected_annotations,2)
+    for ii = 1:size(structs_to_use, 1)
         LabelledMols = app.movie_data.results.(string(structs_to_use(ii))).LabelledMols;
         N = numel(LabelledMols);
         labels = cell(N, 1);
@@ -136,6 +157,9 @@ function [] = computeAnnotationMetrics(app)
         for jj = 4:size(common_tracks, 2) %start from 4 because 1, 2, 3 are cell_id, mol_id, and ground_truth_idx
             pred_labels = all_labels.(annotation_fields{jj-2}){common_tracks(ii,jj), 1}.Labels;
             
+            % << a future update will place here a comparison between frame numbers when tracks have been truncated >>
+            % << to ensure that each label is compared only to its corresponding frame in the ground truth dataset >>
+
             %populate confusion matrix
             for kk = 1:size(gt_labels,1)
                 actual_class = gt_labels(kk,1);

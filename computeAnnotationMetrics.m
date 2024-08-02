@@ -78,8 +78,8 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
     
     %use a map between user selectable text and actual struct names
     annotation_map = containers.Map(...
-    {'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
-    {'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
+    {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
+    {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
     
     %if f'n called from [Compute metrics] tab, work out which annotation sets to use from GUI checkbox tree; otherwise rely on structs_to_use input
     if nargin < 2
@@ -156,6 +156,12 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
         %loop over other annotation sources requested by user (each of these are another column in the common_tracks matrix)
         for jj = 4:size(common_tracks, 2) %start from 4 because 1, 2, 3 are cell_id, mol_id, and ground_truth_idx
             pred_labels = all_labels.(annotation_fields{jj-2}){common_tracks(ii,jj), 1}.Labels;
+            
+            %error checking incase user has run classification before importing ground truth this can lead to -1 not being removed from the original numeric matrix
+            %this check will be later removed after adding direct frame number comparisons; this also handles issues from the localisation algorithm picking up additional false localisations in a frame containing a genuine molecule
+            if size(gt_labels, 1) ~= size(pred_labels, 1)
+                continue;
+            end
             
             % << a future update will place here a comparison between frame numbers when tracks have been truncated >>
             % << to ensure that each label is compared only to its corresponding frame in the ground truth dataset >>

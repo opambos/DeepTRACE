@@ -58,8 +58,8 @@ function [] = plotAnnotatedTrack(app)
     %========================================================
     %use a map between the user selectable text and actual struct names
     annotation_map = containers.Map(...
-    {'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
-    {'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
+    {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
+    {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
     
     %get selected annotations from the checkbox tree
     selected_nodes = app.CompareAnnotationsTree.CheckedNodes;

@@ -72,7 +72,7 @@ function [] = importGroundTruth(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%None
+%eliminateFalseLocsUsingGT()
     
     %obtain frame number column
     if isfield(app.movie_data.params, "column_titles") && isfield(app.movie_data.params.column_titles, "tracks")
@@ -236,6 +236,9 @@ function [] = importGroundTruth(app)
         app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol = curr_mol;
     end
     
+    %use ground truth data to identify and eliminate false localisations in all tracks
+    eliminateFalseLocsUsingGT(app);
+
     %compute and store the event sequences and labelling times
     timestamp = string(datetime);
     for ii = 1:size(app.movie_data.results.GroundTruth.LabelledMols, 1)
@@ -246,7 +249,91 @@ function [] = importGroundTruth(app)
 end
 
 
-
-
-
-
+function [] = eliminateFalseLocsUsingGT(app)
+%Erase from tracks and ground truth tracks and tracks that don't appear in
+%the ground truth annotation data, Oliver Pambos, 29/02/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: importGroundTruth
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%The ground truth data provides an excellent opportunity to identify and
+%remove erroneous false localisations in the dataset. After annotating the
+%ground truth track data (app.movie_data.results.GroundTruth), this
+%function searches for all localisations for which there is a missing
+%ground truth annotation (i.e. -1), and then eliminates this from both the
+%ground truth track data, and also the global track data
+%(app.movie_data.cellROI_data(jj).tracks).
+%
+%Eliminating these localisations from the source data is necessary because
+%subsequent datasets for model annotation are taken from here prior to each
+%model classificaiton process; if this were avoided there would be track
+%length conflicts when computing metrics. Note that I have also implemented
+%error checking for inconsistent track lengths, and
+%computeAnnotationMetrics.m also contains advice on further improvements
+%that will perform a direct lookup to the unique key (frame, or
+%[x,y,frame]), however this would increase latency on large files.
+%
+%Inputs
+%------
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %loop over tracks in ground truth annotations
+    for ii = 1:numel(app.movie_data.results.GroundTruth.LabelledMols)
+        curr_gt_mol = app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol;
+        
+        %find any rows with -1 in final column
+        error_rows = curr_gt_mol(curr_gt_mol(:, end) == -1, :);
+        
+        %loop over each offending row, removing it from tracks
+        for kk = 1:size(error_rows, 1)
+            %first three cols (x, y, frame) are unique
+            curr_error_row = error_rows(kk, 1:3);
+            
+            %loop every cell in cellROI_data and erase matching row
+            for jj = 1:numel(app.movie_data.cellROI_data)
+                cell_tracks = app.movie_data.cellROI_data(jj).tracks;
+                del_row_idx = ismember(cell_tracks(:, 1:3), curr_error_row, 'rows');
+                
+                %delete it
+                if any(del_row_idx)
+                    app.movie_data.cellROI_data(jj).tracks(del_row_idx, :) = [];
+                end
+            end
+        end
+        
+        %finally remove the offending rows from the ground truth track
+        app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol = curr_gt_mol(curr_gt_mol(:, end) ~= -1, :);
+    end
+end

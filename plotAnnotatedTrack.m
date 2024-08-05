@@ -1,7 +1,6 @@
 function [] = plotAnnotatedTrack(app)
 %Plots an annotated track over a brightfield image for each annotation
-%source, Oliver Pambos,
-%05/07/2024.
+%source, Oliver Pambos, 05/07/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
@@ -37,7 +36,6 @@ function [] = plotAnnotatedTrack(app)
 %This code has been adapted from an earlier external tool used for data
 %exploration of saved analysis files, and incorporated into the main GUI.
 %
-%
 %Inputs
 %------
 %app    (handle)    main GUI handle
@@ -51,21 +49,21 @@ function [] = plotAnnotatedTrack(app)
 %plotTrackByColor() - local to this .m file
     
     cell_ID = str2double(app.InspectCellID.Text);
-    mol_ID = str2double(app.InspectMolID.Text);
+    mol_ID  = str2double(app.InspectMolID.Text);
     
     %========================================================
     %Processing user selections for which annotations to plot
     %========================================================
-    %use a map between the user selectable text and actual struct names
+    %use a map between user selectable text and actual struct names
     annotation_map = containers.Map(...
     {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
     {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
     
-    %get selected annotations from the checkbox tree
+    %get selected annotations from GUI checkbox tree
     selected_nodes = app.CompareAnnotationsTree.CheckedNodes;
     requested_annotations = {selected_nodes.Text};
     
-    %check all of the substructs selected exist
+    %check all selected substructs exist
     structs_to_use = {};
     available_annotations = fieldnames(app.movie_data.results);
     for ii = 1:size(requested_annotations,2)
@@ -121,7 +119,7 @@ function [] = plotAnnotatedTrack(app)
         %plot track
         plotTrackByColor(ax, plot_data.(string(structs_to_use(ii))), app.movie_data.params.event_label_colours, overlay_offset);
         axis(ax, 'off');
-        title(ax, structs_to_use{ii});  %shold be replaced with reverse lookup with annotation_map to replace struct name with human readable text
+        title(ax, structs_to_use{ii});  %should be replaced with reverse lookup with annotation_map to replace struct name with human readable text - see legend sol'n in displayTrackAnnotations.m
     end
 end
 
@@ -132,7 +130,7 @@ function [] = plotTrackByColor(ax, track_data, event_label_colours, overlay_offs
 %oliver.pambos@physics.ox.ac.uk
 %
 %
-%MATLAB FUNCTION: plotAnnotatedTrack
+%MATLAB FUNCTION: plotTrackByColor
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
@@ -164,6 +162,9 @@ function [] = plotTrackByColor(ax, track_data, event_label_colours, overlay_offs
 %This code has been adapted from an earlier external tool used for data
 %exploration of saved analysis files, and incorporated into the main GUI.
 %
+%This f'n is replicated almost exactly in genAnnotationVideo.m. See notes
+%in header of plotVideoTrackByColor() in that .m file to modularise this
+%f'n.
 %
 %Inputs
 %------

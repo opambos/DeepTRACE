@@ -46,7 +46,7 @@ function [] = displayTrackAnnotations(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%%findColumnIdx()
+%findColumnIdx()
 %findCommonTracks()
 %extractLabels()    - local to this .m file
     
@@ -58,8 +58,18 @@ function [] = displayTrackAnnotations(app)
     {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
     {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
     
-    %get selected annotations from the checkbox tree
+    %map for reformatting to legend
+    legend_map = containers.Map(...
+    {'GroundTruth',  'VisuallyLabelled',  'LSTMLabelled',           'BiLSTMLabelled',           'RFLabelled',           'GRULabelled',           'BiGRULabelled'}, ...
+    {'Ground truth', 'Human annotations', 'LSTM model annotations', 'BiLSTM model annotations', 'RF model annotations', 'GRU model annotations', 'BiGRU model annotations'});
+    
+    %get selected annotations from the checkbox tree; warn and exit if user hasn't yet made a selection
     selected_nodes = app.CompareAnnotationsTree.CheckedNodes;
+    if isempty(selected_nodes)
+        app.textout.Value = "Please select at least one annoation source to display";
+        warndlg("You must select at least one annotated dataset to display!", "Source dataset not selected", "modal");
+        return;
+    end
     selected_annotations = {selected_nodes.Text};
     
     %check data exists for all selected annotations
@@ -108,25 +118,45 @@ function [] = displayTrackAnnotations(app)
     reset(ax);
     yyaxis(ax, 'left');
     first_annotation = annotation_fields{1};
-    plot(ax, track_data.(first_annotation).Time, track_data.(first_annotation).StepSize, 'k-', 'LineWidth', 1.5, 'DisplayName', 'Step Size');
-    ylabel(ax, 'Step size (nm)', 'FontSize', 18);
+    plot(ax, track_data.(first_annotation).Time, track_data.(first_annotation).StepSize, 'k-', 'LineWidth', 2, 'DisplayName', 'Step Size');
+    ylabel(ax, 'Step size (nm)', 'FontSize', 24);
+    set(ax.YAxis(1), 'LineWidth', 2);   %line thickness of left y-axis bounding box
+    set(ax.XAxis, 'LineWidth', 2);      %line thickness of left y-axis bounding box
     
     %plot labels on right axis
     yyaxis(ax, 'right');
     hold(ax, 'on');
     color_map = lines(size(fieldnames(track_data), 1));
+    N_annotations = numel(fieldnames(track_data));
+
+    %positions the annotations with a slight jitter/offset so that they don't lay one on-top of another
+    if mod(N_annotations, 2) == 0
+        %if there's an even number of annotation sources split them symmetrically either size of class position
+        offsets = 0.03 * ((1:N_annotations) - (N_annotations / 2 + 0.5));
+    else
+        %if there's an even number of annotation sources split them symmetrically either size of class position with one state at zero offset
+        offsets = 0.03 * ((1:N_annotations) - ceil(N_annotations / 2));
+    end
+    
+    %plot the shifted annotations
     ii = 1;
     for field_names = fieldnames(track_data)'
-        plot(ax, track_data.(field_names{1}).Time, track_data.(field_names{1}).Labels + 0.01 * ii, '--', 'LineWidth', 1.5, 'DisplayName', field_names{1}, 'Color', color_map(ii, :));
+        plot(ax, track_data.(field_names{1}).Time, track_data.(field_names{1}).Labels + offsets(ii), '--', 'LineWidth', 1.8, 'DisplayName', field_names{1}, 'Color', color_map(ii, :));
         ii = ii + 1;
     end
+    
+    %style the plot
     xlim(ax, [0 max(track_data.(first_annotation).Time)]);
     ylim(ax, [0.5 2.5]);
-    set(ax, 'ytick', 1:length(app.movie_data.params.class_names), 'yticklabel', app.movie_data.params.class_names, 'FontSize', 18);
-    ylabel(ax, 'Annotations', 'FontSize', 18);
-    xlabel(ax, 'Time (s)', 'FontSize', 18);
-    legend(ax, 'FontSize', 16);
+    set(ax, 'ytick', 1:length(app.movie_data.params.class_names), 'yticklabel', app.movie_data.params.class_names, 'FontSize', 22);
+    ylabel(ax, 'Annotations', 'FontSize', 24);
+    xlabel(ax, 'Time (s)', 'FontSize', 24);
+    legend_entries = cellfun(@(x) legend_map(x), fieldnames(track_data), 'UniformOutput', false);
+    legend(ax, [{'Step size'}; legend_entries], 'FontSize', 22, 'Box', 'on', 'LineWidth', 1.5);
+    set(ax.YAxis(2), 'LineWidth', 2);   %line thickness of right axis bounding box
     hold(ax, 'off');
+    
+    set(app.AnnotationUIAxes, 'LineWidth', 2);
     
     %update cell and mol ID indicators
     app.InspectCellID.Text  = num2str(selected_track(1));

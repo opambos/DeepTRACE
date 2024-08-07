@@ -173,7 +173,7 @@ function [] = importGroundTruth(app)
     preset_colours = [1 0 0;        %red
         0 0 1;                      %blue
         0 1 0;                      %green
-        133/255 176/255 154/255;   %Cambridge blue
+        133/255 176/255 154/255;    %Cambridge blue
         87/255 188/255 240/255;     %light blue
         243/255 69/255 107/255      %light red
         ];
@@ -245,7 +245,8 @@ function [] = importGroundTruth(app)
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence  = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.DateClassified = timestamp;
     end
-    
+
+    app.textout.Value = "Completed import of ground truth data.";
 end
 
 
@@ -255,7 +256,7 @@ function [] = eliminateFalseLocsUsingGT(app)
 %oliver.pambos@physics.ox.ac.uk
 %
 %
-%MATLAB FUNCTION: importGroundTruth
+%MATLAB FUNCTION: eliminateFalseLocsUsingGT
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
@@ -283,7 +284,7 @@ function [] = eliminateFalseLocsUsingGT(app)
 %The ground truth data provides an excellent opportunity to identify and
 %remove erroneous false localisations in the dataset. After annotating the
 %ground truth track data (app.movie_data.results.GroundTruth), this
-%function searches for all localisations for which there is a missing
+%function identifies all localisations for which there is a missing
 %ground truth annotation (i.e. -1), and then eliminates this from both the
 %ground truth track data, and also the global track data
 %(app.movie_data.cellROI_data(jj).tracks).
@@ -297,6 +298,12 @@ function [] = eliminateFalseLocsUsingGT(app)
 %that will perform a direct lookup to the unique key (frame, or
 %[x,y,frame]), however this would increase latency on large files.
 %
+%Update: this function also now eliminates missing tracks, for which the
+%comparison to ground truth removed all rows, and also re-applies the
+%minimum track length criteria. Note however that the length criteria is
+%currently computed from total number of rows, not continuous tracks. A
+%future update may also re-produce the memory parameter filtering.
+%
 %Inputs
 %------
 %app    (handle)    main GUI handle
@@ -309,31 +316,61 @@ function [] = eliminateFalseLocsUsingGT(app)
 %-----------------------------------------
 %None
     
+    gt_data = app.movie_data.results.GroundTruth.LabelledMols;
+    cellROI_data = app.movie_data.cellROI_data;
+    
+    h = waitbar(0, 'Eliminating data not present in ground truth...');
+    
+    N_tracks = numel(gt_data);
+    
     %loop over tracks in ground truth annotations
-    for ii = 1:numel(app.movie_data.results.GroundTruth.LabelledMols)
-        curr_gt_mol = app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol;
+    for ii = 1:N_tracks
+        curr_gt_mol = gt_data{ii}.Mol;
         
-        %find any rows with -1 in final column
-        error_rows = curr_gt_mol(curr_gt_mol(:, end) == -1, :);
+        %identify error rows (with annotation -1) using first 3 cols
+        error_mask = curr_gt_mol(:, end) == -1;
+        error_rows = curr_gt_mol(error_mask, 1:3);
         
-        %loop over each offending row, removing it from tracks
-        for kk = 1:size(error_rows, 1)
-            %first three cols (x, y, frame) are unique
-            curr_error_row = error_rows(kk, 1:3);
+        %keep track of rows to be deleted in cellROI_data
+        for jj = 1:numel(cellROI_data)
+            cell_tracks = cellROI_data(jj).tracks;
             
-            %loop every cell in cellROI_data and erase matching row
-            for jj = 1:numel(app.movie_data.cellROI_data)
-                cell_tracks = app.movie_data.cellROI_data(jj).tracks;
-                del_row_idx = ismember(cell_tracks(:, 1:3), curr_error_row, 'rows');
-                
-                %delete it
-                if any(del_row_idx)
-                    app.movie_data.cellROI_data(jj).tracks(del_row_idx, :) = [];
-                end
+            %pre-allocate rows to delete
+            del_row_idx = false(size(cell_tracks, 1), 1);
+            
+            [~, idx] = ismember(cell_tracks(:, 1:3), error_rows, 'rows');
+            del_row_idx(idx ~= 0) = true;
+            
+            %mark rows for deletion in the logical index
+            if any(del_row_idx)
+                cellROI_data(jj).tracks(del_row_idx, :) = [];
             end
         end
         
-        %finally remove the offending rows from the ground truth track
-        app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol = curr_gt_mol(curr_gt_mol(:, end) ~= -1, :);
+        %remove offending rows from gt results data
+        gt_data{ii}.Mol = curr_gt_mol(~error_mask, :);
+        
+        waitbar(ii / N_tracks, h);
     end
+    
+    waitbar(1, h, "Removing empty tracks...");
+
+    %pre-allocate empty indices del list
+    empty_track_indices = false(N_tracks, 1);
+    
+    %work out which are empty, and re-apply the min track length criteria
+    for ii = 1:N_tracks
+        if isempty(gt_data{ii}.Mol) || size(gt_data{ii}.Mol, 1) < app.movie_data.params.min_track_len
+            empty_track_indices(ii) = true;
+        end
+    end
+    
+    %erase empty tracks
+    gt_data(empty_track_indices) = [];
+
+    close(h);
+
+    %write data back to app handles
+    app.movie_data.results.GroundTruth.LabelledMols = gt_data;
+    app.movie_data.cellROI_data = cellROI_data;
 end

@@ -100,8 +100,16 @@ function [] = engineerFeatures(app)
     popup = FeatureEngineeringMenu(app);
     uiwait(popup.FeatureEngineeringMenuUIFigure);
     
-    if ismember('Smoothed step size', app.movie_data.state.selected_features)
-        engineerSmoothedStepSize(app);
+    %if user has requested any rolling delta features, then prompt them for a rolling window size for this
+    strings_to_check = {'Local change in diffusion coefficient',...
+                        'Local change in mean step size',...
+                        'Local change in standard deviation of step sizes',...
+                        'Local change in standard deviation of positions',...
+                        'Local change in dispersion of positions',...
+                        'Local displacement in centroid of localisations'};
+    if any(ismember(strings_to_check, app.movie_data.state.selected_features))
+        popup = SlidingPairWindowSizePopUp(app);
+        uiwait(popup.SlidingPairWindowSizeFigure);
     end
     
     %==============================
@@ -112,7 +120,6 @@ function [] = engineerFeatures(app)
     
     %convert localisation data to nm
     engineerPosInNm(app);
-    
     
     %============================
     %Optional engineered features
@@ -127,6 +134,11 @@ function [] = engineerFeatures(app)
         engineerTimeStep(app);
     end
     
+    %compute smoothed step sizes
+    if ismember('Smoothed step size', app.movie_data.state.selected_features)
+        engineerSmoothedStepSize(app);
+    end
+
     %compute time from start of experiment
     if ismember('Time since start of experiment', app.movie_data.state.selected_features)
         engineerExperimentTime(app);
@@ -1432,12 +1444,7 @@ function [] = engineerRollingDStarDelta(app)
 %compileMSDMatrixFast()
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    app.movie_data.state.local_dstar_win_size = 0;
-
-    %obtain window size from user
-    popup = SelectLocalDiffusionParamsPopUp(app);
-    uiwait(popup.SelectLocalDiffusionParamsFigure);
-    window_size = app.movie_data.state.local_dstar_win_size;
+    window_size = app.movie_data.state.rolling_delta_win_size;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing local D* for all tracks');
     
@@ -1577,12 +1584,7 @@ function [] = engineerRollingMeanStepSizeDelta(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    app.movie_data.state.local_dstar_win_size = 0;
-
-    %obtain window size from user
-    popup = SelectLocalDiffusionParamsPopUp(app);
-    uiwait(popup.SelectLocalDiffusionParamsFigure);
-    window_size = app.movie_data.state.local_dstar_win_size;
+    window_size = app.movie_data.state.rolling_delta_win_size;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling mean step size for all tracks');
     
@@ -1697,12 +1699,7 @@ function [] = engineerRollingStdDevStepSizeDelta(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    app.movie_data.state.local_dstar_win_size = 0;
-    
-    %obtain window size from user
-    popup = SelectLocalDiffusionParamsPopUp(app);
-    uiwait(popup.SelectLocalDiffusionParamsFigure);
-    window_size = app.movie_data.state.local_dstar_win_size;
+    window_size = app.movie_data.state.rolling_delta_win_size;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling stdev step size');
     
@@ -1818,12 +1815,7 @@ function [] = engineerRollingStdDevPosnDelta(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    app.movie_data.state.local_dstar_win_size = 0;
-    
-    %obtain window size from user
-    popup = SelectLocalDiffusionParamsPopUp(app);
-    uiwait(popup.SelectLocalDiffusionParamsFigure);
-    window_size = app.movie_data.state.local_dstar_win_size;
+    window_size = app.movie_data.state.rolling_delta_win_size;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling stdev in position');
     
@@ -1944,12 +1936,7 @@ function [] = engineerRollingDispersionChange(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    app.movie_data.state.local_dstar_win_size = 0;
-    
-    %obtain window size from user
-    popup = SelectLocalDiffusionParamsPopUp(app);
-    uiwait(popup.SelectLocalDiffusionParamsFigure);
-    window_size = app.movie_data.state.local_dstar_win_size;
+    window_size = app.movie_data.state.rolling_delta_win_size;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling dispersion changes');
     
@@ -2069,13 +2056,9 @@ function [] = engineerRollingCentroidDisplacement(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %None
+    
     N_cells = size(app.movie_data.cellROI_data, 1);
-    app.movie_data.state.local_dstar_win_size = 0;
-
-    %obtain window size from user
-    popup = SelectLocalDiffusionParamsPopUp(app);
-    uiwait(popup.SelectLocalDiffusionParamsFigure);
-    window_size = app.movie_data.state.local_dstar_win_size;
+    window_size = app.movie_data.state.rolling_delta_win_size;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing centroid displacement for all tracks');
     

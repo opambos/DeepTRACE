@@ -95,7 +95,7 @@ function [] = displayTrackAnnotations(app)
     if isscalar(annotation_fields)
         common_tracks = cell2mat(cellfun(@(x) [x.CellID, x.MolID], all_labels.(annotation_fields{1}), 'UniformOutput', false));
     else
-        common_tracks = findCommonTracks(all_labels.(annotation_fields{1}), all_labels.(annotation_fields{2:end}));
+        common_tracks = findCommonAnnotatedTracks(all_labels, annotation_fields);
     end
     
     if isempty(common_tracks)

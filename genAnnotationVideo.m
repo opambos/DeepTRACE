@@ -163,9 +163,9 @@ function [] = genAnnotationVideo(app)
         end
         
         %plot mesh
-        plot(ax(ii), x_outline - overlay_offset(2), y_outline - overlay_offset(1), 'k--', 'Color', app.AnnotationInspectormeshlinecolourDropDown.Value, 'LineWidth', 1.5);
+        plot(ax(ii), x_outline - overlay_offset(2), y_outline - overlay_offset(1), 'Color', app.AnnotationInspectormeshlinecolourDropDown.Value, 'LineStyle', '--', 'LineWidth', 1.5);
         
-        title(ax(ii), requested_annotations{ii});
+        title(ax(ii), requested_annotations{ii}, 'FontSize', 18, 'Units', 'normalized', 'Position', [0.5, 1.01, 0]);
     end
     
     %iterate over each frame

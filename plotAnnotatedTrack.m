@@ -30,8 +30,9 @@ function [] = plotAnnotatedTrack(app)
 %
 %
 %Plots the track currently displayed in the [Inspect annotations] tab, with
-%colours of the annotated class, displayed over brightfield, and with the
-%segmented mesh also displayed.
+%colours of the annotated class, displayed over the reference image (e.g.
+%brightfield, phase contrast, etc.), and with the segmented mesh also
+%displayed.
 %
 %This code has been adapted from an earlier external tool used for data
 %exploration of saved analysis files, and incorporated into the main GUI.
@@ -102,24 +103,26 @@ function [] = plotAnnotatedTrack(app)
     %loop over all annotations, plotting them in separate windows
     for ii = 1:numel(structs_to_use)
         fig_handles(ii) = figure('Name', structs_to_use{ii}, 'Color', 'white', 'Position', [100, 100, 800, 800]);
-        ax = axes('Parent', fig_handles(ii));
+        ax              = axes('Parent', fig_handles(ii));
+        overlay_offset  = app.movie_data.cellROI_data(cell_ID).overlay_offset;
         
-        %plot brightfield
-        cell_overlay = app.movie_data.cellROI_data(cell_ID).overlay;
-        overlay_offset = app.movie_data.cellROI_data(cell_ID).overlay_offset;
-        imshow(cell_overlay, 'Parent', ax, 'InitialMagnification', 'fit');
+        %plot reference image (e.g. brightfield)
+        if app.UsecellreferenceimageasbackgroundCheckBox.Value
+            cell_overlay = app.movie_data.cellROI_data(cell_ID).overlay;
+            imshow(cell_overlay, 'Parent', ax, 'InitialMagnification', 'fit');
+        end
         hold(ax, 'on');
         
         %plot mesh
         mesh        = app.movie_data.cellROI_data(cell_ID).mesh;
         x_outline   = [mesh(:, 1); flipud(mesh(:, 3)); mesh(1, 1)];
         y_outline   = [mesh(:, 2); flipud(mesh(:, 4)); mesh(1, 2)];
-        plot(ax, x_outline - overlay_offset(2), y_outline - overlay_offset(1), 'k--', 'LineWidth', 1.5);
+        plot(ax, x_outline - overlay_offset(2), y_outline - overlay_offset(1), 'Color', app.AnnotationInspectormeshlinecolourDropDown.Value, 'LineStyle', '--', 'LineWidth', 1.5);
         
         %plot track
         plotTrackByColor(ax, plot_data.(string(structs_to_use(ii))), app.movie_data.params.event_label_colours, overlay_offset);
         axis(ax, 'off');
-        title(ax, structs_to_use{ii});  %should be replaced with reverse lookup with annotation_map to replace struct name with human readable text - see legend sol'n in displayTrackAnnotations.m
+        title(ax, requested_annotations{ii}, 'FontSize', 18, 'Units', 'normalized', 'Position', [0.5, 1.05, 0]); %hacky, should be instead using a map for lookup to structs_to_use - see similar legend sol'n in displayTrackAnnotations.m
     end
 end
 
@@ -156,8 +159,9 @@ function [] = plotTrackByColor(ax, track_data, event_label_colours, overlay_offs
 %
 %
 %Plots the track currently displayed in the [Inspect annotations] tab, with
-%colours of the annotated class, displayed over brightfield, and with the
-%segmented mesh also displayed.
+%colours of the annotated class, displayed over the reference image (e.g.
+%brightfield, phase contrast, etc.), and with the segmented mesh also
+%displayed.
 %
 %This code has been adapted from an earlier external tool used for data
 %exploration of saved analysis files, and incorporated into the main GUI.

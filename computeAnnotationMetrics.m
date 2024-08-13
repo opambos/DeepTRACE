@@ -74,6 +74,7 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
+%findCommonAnnotatedTracks()
 %findCommonTracks()
     
     %use a map between user selectable text and actual struct names
@@ -120,7 +121,7 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
     if isscalar(annotation_fields)
         common_tracks = cell2mat(cellfun(@(x) [x.CellID, x.MolID], all_labels.(annotation_fields{1}), 'UniformOutput', false));
     else
-        common_tracks = findCommonTracks(all_labels.(annotation_fields{1}), all_labels.(annotation_fields{2:end}));
+        common_tracks = findCommonAnnotatedTracks(all_labels, annotation_fields);
     end
     
     if isempty(common_tracks)

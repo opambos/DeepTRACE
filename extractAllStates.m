@@ -79,11 +79,10 @@ function [] = extractAllStates(app)
             %loop over all of the possible classes in the dataset
             for jj = 1:size(app.movie_data.params.class_names,1)
                 %get any events in the current trajectory that match the current class
-                new_events = extractLabelledState(app.movie_data.results.InsightData.LabelledMols{ii, 1}.Mol, jj);
+                new_events = extractLabelledState(app.movie_data.results.InsightData.LabelledMols{ii, 1}.Mol, jj, findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)'));
                 if ~isempty(new_events)
-                    %concatenate each event entry with the cell and mol IDs,
-                    %then concatenate it with the previous entries for that
-                    %class from molecules that have already been interrogated
+                    %concatenate each event entry with the cell and mol IDs, then concatenate it with
+                    %previous entries for that class from molecules that have already been interrogated
                     cell_mol_IDs = repmat([app.movie_data.results.InsightData.LabelledMols{ii, 1}.CellID, app.movie_data.results.InsightData.LabelledMols{ii, 1}.MolID], size(new_events,1), 1);
                     new_events = cat(2, cell_mol_IDs, new_events);
                     curr_events{jj} = cat(1, curr_events{jj}, new_events);

@@ -47,6 +47,7 @@ function [] = displayTrackAnnotations(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %findColumnIdx()
+%findCommonAnnotatedTracks()
 %findCommonTracks()
 %extractLabels()    - local to this .m file
     

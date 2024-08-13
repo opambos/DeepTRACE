@@ -164,6 +164,11 @@ function [] = labelWithSlidingWindow(app, model_type)
     
     %write the results back to the original cell array
     app.movie_data.results.(model_label_field).LabelledMols = tracks_cell_array;
+
+    %compute the event sequence
+    for ii = 1:size(app.movie_data.results.(model_label_field).LabelledMols, 1)
+        app.movie_data.results.(model_label_field).LabelledMols{ii,1}.EventSequence = condenseStateSequence(app.movie_data.results.(model_label_field).LabelledMols{ii,1}.Mol(:,end));
+    end
     
     app.textout.Value = "Completed classification and segmentation of entire dataset using " + model_type + " model. Classification took " + num2str(t) +...
         " seconds, followed by consensus voting from overlapping windows, and the data has been reformatted for downstream analytics.";

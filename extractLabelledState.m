@@ -1,4 +1,4 @@
-function [events] = extractLabelledState(mol, state_ID)
+function [events] = extractLabelledState(mol, state_ID, col_t)
 %Extract a given state from a labelled trajectory, Oliver Pambos,
 %29/10/2022.
 %oliver.pambos@physics.ox.ac.uk
@@ -35,13 +35,19 @@ function [events] = extractLabelledState(mol, state_ID)
 %and truncation.
 %
 %Note that as with other functions this relies on the state label being the
-%final column. Time is currently hardcoded to column 16, this will change
-%once I have adjusted the column name feature selection code. Should have
-%pre-allocated matrices here, but performance overhead is negligible.
+%final column. Should have pre-allocated matrices here, but performance
+%overhead is negligible.
+%
+%Update: following changes to feature engineering process, this function
+%now resolves the time column outside the function, which is passed as the
+%input col_t. This eliminates hardcoding, and improves modularity.
 %
 %Inputs
 %------
-%mol    (mat)   the contents of app.movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.Mol for a given molecule ii
+%mol        (mat)   the contents of app.movie_data.results.VisuallyLabelled.LabelledMols{ii, 1}.Mol
+%                       for a given molecule ii
+%state_ID   (int)   state being interrogated
+%col_t      (int)   time column in the matrix mol
 %
 %Output
 %------
@@ -69,9 +75,9 @@ function [events] = extractLabelledState(mol, state_ID)
     for ii = 1:size(mol,1)
         %start of a new state
         if state_start == -1 && mol(ii,end) == state_ID
-            state_start = mol(ii,16);
+            state_start = mol(ii, col_t);
             event_count = event_count + 1;
-
+            
             %if it's the first localisation, then it's left truncated
             if ii == 1
                 events(event_count,1) = state_ID;
@@ -85,7 +91,7 @@ function [events] = extractLabelledState(mol, state_ID)
             
         %continuation of a state
         elseif state_start ~= -1 && mol(ii,end) == state_ID
-            state_end = mol(ii,16);
+            state_end = mol(ii, col_t);
             
         %end of a state
         elseif state_start ~= -1 && mol(ii,end) ~= state_ID
@@ -96,7 +102,7 @@ function [events] = extractLabelledState(mol, state_ID)
                 %hacky solution to catch an error for when a state consists
                 %only of a single frame (state_end remains as -1); a more
                 %complete solution would be to fix the above logic
-                events(event_count, 2) = mol(2,16) - mol(1,16);
+                events(event_count, 2) = mol(2, col_t) - mol(1, col_t);
             else
                 events(event_count, 2) = state_end - state_start;
             end
@@ -107,7 +113,7 @@ function [events] = extractLabelledState(mol, state_ID)
     end
     
     %assign any states right truncated by end of trajectory
-    if state_end == mol(end,16)
+    if state_end == mol(end, col_t)
         events(event_count, 1) = state_ID;
         events(event_count, 2) = state_end - state_start;
         if state_start == 0

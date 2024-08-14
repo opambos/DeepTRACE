@@ -47,6 +47,15 @@ function loadAnalysis(app)
 %reconfigure the GUI controls, or load a valid configuration file
 %separately.
 %
+%This function additionally checks the validity of the path (ffPath) to the
+%fluorescence video files (ffFile); if this is invalid it prompts user to
+%provide an opportunity to update the path using the path selection GUI,
+%after which it checks the validity of the newly provided path. This
+%enables intuitive the moving of saved data files between different
+%machines and operating systems with the minimum of hassle to the user,
+%whilst also not making any assumptions about the location, or naming, of
+%files, which may differ from one user to another.
+%
 %Input
 %-----
 %app    (handle)    main GUI handle
@@ -57,7 +66,7 @@ function loadAnalysis(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%None
+%checkFluorFilePaths()  - local to this .m file
     
     %track GUI loading errors
     gui_load_error      = false;
@@ -82,6 +91,12 @@ function loadAnalysis(app)
         app.textout.Value = "The loaded file is not a valid InVivoKinetics analysis file. " + newline + ...
             "This is most likely to occur when an unrelated `.mat` file is loaded " + ...
             "(for example a user configuration file or saved MATLAB workspace variables)";
+        return;
+    end
+    
+    %check fluorescence file paths, get new path from user if necessary
+    if ~checkFluorFilePaths(app)
+        %exit if user hasn't provided the valid file path to fluor files
         return;
     end
     
@@ -144,4 +159,121 @@ function loadAnalysis(app)
             "To continue labelling molecules press the [Begin] button in the [Human annotation tab].";
     end
     
+end
+
+
+function fluorpath_OK = checkFluorFilePaths(app)
+%Check if the file is correctly linked to the fluorescence video files, and
+%prompt user to reconnect file path if necessary, Oliver Pambos,
+%13/08/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: checkFluorFilePaths
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This function performs a check to ensure the fluorescence video files are
+%correctly linked within within the app.movie_data.params struct. If
+%linking is incorrect it provides the user with the opportunity to identify
+%the correct path using the path selection GUI tool. This improves
+%portability between machines, and inter-operability between different
+%operating systems.
+%
+%Input
+%-----
+%app            (handle)    main GUI handle
+%
+%Output
+%------
+%fluorpath_OK   (bool)  true if the filepath is valid, else false
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    fluorpath_OK = true;
+    
+    %check if the ffPath exists
+    if isfolder(app.movie_data.params.ffPath)
+        %check if the files in ffFile exist in the specified ffPath
+        files_exist = all(cellfun(@(file) isfile(fullfile(app.movie_data.params.ffPath, file)), app.movie_data.params.ffFile));
+        
+        if files_exist
+            %if all files exist, continue as normal
+            return;
+        else
+            %prompt user to provide new ffPath
+            new_path = uigetdir('', 'Select the directory containing the fluorescence video files');
+            
+            if new_path == 0
+                %if the user cancels the directory selection
+                warndlg('No directory selected. Please restart the loading process.', 'Missing Fluorescence Video Files');
+                ClearanalysisButtonPushed(app);
+                fluorpath_OK = false;
+                return;
+            else
+                %check if files exist in new path
+                new_files_exist = all(cellfun(@(file) isfile(fullfile(new_path, file)), app.movie_data.params.ffFile));
+                
+                %if files exist update ffPath with new path and continue, otherwise warn user and exit
+                if new_files_exist
+                    app.movie_data.params.ffPath = [new_path filesep];
+                    return;
+                else
+                    warndlg('The provided path does not contain the fluorescence video files. Please restart the loading process.', 'Missing Fluorescence Video Files');
+                    ClearanalysisButtonPushed(app);
+                    fluorpath_OK = false;
+                    return;
+                end
+            end
+        end
+        
+    else
+        %prompt user to provide ffPath if original does not exist
+        new_path = uigetdir('', 'Select the directory containing the fluorescence video files');
+        
+        if new_path == 0
+            %if the user cancels the directory selection
+            warndlg('No directory selected. Please restart the loading process.', 'Missing Fluorescence Video Files');
+            ClearanalysisButtonPushed(app);
+            fluorpath_OK = false;
+            return;
+        else
+            %check if files exist in the new path
+            new_files_exist = all(cellfun(@(file) isfile(fullfile(new_path, file)), app.movie_data.params.ffFile));
+            
+            %if files exist in path provided update ffPath with new path and continue, otherwise warn user and exit
+            if new_files_exist
+                app.movie_data.params.ffPath = [new_path filesep];
+                return;
+            else
+                warndlg('The provided path does not contain the fluorescence video files. Please restart the loading process.', 'Missing Fluorescence Video Files');
+                ClearanalysisButtonPushed(app);
+                fluorpath_OK = false;
+                return;
+            end
+        end
+    end
 end

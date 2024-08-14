@@ -147,8 +147,8 @@ function [] = displayTrackAnnotations(app)
     end
     
     %style the plot
-    xlim(ax, [0 max(track_data.(first_annotation).Time)]);
-    ylim(ax, [0.5 2.5]);
+    xlim(ax, [0, max(track_data.(first_annotation).Time)]);
+    ylim(ax, [0.5, numel(app.movie_data.params.class_names) + 0.5]);
     set(ax, 'ytick', 1:length(app.movie_data.params.class_names), 'yticklabel', app.movie_data.params.class_names, 'FontSize', 22);
     ylabel(ax, 'Annotations', 'FontSize', 24);
     xlabel(ax, 'Time (s)', 'FontSize', 24);

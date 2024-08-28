@@ -161,7 +161,7 @@ function [] = crossValidateModel(app)
         
         val_idx     = (indices == ii);
         train_idx   = ~val_idx;
-
+        
         cv_train_data   = train_data(train_idx);
         cv_train_labels = train_labels(train_idx);
         cv_val_data     = train_data(val_idx);
@@ -380,7 +380,7 @@ function [loss] = changepointWeightedLoss(YPred, YTrue, class_weights)
     YPred = max(YPred, dlarray(epsilon));
     
     [C, B, T] = size(YPred);
-
+    
     %generate changepoint masks
     changepoint_masks = dlarray(genChangepointMasks(YTrue));
     
@@ -844,6 +844,66 @@ function [train_data, train_labels, val_data, val_labels] = transposeTrainValDat
 end
 
 
+function [shuffled_data, shuffled_labels] = shuffleBySegment(data, labels)
+%Reshuffle all data again by segment, Oliver Pambos, 14/08/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: shuffleBySegment
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Inputs
+%------
+%data   (cell)      Nx1 cell array of training data examples, where
+%                               each cell may contain either a single
+%                               sliding window or a full track depeding
+%                               upon options.
+%labels (cell)      Nx1 cell array of training labels, where each
+%                               cell may contain either a single sliding
+%                               window or a full track depeding upon
+%                               options.
+%
+%
+%Output
+%------
+%shuffled_data      (cell)  data after reshuffling
+%shuffled_labels    (cell)  labels after reshuffling
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %shuffle indices
+    shuffled_idx = randperm(numel(data));
+    
+    %shuffle data and labels using the shuffled indices
+    shuffled_data   = data(shuffled_idx);
+    shuffled_labels = labels(shuffled_idx);
+end
+
+
 function [] = trainBiLSTM(app, model_name, model_type, train_data, train_labels, val_data, val_labels, show_plot)
 %Train BiLSTM model, Oliver Pambos, 13/07/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -922,13 +982,16 @@ function [] = trainBiLSTM(app, model_name, model_type, train_data, train_labels,
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%computeClassWeights()  - local to this .m file
+%computeClassWeights()      - local to this .m file
+%transposeTrainValData()    - local to this .m file
+%shuffleBySegment()         - local to this .m file
+%getTrainingOptions()       - local to this .m file
     
     app.textout.Value = 'Training bidirectional LSTM model';
     
     %copy over the temporary parameters
     app.movie_data.models.BiLSTM = app.movie_data.models.temp_params;
-
+    
     %store metadata and variables used for feature scaling and training with model
     storeMetadata(app, model_type, model_name);
     
@@ -947,17 +1010,39 @@ function [] = trainBiLSTM(app, model_name, model_type, train_data, train_labels,
     
     [~, class_weights] = computeClassWeights(app);
     
-    layers = [sequenceInputLayer(N_features)
-        bilstmLayer(app.movie_data.models.BiLSTM.N_units, 'OutputMode', 'sequence', ...
-            'InputWeightsL2Factor', app.movie_data.models.BiLSTM.input_l2_factor, ...
-            'RecurrentWeightsL2Factor', app.movie_data.models.BiLSTM.recurrent_l2_factor, ...
-            'BiasL2Factor', app.movie_data.models.BiLSTM.bias_l2_factor)
-        dropoutLayer(app.movie_data.models.BiLSTM.dropout_rate)
-        fullyConnectedLayer(N_classes)
-        softmaxLayer];
+    if app.AttentionCheckBox.Value
+        N_heads         = app.AttentionheadsSpinner.Value;
+        N_key_channels  = app.movie_data.models.BiLSTM.N_units;
+        
+        layers = [
+            sequenceInputLayer(N_features)
+            bilstmLayer(app.movie_data.models.BiLSTM.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.BiLSTM.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.BiLSTM.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.BiLSTM.bias_l2_factor)
+            selfAttentionLayer(N_heads, N_key_channels)
+            layerNormalizationLayer('Name', 'attention_norm')
+            dropoutLayer(app.movie_data.models.BiLSTM.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+        
+    else
+        layers = [sequenceInputLayer(N_features)
+            bilstmLayer(app.movie_data.models.BiLSTM.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.BiLSTM.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.BiLSTM.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.BiLSTM.bias_l2_factor)
+            dropoutLayer(app.movie_data.models.BiLSTM.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+    end
     
     %generate temporary reformatted versions of train and val datasets
     [train_data_tp, train_labels_tp, val_data_tp, val_labels_tp] = transposeTrainValData(train_data, train_labels, val_data, val_labels);
+    
+    %shuffle again the training and validation data this time by segment (in whole track mode this has no effect)
+    [train_data_tp, train_labels_tp]    = shuffleBySegment(train_data_tp, train_labels_tp);
+    [val_data_tp, val_labels_tp]        = shuffleBySegment(val_data_tp, val_labels_tp);
     
     options = getTrainingOptions(val_data_tp, val_labels_tp, show_plot, app.movie_data.models.BiLSTM.max_epochs, app.movie_data.models.BiLSTM.batch_size, app.movie_data.models.BiLSTM.learn_rate);
     
@@ -1078,20 +1163,41 @@ function [] = trainLSTM(app, model_name, model_type, train_data, train_labels, v
     %get classes, and class weights based on their frequencies
     [~, class_weights] = computeClassWeights(app);
 
-    %define LSTM network architecture, and configure options
-    layers = [sequenceInputLayer(N_features)
-        lstmLayer(app.movie_data.models.LSTM.N_units, 'OutputMode', 'sequence', ...
-            'InputWeightsL2Factor', app.movie_data.models.LSTM.input_l2_factor, ...
-            'RecurrentWeightsL2Factor', app.movie_data.models.LSTM.recurrent_l2_factor, ...
-            'BiasL2Factor', app.movie_data.models.LSTM.bias_l2_factor)
-        dropoutLayer(app.movie_data.models.LSTM.dropout_rate)
-        fullyConnectedLayer(N_classes)
-        softmaxLayer];
+    if app.AttentionCheckBox.Value
+        N_heads         = app.AttentionheadsSpinner.Value;
+        N_key_channels  = app.movie_data.models.LSTM.N_units;
+        
+        layers = [
+            sequenceInputLayer(N_features)
+            bilstmLayer(app.movie_data.models.LSTM.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.LSTM.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.LSTM.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.LSTM.bias_l2_factor)
+            selfAttentionLayer(N_heads, N_key_channels)
+            layerNormalizationLayer('Name', 'attention_norm')
+            dropoutLayer(app.movie_data.models.LSTM.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+        
+    else
+        %define LSTM network architecture, and configure options
+        layers = [sequenceInputLayer(N_features)
+            lstmLayer(app.movie_data.models.LSTM.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.LSTM.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.LSTM.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.LSTM.bias_l2_factor)
+            dropoutLayer(app.movie_data.models.LSTM.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+    end
     
-
     %generate temporary reformatted versions of train and val datasets
     [train_data_tp, train_labels_tp, val_data_tp, val_labels_tp] = transposeTrainValData(train_data, train_labels, val_data, val_labels);
     
+    %shuffle again the training and validation data this time by segment (in whole track mode this has no effect)
+    [train_data_tp, train_labels_tp]    = shuffleBySegment(train_data_tp, train_labels_tp);
+    [val_data_tp, val_labels_tp]        = shuffleBySegment(val_data_tp, val_labels_tp);
+
     options = getTrainingOptions(val_data_tp, val_labels_tp, show_plot, app.movie_data.models.LSTM.max_epochs, app.movie_data.models.LSTM.batch_size, app.movie_data.models.LSTM.learn_rate);
     
     %train network with user-requested loss function
@@ -1214,17 +1320,39 @@ function [] = trainBiGRU(app, model_name, model_type, train_data, train_labels, 
     [~, class_weights] = computeClassWeights(app);
     
     %define BiGRU network architecture, and configure options
-    layers = [sequenceInputLayer(N_features)
-        gruLayer(app.movie_data.models.BiGRU.N_units, 'OutputMode', 'sequence', ...
-            'InputWeightsL2Factor', app.movie_data.models.BiGRU.input_l2_factor, ...
-            'RecurrentWeightsL2Factor', app.movie_data.models.BiGRU.recurrent_l2_factor, ...
-            'BiasL2Factor', app.movie_data.models.BiGRU.bias_l2_factor)
-        dropoutLayer(app.movie_data.models.BiGRU.dropout_rate)
-        fullyConnectedLayer(N_classes)
-        softmaxLayer];
+    if app.AttentionCheckBox.Value
+        N_heads         = app.AttentionheadsSpinner.Value;
+        N_key_channels  = app.movie_data.models.BiGRU.N_units;
+        
+        layers = [
+            sequenceInputLayer(N_features)
+            bilstmLayer(app.movie_data.models.BiGRU.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.BiGRU.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.BiGRU.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.BiGRU.bias_l2_factor)
+            selfAttentionLayer(N_heads, N_key_channels)
+            layerNormalizationLayer('Name', 'attention_norm')
+            dropoutLayer(app.movie_data.models.BiGRU.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+        
+    else
+        layers = [sequenceInputLayer(N_features)
+            gruLayer(app.movie_data.models.BiGRU.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.BiGRU.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.BiGRU.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.BiGRU.bias_l2_factor)
+            dropoutLayer(app.movie_data.models.BiGRU.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+    end
     
     %generate temporary reformatted versions of train and val datasets
     [train_data_tp, train_labels_tp, val_data_tp, val_labels_tp] = transposeTrainValData(train_data, train_labels, val_data, val_labels);
+    
+    %shuffle again the training and validation data this time by segment (in whole track mode this has no effect)
+    [train_data_tp, train_labels_tp]    = shuffleBySegment(train_data_tp, train_labels_tp);
+    [val_data_tp, val_labels_tp]        = shuffleBySegment(val_data_tp, val_labels_tp);
     
     options = getTrainingOptions(val_data_tp, val_labels_tp, show_plot, app.movie_data.models.BiGRU.max_epochs, app.movie_data.models.BiGRU.batch_size, app.movie_data.models.BiGRU.learn_rate);
     
@@ -1345,17 +1473,39 @@ function [] = trainGRU(app, model_name, model_type, train_data, train_labels, va
     [~, class_weights] = computeClassWeights(app);
     
     %define GRU network architecture, and configure options
-    layers = [sequenceInputLayer(N_features)
-        gruLayer(app.movie_data.models.GRU.N_units, 'OutputMode', 'sequence', ...
-            'InputWeightsL2Factor', app.movie_data.models.GRU.input_l2_factor, ...
-            'RecurrentWeightsL2Factor', app.movie_data.models.GRU.recurrent_l2_factor, ...
-            'BiasL2Factor', app.movie_data.models.GRU.bias_l2_factor)
-        dropoutLayer(app.movie_data.models.GRU.dropout_rate)
-        fullyConnectedLayer(N_classes)
-        softmaxLayer];
+    if app.AttentionCheckBox.Value
+        N_heads         = app.AttentionheadsSpinner.Value;
+        N_key_channels  = app.movie_data.models.GRU.N_units;
+        
+        layers = [
+            sequenceInputLayer(N_features)
+            bilstmLayer(app.movie_data.models.GRU.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.GRU.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.GRU.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.GRU.bias_l2_factor)
+            selfAttentionLayer(N_heads, N_key_channels)
+            layerNormalizationLayer('Name', 'attention_norm')
+            dropoutLayer(app.movie_data.models.GRU.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+        
+    else
+        layers = [sequenceInputLayer(N_features)
+            gruLayer(app.movie_data.models.GRU.N_units, 'OutputMode', 'sequence', ...
+                'InputWeightsL2Factor', app.movie_data.models.GRU.input_l2_factor, ...
+                'RecurrentWeightsL2Factor', app.movie_data.models.GRU.recurrent_l2_factor, ...
+                'BiasL2Factor', app.movie_data.models.GRU.bias_l2_factor)
+            dropoutLayer(app.movie_data.models.GRU.dropout_rate)
+            fullyConnectedLayer(N_classes)
+            softmaxLayer];
+    end
     
     %generate temporary reformatted versions of train and val datasets
     [train_data_tp, train_labels_tp, val_data_tp, val_labels_tp] = transposeTrainValData(train_data, train_labels, val_data, val_labels);
+    
+    %shuffle again the training and validation data this time by segment (in whole track mode this has no effect)
+    [train_data_tp, train_labels_tp]    = shuffleBySegment(train_data_tp, train_labels_tp);
+    [val_data_tp, val_labels_tp]        = shuffleBySegment(val_data_tp, val_labels_tp);
     
     options = getTrainingOptions(val_data_tp, val_labels_tp, show_plot, app.movie_data.models.GRU.max_epochs, app.movie_data.models.GRU.batch_size, app.movie_data.models.GRU.learn_rate);
     

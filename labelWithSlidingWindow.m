@@ -1,5 +1,5 @@
 function [] = labelWithSlidingWindow(app, model_type)
-%Label the entire loaded dataset with a pre-trained BiLSTM model in sections
+%Label the entire loaded dataset with a pre-trained model in sections
 %using a sliding window, Oliver Pambos, 02/02/2024.
 %oliver.pambos@physics.ox.ac.uk
 %

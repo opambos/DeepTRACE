@@ -104,9 +104,18 @@ function [] = displayTrackAnnotations(app)
         return;
     end
     
-    %randomly select one common track
-    idx = randi(size(common_tracks, 1));
-    selected_track = common_tracks(idx, :);
+    if app.SpecifictrackButton.Value
+        %get the user-selected track
+        selected_track = [app.CellIDSpinner.Value, app.MolIDSpinner.Value];
+        if ~ismember(selected_track, common_tracks, 'rows')
+            warndlg("Track " + app.MolIDSpinner.Value + " in cell " + app.CellIDSpinner.Value + " does not exist in all of the requested annotated datasets");
+            return;
+        end
+    else
+        %randomly select one common track
+        idx = randi(size(common_tracks, 1));
+        selected_track = common_tracks(idx, :);
+    end
     
     %extract the selected track data
     track_data = struct();

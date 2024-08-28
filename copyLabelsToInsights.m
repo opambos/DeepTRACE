@@ -50,7 +50,10 @@ function [success] = copyLabelsToInsights(app)
 %app        (handle)    main GUI handle, now containing a copy of the relevant
 %                           data labels in the `InsightData` substrct (not
 %                           passed by value)
-    
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None    
     
     success = false;
     
@@ -123,7 +126,36 @@ function [success] = copyLabelsToInsights(app)
             app.textout.Value = "No data is available to compute insights";
     end
     
+    
     if isfield(app.movie_data.results, "InsightData") && ~isempty(app.movie_data.results.InsightData)
+        %if user restricts model stats to only those which have human annotations, then delete other mols from Insights
+        if app.StatsoverlapCheckBox.Value && ~strcmp(app.InsightsSourcedataDropDown.Value, "Human annotations") && isfield(app.movie_data.results, 'VisuallyLabelled')
+            
+            %extract unique CellID_MolID from VisuallyLabelled that have usable data
+            vis_labelled_data = app.movie_data.results.VisuallyLabelled.LabelledMols;
+            N_vis_labelled = size(vis_labelled_data, 1);
+            
+            usable_IDs = [];
+            for ii = 1:N_vis_labelled
+                if all(vis_labelled_data{ii}.Mol(:, end) ~= -1)
+                    usable_IDs = [usable_IDs; vis_labelled_data{ii}.CellID, vis_labelled_data{ii}.MolID];
+                end
+            end
+            
+            usable_IDs = unique(usable_IDs, 'rows');
+            
+            %sort through InsightData removing invalid entries
+            insight_data = app.movie_data.results.InsightData.LabelledMols;
+            N_insight_data = size(insight_data, 1);
+            
+            %loop backwards when deleting entries
+            for ii = N_insight_data : -1 : 1
+                if ~ismember([insight_data{ii}.CellID, insight_data{ii}.MolID], usable_IDs, 'rows')
+                    app.movie_data.results.InsightData.LabelledMols(ii) = [];
+                end
+            end
+
+        end
         success = true;
     end
 end

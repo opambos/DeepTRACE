@@ -131,6 +131,8 @@ function [] = genAnnotationVideo(app)
         error("Unknown error in genAnnotationVideo");
     end
     
+    video = flipud(video);
+    
     %===========================
     %Generating the animation
     %===========================
@@ -145,8 +147,11 @@ function [] = genAnnotationVideo(app)
     
     %first tile is fluorescence video
     ax_fluorescence = nexttile(t);
-    title(ax_fluorescence, 'Fluorescence Video');
-    
+    %title(ax_fluorescence, 'Fluorescence Video');
+
+    requested_annotations{1} = 'Ground truth';
+    requested_annotations{end} = 'Model annotations';
+
     %subsequent tiles are annotation sources
     ax = gobjects(num_tiles - 1, 1);
     for ii = 1:numel(structs_to_use)
@@ -172,6 +177,7 @@ function [] = genAnnotationVideo(app)
     for frame_idx = frame_lo:frame_hi
         %display fluorescence video frame
         imshow(video(:, :, frame_idx - frame_lo + 1), [], 'Parent', ax_fluorescence);
+        title(ax_fluorescence, 'Fluorescence Video', 'FontSize', 18);
         
         %update each annotation plot with next segment if the frame exists in frame_numbers
         if ismember(frame_idx, frame_numbers)

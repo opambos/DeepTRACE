@@ -52,7 +52,19 @@ function [] = displayTrackAnnotations(app)
 %extractLabels()    - local to this .m file
     
     %obtain column indices
-    [col_t, col_stepsize] = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)', 'Step size (nm)');
+    str_feature = app.InspectfeatureDropDown.Value;
+    [col_t, col_feature] = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)', str_feature);
+    
+    %if there is a missing feature then track cannot be displayed
+    if col_t == 0
+        app.textout.Value = "Track not displayed: Time data is missing from this track. The dataset should contain a time column labelled 'Time from start of track (s)'. Please consult the documentation, or contact the author of this software.";
+        warndlg("Time data is missing from this track. The dataset should contain a time column labelled 'Time from start of track (s)'. Please consult the documentation, or contact the author of this software.", "Track not displayed.");
+        return;
+    elseif col_feature == 0
+        app.textout.Value = "Track not displayed: Please select a feature from the [Inspect feature] dropdown box that exists in the source data.";
+        warndlg("Please select a feature from the [Inspect feature] dropdown box that exists in the source data.", "Track not displayed.");
+        return;
+    end
     
     %use a map between the user selectable text and actual struct names
     annotation_map = containers.Map(...
@@ -88,7 +100,7 @@ function [] = displayTrackAnnotations(app)
     for ii = 1:size(selected_annotations,2)
         annotation_name = selected_annotations{ii};
         struct_name = annotation_map(annotation_name);
-        all_labels.(struct_name) = extractLabels(app.movie_data.results.(struct_name).LabelledMols, col_t, col_stepsize);
+        all_labels.(struct_name) = extractLabels(app.movie_data.results.(struct_name).LabelledMols, col_t, col_feature);
     end
     
     %find common tracks among all selected annotations
@@ -128,8 +140,8 @@ function [] = displayTrackAnnotations(app)
     reset(ax);
     yyaxis(ax, 'left');
     first_annotation = annotation_fields{1};
-    plot(ax, track_data.(first_annotation).Time, track_data.(first_annotation).StepSize, 'k-', 'LineWidth', 2, 'DisplayName', 'Step Size');
-    ylabel(ax, 'Step size (nm)', 'FontSize', 24);
+    plot(ax, track_data.(first_annotation).Time, track_data.(first_annotation).Feature, 'k-', 'LineWidth', 2, 'DisplayName', 'Step Size');
+    ylabel(ax, str_feature, 'FontSize', 24);
     set(ax.YAxis(1), 'LineWidth', 2);   %line thickness of left y-axis bounding box
     set(ax.XAxis, 'LineWidth', 2);      %line thickness of left y-axis bounding box
     
@@ -174,7 +186,7 @@ function [] = displayTrackAnnotations(app)
 end
 
 
-function [labels] = extractLabels(LabelledMols, col_t, col_stepsize)
+function [labels] = extractLabels(LabelledMols, col_t, col_feature)
 %Extracts annotations from a given LabelledMols cell array, Oliver Pambos,
 %05/07/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -216,7 +228,8 @@ function [labels] = extractLabels(LabelledMols, col_t, col_stepsize)
 %                           single track
 %col_t          (int)   feature column ID for time from start of track (in
 %                           seconds)
-%col_stepsize   (int)   feature column ID for step size in nanometers
+%col_feature    (int)   feature column ID, which can be dynamically
+%                           reassigned from GUI during runtime
 %
 %Output
 %------
@@ -234,7 +247,7 @@ function [labels] = extractLabels(LabelledMols, col_t, col_stepsize)
         labels{ii} = struct('CellID', LabelledMols{ii}.CellID, ...
                            'MolID', LabelledMols{ii}.MolID, ...
                            'Time', mol(:, col_t), ...
-                           'StepSize', mol(:, col_stepsize), ...
+                           'Feature', mol(:, col_feature), ...
                            'Labels', mol(:, end));
     end
 end

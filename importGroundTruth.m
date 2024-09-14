@@ -72,7 +72,8 @@ function [] = importGroundTruth(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%eliminateFalseLocsUsingGT()
+%eliminateFalseLocsUsingGT()    - local to this .m file
+%shiftGroundTruth()             - local to this .m file
     
     %obtain frame number column
     if isfield(app.movie_data.params, "column_titles") && isfield(app.movie_data.params.column_titles, "tracks")
@@ -132,7 +133,6 @@ function [] = importGroundTruth(app)
         all_data = [all_data; curr_ground_truth];
     end
     ground_truth = all_data;
-    
     
     %clear any existing ground truth data
     if isfield(app.movie_data, "results") && isfield(app.movie_data.results, "GroundTruth")
@@ -245,8 +245,16 @@ function [] = importGroundTruth(app)
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence  = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.DateClassified = timestamp;
     end
+    
+    user_choice = questdlg('Would you like to shift ground truth annotations forward by one timepoint?', 'Shift Ground Truth Annotations', 'Yes', 'No', 'No');
+    switch user_choice
+        case 'Yes'
+            shiftGroundTruth(app);
+            app.textout.Value = ("Ground truth annotations have been imported, and shifted forward by one timepoint.");
+        case 'No'
+            app.textout.Value = ("Completed import of ground truth data.");
+    end
 
-    app.textout.Value = "Completed import of ground truth data.";
 end
 
 
@@ -373,4 +381,76 @@ function [] = eliminateFalseLocsUsingGT(app)
     %write data back to app handles
     app.movie_data.results.GroundTruth.LabelledMols = gt_data;
     app.movie_data.cellROI_data = cellROI_data;
+end
+
+
+function [] = shiftGroundTruth(app)
+%Shift ground truth annotations by one timepoint, Oliver Pambos,
+%10/09/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: shiftGroundTruth
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Depending on the definition of ground truth, and the indexing of initial
+%frames, the sequence of annotations may have to be shifted by a single
+%timepoint. This function performs this by moving all annotations down one
+%row, leaving a copy of the initial datapoint in the first row. This
+%function operates on the ground truth of all molecules with a single call.
+%
+%Note to any future editor of this code: if you edit this to move multiple
+%frames, the initial frames into which no new annotations are moved will
+%contain the original data, which is likely unwanted. Generally, at the
+%start of the time series, you want the first known state to be replicated
+%backwards into the missing data, not to have a copy of the original,
+%unshifted data, so in this scenario you will have to either (i) add a
+%statement to perform this operation, or (ii) repeatedly call this
+%function. The former solution is obviously the more efficient.
+%
+%Inputs
+%------
+%app    (handle)    main GUI handle
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    for ii = 1:numel(app.movie_data.results.GroundTruth.LabelledMols)
+        %access matrix only once from nested structure
+        mol = app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol;
+        
+        %if there is data shift down one row
+        if ~isempty(mol)
+            %shift class annotations down one row
+            mol(2:end, end) = mol(1:end-1, end);
+            app.movie_data.results.GroundTruth.LabelledMols{ii, 1}.Mol = mol;
+        end
+    end
 end

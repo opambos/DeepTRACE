@@ -86,7 +86,7 @@ function [success] = scaleLabelledFeatures(app)
 %SelectTrainingFilesPopUp   - discrete app
     
     success = false;
-
+    
     %compile a list of features selected by the user (format is column IDs)
     app.movie_data.models.temp_params.feature_cols = [];
     for jj = 1:size(app.MLfeatures.CheckedNodes, 1)
@@ -116,7 +116,7 @@ function [success] = scaleLabelledFeatures(app)
             
             %keep record of data souce being current file
             app.movie_data.results.FeatureScaledData.source_file{1, 1} = 'Currently loaded data';
-
+            
             %transfer only training feature cols and label col from currently loaded human annotated data to FeatureScaledData
             for jj = 1:size(app.movie_data.results.VisuallyLabelled.LabelledMols, 1)
                 cols_to_keep = [feature_cols, size(app.movie_data.results.VisuallyLabelled.LabelledMols{jj, 1}.Mol, 2)];
@@ -135,7 +135,7 @@ function [success] = scaleLabelledFeatures(app)
             
             %keep record of data souce being current file
             app.movie_data.results.FeatureScaledData.source_file{1, 1} = 'Currently loaded data';
-
+            
             %transfer only training feature cols and label col from currently loaded ground truth data to FeatureScaledData
             for jj = 1:size(app.movie_data.results.GroundTruth.LabelledMols, 1)
                 cols_to_keep = [feature_cols, size(app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.Mol, 2)];
@@ -250,6 +250,113 @@ function [success] = scaleLabelledFeatures(app)
                     end
                 end
             end
+            
+        case 'Ground truth (mulitple simulations)'
+            popup = SelectTrainingFilesPopUp(app);
+            uiwait(popup.UIFigure);
+            
+            %exit if user didn't provide valid file selection
+            if ~isfield(app.movie_data.params, "train_data_source") || isempty(app.movie_data.params.train_data_source) || ~size(app.movie_data.params.train_data_source, 1) > 0
+                warndlg("User did not provide valid source files containing annotated tracks; if you wish to train only on currently loaded annotation please select this from the training data source dropdown.", "Suitable files were not provided.");
+                success = false;
+                return;
+            end
+            
+            %concatenate all data into FeatureScaledData, optionally including the ground truth in the currently loaded file
+            if strcmp(app.movie_data.params.train_data_source(1, 1), '[Currently loaded annotations]')
+                %find the expected column indices based on the currently loaded data
+                feature_cols = zeros(1, size(app.movie_data.models.temp_params.feature_names, 2));
+                for jj = 1:size(app.movie_data.models.temp_params.feature_names, 2)
+                    feature_cols(jj) = findColumnIdx(app.movie_data.params.column_titles.tracks, app.movie_data.models.temp_params.feature_names(jj));
+                end
+                
+                %keep record of user including data from current file
+                app.movie_data.results.FeatureScaledData.source_file{1, 1} = 'Currently loaded data';
+                
+                %transfer only training feature cols and label col from currently loaded ground truth data to FeatureScaledData
+                for jj = 1:length(app.movie_data.results.GroundTruth.LabelledMols)
+                    cols_to_keep = [feature_cols, size(app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.Mol, 2)];    
+                    app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.Mol            = app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.Mol(:, cols_to_keep);
+                    app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.CellID         = app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.CellID;
+                    app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.MolID          = app.movie_data.results.GroundTruth.LabelledMols{jj, 1}.MolID;
+                    app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.source_data    = 1;
+                end
+                
+                %loop over all external files, loading the data
+                for jj = 2:size(app.movie_data.params.train_data_source, 1)
+                    curr_pathname = app.movie_data.params.train_data_source{jj};
+                    app.movie_data.results.FeatureScaledData.source_file{jj, 1} = curr_pathname;
+                    
+                    %load the next datafile
+                    data = load(curr_pathname);
+                    
+                    %find the col indices for the new data based on file's column titles
+                    feature_cols = zeros(1, numel(app.movie_data.models.temp_params.feature_names));
+                    for kk = 1:numel(app.movie_data.models.temp_params.feature_names)
+                        feature_cols(kk) = findColumnIdx(data.movie_data.params.column_titles.tracks, app.movie_data.models.temp_params.feature_names{kk});
+                    end
+                    
+                    %if the columns all exist, remove irrelevant feature columns from imported data, and append
+                    if any(feature_cols == 0)
+                        success = false;
+                        warning('The required data fields are missing in file: %s', curr_pathname);
+                        h_warn = warndlg("File " + curr_pathname + " could not be loaded or does not contain suitable features. Loading will continue with other datasets.", "Unable to load annotations from file.", 'modal');
+                        uiwait(h_warn);
+                    else
+                        %generate new cell array containing only feature cols and labels
+                        new_mols = cell(size(data.movie_data.results.GroundTruth.LabelledMols));
+                        for kk = 1:size(data.movie_data.results.GroundTruth.LabelledMols, 1)
+                            cols_to_keep                = [feature_cols, size(data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.Mol, 2)];
+                            new_mols{kk, 1}.Mol         = data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.Mol(:, cols_to_keep);
+                            new_mols{kk, 1}.CellID      = data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.CellID;
+                            new_mols{kk, 1}.MolID       = data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.MolID;
+                            new_mols{kk, 1}.source_data = jj;
+                        end
+                        
+                        %append imported data to FeatureScaledData
+                        app.movie_data.results.FeatureScaledData.LabelledMols = [app.movie_data.results.FeatureScaledData.LabelledMols; new_mols];
+                    end
+                end
+            
+            %if user doesn't want to include currently loaded ground truth data
+            else
+                %loop over all external files, loading the data
+                for jj = 1:size(app.movie_data.params.train_data_source, 1)
+                    curr_pathname = app.movie_data.params.train_data_source{jj};
+                    app.movie_data.results.FeatureScaledData.source_file{jj, 1} = curr_pathname;
+                    
+                    %load the next datafile
+                    data = load(curr_pathname);
+                    
+                    %find the col indices for the new data based on file's column titles
+                    feature_cols = zeros(1, numel(app.movie_data.models.temp_params.feature_names));
+                    for kk = 1:numel(app.movie_data.models.temp_params.feature_names)
+                        feature_cols(kk) = findColumnIdx(data.movie_data.params.column_titles.tracks, app.movie_data.models.temp_params.feature_names{kk});
+                    end
+                    
+                    %if the columns all exist, remove irrelevant feature columns from imported data, and append
+                    if any(feature_cols == 0)
+                        success = false;
+                        warning('The required data fields are missing in file: %s', curr_pathname);
+                        h_warn = warndlg("File " + curr_pathname + " could not be loaded or does not contain suitable features. Loading will continue with other datasets.", "Unable to load annotations from file.");
+                        uiwait(h_warn);
+                    else                                
+                        %generate new cell array containing only feature cols and labels
+                        new_mols = cell(size(data.movie_data.results.GroundTruth.LabelledMols));
+                        for kk = 1:size(data.movie_data.results.GroundTruth.LabelledMols, 1)
+                            cols_to_keep                = [feature_cols, size(data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.Mol, 2)];
+                            new_mols{kk, 1}.Mol         = data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.Mol(:, cols_to_keep);
+                            new_mols{kk, 1}.CellID      = data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.CellID;
+                            new_mols{kk, 1}.MolID       = data.movie_data.results.GroundTruth.LabelledMols{kk, 1}.MolID;
+                            new_mols{kk, 1}.source_data = jj;
+                        end
+                        
+                        %append imported data to FeatureScaledData
+                        app.movie_data.results.FeatureScaledData.LabelledMols = [app.movie_data.results.FeatureScaledData.LabelledMols; new_mols];
+                    end
+                end
+            end
+            
         otherwise
             app.textout.Value = "The training dataset is not currently available";
             success = false;
@@ -394,7 +501,7 @@ function [valid] = checkTrainingDataValid(app, expected_features, expected_col_i
     
     %bool test array
     test = [false, false, false];
-
+    
     %check the struct is correct
     if isfield(data, 'movie_data') && isfield(data.movie_data, 'results') && isfield(data.movie_data.results, 'VisuallyLabelled') && isfield(data.movie_data.results.VisuallyLabelled, 'LabelledMols')
         test(1) = true;

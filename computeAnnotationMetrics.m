@@ -33,11 +33,17 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
 %   precision
 %   recall
 %   f1 score
+%   Jaccard index
+%
+%in addition to changepoint errors.
+%
+%Metrics/stats are written to the app.movie_data.stats substruct.
 %
 %The current implementation of this function treats the human annotations
-%as the ground truth. A future version will replace this with a pop-up
-%which will prompt the user to select which dataset to use as ground truth,
-%as this flexibility was available in earlier external code. This will also
+%as the ground truth in the absence of pre-loaded ground truth data. A
+%future version will replace this with a pop-up which will prompt the
+%user to select which dataset to use as ground truth, as this
+%flexibility was available in earlier external code. This will also
 %require later modification to enable comparison between annotations of the
 %same model type in different files as was previously capable with external
 %analysis code. This is necessary as current implementation only enables
@@ -51,17 +57,8 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
 %structs_to_use, which skips the checking of user input checkbox selection
 %in this scenario.
 %
-%The call to cropTracjectories() in labelWithSlidingWindow.m is currently
-%disabled pending a future update of this function, which correctly aligns
-%the cropped trajectories with the ground truth reference labels. This
-%offset occurs when tracks are cropped due to the engineered features used
-%(e.g. it is not possible to annotate the first loc if step size is a
-%feature as there is no information of the step size from the previous
-%frame). This update will not rely on the stored row vector 'removed_rows',
-%but rather perform direct comparison to frame numbers. This may introduce
-%complexity as this function computes metrics for the annotations from
-%multiple sources in the same function call, and each set of annotations
-%may contain different removed rows based on the engineered features used.
+%This function now accommodates optional track cropping, using GUI inputs
+%in the [Compute metrics] sub-tab when computing metrics.
 %
 %
 %Inputs
@@ -76,15 +73,27 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
 %-----------------------------------------
 %findCommonAnnotatedTracks()
 %findCommonTracks()
+%computeCPErrorsSingleTrack()
     
     %use a map between user selectable text and actual struct names
     annotation_map = containers.Map(...
     {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
     {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
     
+    %define number of frames to ignore from the stats at the start and end of each track
+    ignore_start_count = app.IgnoreframeatstartoftrackSpinner.Value;
+    ignore_end_count = app.IgnoreatendoftrackSpinner.Value;
+    
+    %max changepoint error
+    max_cp_error = 5;
+    
     %if f'n called from [Compute metrics] tab, work out which annotation sets to use from GUI checkbox tree; otherwise rely on structs_to_use input
     if nargin < 2
         selected_nodes = app.CompareAnnotationsTree.CheckedNodes;
+        if isempty(selected_nodes)
+            warndlg("Please select the annotation source and ground truth in the [Plot track annotation] sub-tab of of the Annotation Inspector.", "Cannot compute metrics.");
+            return;
+        end
         selected_annotations = {selected_nodes.Text};
         
         %check data exists for all selected annotations
@@ -149,6 +158,11 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
     N_classes = numel(app.movie_data.params.class_names);
     conf_matrix = zeros(N_classes);
     
+    %initialize cp error list
+    all_cp_errors = [];
+    all_cp_transitions = [];
+    total_unpaired_cps = 0;
+    
     %loop through each common track
     for ii = 1:size(common_tracks, 1)
         %find corresponding ground truth labels
@@ -158,6 +172,15 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
         for jj = 4:size(common_tracks, 2) %start from 4 because 1, 2, 3 are cell_id, mol_id, and ground_truth_idx
             pred_labels = all_labels.(annotation_fields{jj-2}){common_tracks(ii,jj), 1}.Labels;
             
+            %apply cropping: ignore user-requested frames from ends of each track
+            if length(gt_labels) > (ignore_start_count + ignore_end_count) && length(pred_labels) > (ignore_start_count + ignore_end_count)
+                gt_labels_cropped = gt_labels((ignore_start_count + 1):(end - ignore_end_count));
+                pred_labels_cropped = pred_labels((ignore_start_count + 1):(end - ignore_end_count));
+            else
+                %if the track is too short after cropping, skip track, this should never be executed under any normal scenario
+                continue;
+            end
+            
             %error checking incase user has run classification before importing ground truth this can lead to -1 not being removed from the original numeric matrix
             %this check will be later removed after adding direct frame number comparisons; this also handles issues from the localisation algorithm picking up additional false localisations in a frame containing a genuine molecule
             if size(gt_labels, 1) ~= size(pred_labels, 1)
@@ -166,13 +189,19 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
             
             % << a future update will place here a comparison between frame numbers when tracks have been truncated >>
             % << to ensure that each label is compared only to its corresponding frame in the ground truth dataset >>
-
+            
             %populate confusion matrix
-            for kk = 1:size(gt_labels,1)
-                actual_class = gt_labels(kk,1);
-                predicted_class = pred_labels(kk,1);
+            for kk = 1:size(gt_labels_cropped, 1)
+                actual_class = gt_labels_cropped(kk, 1);
+                predicted_class = pred_labels_cropped(kk, 1);
                 conf_matrix(actual_class, predicted_class) = conf_matrix(actual_class, predicted_class) + 1;
             end
+            
+            %compute cp errors, and append to the list
+            [cp_errors, state_transitions, N_unpaired_cps] = computeCPErrorsSingleTrack(gt_labels_cropped, pred_labels_cropped, max_cp_error, app.MinimumchangepointseparationSpinner.Value);
+            all_cp_errors = [all_cp_errors; cp_errors];
+            all_cp_transitions = [all_cp_transitions; state_transitions];
+            total_unpaired_cps = total_unpaired_cps + N_unpaired_cps;
         end
     end
     
@@ -183,7 +212,7 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
     ylabel('Actual Class');
     
     %calc metrics for each class
-    [accuracy, precision, recall, f1_score] = deal(zeros(N_classes, 1));
+    [accuracy, precision, recall, f1_score, jaccard_index] = deal(zeros(N_classes, 1));
     
     for ii = 1:N_classes
         TP = conf_matrix(ii, ii);
@@ -195,32 +224,61 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
         precision(ii)   = TP / (TP + FP);
         recall(ii)      = TP / (TP + FN);
         f1_score(ii)    = 2 * (precision(ii) * recall(ii)) / (precision(ii) + recall(ii));
+        jaccard_index(ii) = TP / (TP + FP + FN);
     end
     
     %handle NaN values (if class has no positive instances)
-    [accuracy(isnan(accuracy)), precision(isnan(precision)), recall(isnan(recall)), f1_score(isnan(f1_score))] = deal(0);
+    [accuracy(isnan(accuracy)), precision(isnan(precision)), recall(isnan(recall)), f1_score(isnan(f1_score)), jaccard_index(isnan(jaccard_index))] = deal(0);
     
     %calculate macro-averaged metrics
     macro_precision = mean(precision);
     macro_recall    = mean(recall);
     macro_f1        = mean(f1_score);
     macro_accuracy  = mean(accuracy);
+    macro_jaccard   = mean(jaccard_index);
+    
+    %calculate cp error statistics
+    avg_cp_error = mean(abs(all_cp_errors));
+    
+    %write the changepoint stats to the model struct, enabling later display of statistics
+    if size(all_cp_transitions, 1) == size(all_cp_errors, 1)
+        app.movie_data.stats.changepoint_errors = [all_cp_transitions, all_cp_errors];
+    else
+        warndlg("Warning: error in annotation metrics, changepoint errors are not paired with class transitions", "Error in annotation metrics")
+    end
+    app.movie_data.stats.total_unpaired_changepoints    = total_unpaired_cps;
+    app.movie_data.stats.total_paired_changepoints      = size(all_cp_errors, 1);
+    app.movie_data.stats.mean_changepoint_error         = avg_cp_error;
+    app.movie_data.stats.RMSE_changepoint_error         = sqrt(mean(all_cp_errors.^2)); %this only accounts for paired changepoints
     
     %display metrics
     conf_matrix_text = sprintf('Confusion Matrix:\n');
-    for i = 1:size(conf_matrix, 1)
-        conf_matrix_text = [conf_matrix_text, sprintf('%10d', conf_matrix(i, :)), newline];
+    for ii = 1:size(conf_matrix, 1)
+        conf_matrix_text = [conf_matrix_text, sprintf('%10d', conf_matrix(ii, :)), newline];
     end
     
     output_text = sprintf('%s\nClass-wise Metrics:\n', conf_matrix_text);
     for ii = 1:N_classes
-        output_text = sprintf('%sClass %d - Accuracy: %.4f, Precision: %.4f, Recall: %.4f, F1 Score: %.4f\n', output_text, ii, accuracy(ii), precision(ii), recall(ii), f1_score(ii));
+        output_text = sprintf('%sClass %d - Accuracy: %.4f, Precision: %.4f, Recall: %.4f, F1 Score: %.4f, Jaccard index: %.4f\n', output_text, ii, accuracy(ii), precision(ii), recall(ii), f1_score(ii), jaccard_index(ii));
     end
     
-    output_text = sprintf('%s\nMacro-averaged metrics:\nAccuracy: %.4f\nPrecision: %.4f\nRecall: %.4f\nF1 Score: %.4f\n', output_text, macro_accuracy, macro_precision, macro_recall, macro_f1);
+    %display cp error statistics including unpaired changepoints
+    output_text = sprintf('%s\nCP Error Metrics:\nAverage CP Error: %.4f\nTotal Unpaired Change Points: %d\n', output_text, avg_cp_error, total_unpaired_cps);
+    
+    %display metrics; if training has just occurred, also report on the annotation time
+    if nargin < 2
+        output_text = sprintf('%s\nMacro-averaged metrics:\nAccuracy: %.4f\nPrecision: %.4f\nRecall: %.4f\nF1 Score: %.4f\nJaccard Index: %.4f\n', output_text, macro_accuracy, macro_precision, macro_recall, macro_f1, macro_jaccard);
+    else
+        annotation_time_text = "Completed classification and segmentation of entire dataset. Classification took " + num2str(app.movie_data.results.(structs_to_use{end, 1}).annotation_time) +...
+            " seconds, followed by consensus voting.";
+        
+        output_text = sprintf('%s\n\n%s\nMacro-averaged metrics:\nAccuracy: %.4f\nPrecision: %.4f\nRecall: %.4f\nF1 Score: %.4f\nJaccard Index: %.4f\n', annotation_time_text, output_text, macro_accuracy, macro_precision, macro_recall, macro_f1, macro_jaccard);
+    end
     
     app.textout.Value = output_text;
     
-    %display metrics also in pop-up window
-    msgbox(output_text, 'Macro-Averaged Metrics', 'modal');
+    %construct a custom figure to display metrics in case this is overwritten in textout display
+    h = figure('Name', 'Annotation Metrics', 'NumberTitle', 'off', 'MenuBar', 'none', 'ToolBar', 'none', 'Position', [100, 100, 820, 600], 'Resize', 'off');
+    uicontrol('Style', 'edit', 'Max', 2, 'Min', 0, 'Parent', h, 'Position', [10, 10, 800, 580], 'String', output_text, ...
+              'HorizontalAlignment', 'left', 'FontSize', 14, 'Enable', 'on');
 end

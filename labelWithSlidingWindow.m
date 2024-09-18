@@ -57,10 +57,6 @@ function [] = labelWithSlidingWindow(app, model_type)
 %which the data is stored for downstream processing. Any future performance
 %improvements should focus on this part of the process.
 %
-%cropTrajectories has been temporarily disabled pending a future update to
-%computeAnnotationMetrics which will ensure following row removal that
-%comparisons are made between the correct localisations.
-%
 %
 %Input
 %-----
@@ -170,8 +166,7 @@ function [] = labelWithSlidingWindow(app, model_type)
         app.movie_data.results.(model_label_field).LabelledMols{ii,1}.EventSequence = condenseStateSequence(app.movie_data.results.(model_label_field).LabelledMols{ii,1}.Mol(:,end));
     end
     
-    app.textout.Value = "Completed classification and segmentation of entire dataset using " + model_type + " model. Classification took " + num2str(t) +...
-        " seconds, followed by consensus voting from overlapping windows, and the data has been reformatted for downstream analytics.";
+    app.movie_data.results.(model_label_field).annotation_time = t;
 end
 
 

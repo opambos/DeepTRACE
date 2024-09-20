@@ -56,10 +56,15 @@ function [] = engineerCellCoords(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing cellular coordinates for cell %d of %d', ii, N_cells));
         
+        %ensure heavily nested access to tracks is only performed once for each cell
+        curr_tracks_x = app.movie_data.cellROI_data(ii).tracks(:,1);
+        curr_tracks_y = app.movie_data.cellROI_data(ii).tracks(:,2);
+        curr_mesh = app.movie_data.cellROI_data(ii).mesh;
+        
         %obtain the midline
-        midline = app.movie_data.cellROI_data(ii).mesh(1, 1:2);
-        midline = [midline; (app.movie_data.cellROI_data(ii).mesh(2:end-1, 1) + app.movie_data.cellROI_data(ii).mesh(2:end-1, 3))/2, (app.movie_data.cellROI_data(ii).mesh(2:end-1,2) + app.movie_data.cellROI_data(ii).mesh(2:end-1,4))/2];
-        midline = [midline; app.movie_data.cellROI_data(ii).mesh(end, 1:2)];
+        midline = curr_mesh(1, 1:2);
+        midline = [midline; (curr_mesh(2:end-1, 1) + curr_mesh(2:end-1, 3))/2, (curr_mesh(2:end-1,2) + curr_mesh(2:end-1,4))/2];
+        midline = [midline; curr_mesh(end, 1:2)];
         
         %compute its total contour length
         contour_len = 0;
@@ -68,8 +73,8 @@ function [] = engineerCellCoords(app)
         end
         
         %obtain left and right hittest regions of the cell mesh
-        mesh_left = [midline(2:end-1,:); flipud(app.movie_data.cellROI_data(ii).mesh(:, 1:2))];
-        mesh_right = [app.movie_data.cellROI_data(ii).mesh(:, 3:4); flipud(midline(2:end-1,:))];
+        mesh_left   = [midline(2:end-1,:); flipud(curr_mesh(:, 1:2))];
+        mesh_right  = [curr_mesh(:, 3:4); flipud(midline(2:end-1,:))];
         
         %pre-allocate matrix to hold all coordinate data for current track [longitude, latitude, longitude_abs, latitude_abs]
         track_coord_data = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), 4);
@@ -77,7 +82,7 @@ function [] = engineerCellCoords(app)
         %get cellular coordinates for entire track
         for jj = 1:size(app.movie_data.cellROI_data(ii).tracks, 1)
             [track_coord_data(jj,1), track_coord_data(jj,2), track_coord_data(jj,3), track_coord_data(jj,4), ~] = ...
-                convertToCellCoords(app.movie_data.cellROI_data(ii).tracks(jj,1), app.movie_data.cellROI_data(ii).tracks(jj,2), app.movie_data.cellROI_data(ii).mesh, mesh_left, mesh_right, midline, contour_len);
+                convertToCellCoords(curr_tracks_x(jj), curr_tracks_y(jj), curr_mesh, mesh_left, mesh_right, midline, contour_len);
         end
         app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, track_coord_data];
     end

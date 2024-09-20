@@ -47,19 +47,24 @@ function [] = computeLocPoleDists(app)
     
     h_progress  = waitbar(0,'Preparing....','Name','Computing distances to cell poles');
     N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
     
     %loop over every cell
     for ii = 1:N_cells
-        N_cols = size(app.movie_data.cellROI_data(ii).tracks, 2);
+        curr_mesh = app.movie_data.cellROI_data(ii).mesh;
+        curr_tracks = app.movie_data.cellROI_data(ii).tracks;
+
+        N_cols = size(curr_tracks, 2);
         waitbar(ii/N_cells, h_progress, sprintf('Computing distances for cell %d of %d', ii, N_cells));
         %loop over all tracked localisations
-        for jj = 1:size(app.movie_data.cellROI_data(ii).tracks, 1)
+        for jj = 1:size(curr_tracks, 1)
             %compute distance to nearest pole for every localisation
-            poledists = [ pdist([app.movie_data.cellROI_data(ii).tracks(jj,1:2); app.movie_data.cellROI_data(ii).mesh(1,1:2)]);...
-                          pdist([app.movie_data.cellROI_data(ii).tracks(jj,1:2); app.movie_data.cellROI_data(ii).mesh(end,1:2)]) ];
-            app.movie_data.cellROI_data(ii).tracks(jj, N_cols+1) = min(poledists) .* app.movie_data.params.px_scale;
+            poledists = [ pdist([curr_tracks(jj,1:2); curr_mesh(1,1:2)]);...
+                          pdist([curr_tracks(jj,1:2); curr_mesh(end,1:2)]) ];
+            curr_tracks(jj, N_cols+1) = min(poledists) .* px_scale;
         end
         
+       app.movie_data.cellROI_data(ii).tracks = curr_tracks;
     end
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Distance to pole'];
     close(h_progress);

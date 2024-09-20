@@ -63,13 +63,21 @@ function [] = computeLocMemDists(app)
         %reformat mesh into Nx2 format looping back to first vertex
         mesh = [app.movie_data.cellROI_data(ii).mesh(:,1:2); flipud(app.movie_data.cellROI_data(ii).mesh(1:end-1,3:4))];
 
+        %ensure heavily nested access to tracks is only performed once for each cell
+        curr_tracks_x = app.movie_data.cellROI_data(ii).tracks(:,1);
+        curr_tracks_y = app.movie_data.cellROI_data(ii).tracks(:,2);
+        px_scale = app.movie_data.params.px_scale;
+        
+        %pre-allocate new column data to enable efficient single write operation
+        temp_col = zeros(size(curr_tracks_x));
+
         waitbar(ii/N_cells, h_progress, sprintf('Computing distances for cell %d of %d', ii, N_cells));
         %loop over all tracked localisations
-        for jj = 1:size(app.movie_data.cellROI_data(ii).tracks, 1)
+        for jj = 1:size(curr_tracks_x, 1)
             %compute distance to nearest membrane for every localisation in nm
-            app.movie_data.cellROI_data(ii).tracks(jj, N_cols+1) = findPointToMeshDist(app.movie_data.cellROI_data(ii).tracks(jj,1), app.movie_data.cellROI_data(ii).tracks(jj,2), mesh) .* app.movie_data.params.px_scale;
+             temp_col(jj) = findPointToMeshDist(curr_tracks_x(jj), curr_tracks_y(jj), mesh) .* px_scale;
         end
-        
+        app.movie_data.cellROI_data(ii).tracks(:, N_cols+1) = temp_col;
     end
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Distance to nearest membrane (nm)'];
     close(h_progress);

@@ -311,7 +311,7 @@ function [] = engineerPosInNm(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute x and y in nm
             new_cols = app.movie_data.cellROI_data(ii).tracks(:,1:2) .* app.movie_data.params.px_scale;
-
+            
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
         end
@@ -369,8 +369,9 @@ function [] = engineerStepSize(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
+    N_cells     = size(app.movie_data.cellROI_data, 1);
     h_progress  = waitbar(0,'Preparing....','Name','Computing for all time steps in all tracks');
+    px_scale    = app.movie_data.params.px_scale;
     
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing time steps for cell %d of %d', ii, N_cells));
@@ -378,19 +379,19 @@ function [] = engineerStepSize(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
-
+            
             %loop over all filtered molecules in the current cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 %get the current track, and compute time steps
                 curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
                 
                 %compute distances between consecutive points
-                curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* app.movie_data.params.px_scale];
+                curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* px_scale];
                 
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = [new_col; curr_steps];
             end
-
+            
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
@@ -458,7 +459,7 @@ function [] = engineerTimeStep(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
-
+            
             %loop over all filtered molecules in the current cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 %get the current track, and compute time steps
@@ -468,7 +469,7 @@ function [] = engineerTimeStep(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_time_steps);
             end
-
+            
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
@@ -590,6 +591,7 @@ function [] = engineerTimeFromTrackStart(app)
     
     N_cells = size(app.movie_data.cellROI_data, 1);
     h_progress  = waitbar(0,'Preparing....','Name','Computing elapsed time for all tracks');
+    frame_rate = app.movie_data.params.frame_rate;
     
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing elapsed time for tracks in cell %d of %d', ii, N_cells));
@@ -597,17 +599,17 @@ function [] = engineerTimeFromTrackStart(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
-
+            
             %loop over all filtered molecules in the current cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 %get the current track and compute the time from start
                 curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
-                curr_intervals = (curr_track(:, 3) - curr_track(1, 3)) ./ app.movie_data.params.frame_rate;
+                curr_intervals = (curr_track(:, 3) - curr_track(1, 3)) ./ frame_rate;
                 
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_intervals);
             end
-
+            
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
@@ -664,6 +666,8 @@ function [] = engineerTimeFromReferencePoints(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
+    t_ref_points = app.movie_data.params.t_ref_points;
+    frame_rate = app.movie_data.params.frame_rate;
     
     %get reference point(s) from user
     popup = ReferencePointPopUp(app);
@@ -675,23 +679,25 @@ function [] = engineerTimeFromReferencePoints(app)
         waitbar(ii/N_cells, h_progress, sprintf('Computing reference time(s) for tracks in cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            curr_tracks = app.movie_data.cellROI_data(ii).tracks;
+            
             %pre-allocate
-            curr_ref_times = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), size(app.movie_data.params.t_ref_points, 1));
-
+            curr_ref_times = zeros(size(curr_tracks, 1), size(t_ref_points, 1));
+            
             %get delay from each custom reference point, and concatenate columns with existing tracks matrix
-            for kk = 1:size(app.movie_data.params.t_ref_points, 1)
-                curr_ref_times(:,kk) = (app.movie_data.cellROI_data(ii).tracks(:, 3) ./ app.movie_data.params.frame_rate) - app.movie_data.params.t_ref_points{kk, 1};
+            for kk = 1:size(t_ref_points, 1)
+                curr_ref_times(:,kk) = (curr_tracks(:, 3) ./ frame_rate) - t_ref_points{kk, 1};
             end
             
             %append new data
-            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, curr_ref_times];
+            app.movie_data.cellROI_data(ii).tracks = [curr_tracks, curr_ref_times];
         end
     end
     
     %write the new column titles
-    t_ref_points = cellfun(@(x) ['Time from ' x ' (s)'], app.movie_data.params.t_ref_points(:, 2), 'UniformOutput', false);
-    app.movie_data.params.column_titles.tracks  = [app.movie_data.params.column_titles.tracks, t_ref_points'];
-
+    title_t_ref_points = cellfun(@(x) ['Time from ' x ' (s)'], t_ref_points(:, 2), 'UniformOutput', false);
+    app.movie_data.params.column_titles.tracks  = [app.movie_data.params.column_titles.tracks, title_t_ref_points'];
+    
     close(h_progress);
 end
 
@@ -771,7 +777,7 @@ function [] = engineerDistanceFromTrackStart(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_dists);
             end
-
+            
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
@@ -919,7 +925,7 @@ function [] = engineerRelativeStepAngle(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
-
+            
             %loop over all filtered molecules in the current cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 %get the current track, and compute step angles
@@ -997,7 +1003,7 @@ function [] = engineerStepAngleRelImage(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
-
+            
             %loop over all filtered molecules in the current cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 %get the current track, and compute step angles
@@ -1008,7 +1014,7 @@ function [] = engineerStepAngleRelImage(app)
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = [new_col; curr_angles];
             end
-
+            
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
@@ -1075,12 +1081,13 @@ function [] = engineerStepAngleRelCell(app)
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
-
+            
             %loop over all filtered molecules in the current cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                curr_mesh = app.movie_data.cellROI_data(ii).mesh;
                 %get the current track, and compute step angles relative to cell major axis
                 curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
-                curr_angles = computeStepAnglesRelToCell(curr_track(:,1:2), [app.movie_data.cellROI_data(ii).mesh(1,1:2); app.movie_data.cellROI_data(ii).mesh(end,1:2)]);
+                curr_angles = computeStepAnglesRelToCell(curr_track(:,1:2), [curr_mesh(1,1:2); curr_mesh(end,1:2)]);
                 
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = [new_col; curr_angles];
@@ -1347,7 +1354,7 @@ function [] = engineerLocalDStar(app)
                     %obtain local window of track
                     lim_lo = curr_track(kk, 3) - window_size;
                     lim_hi = curr_track(kk, 3) + window_size;
-
+                    
                     curr_window         = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
                     curr_window(:, 1:2) = curr_window(:, 1:2) .* (app.movie_data.params.px_scale / 1000);
                     
@@ -1443,8 +1450,10 @@ function [] = engineerRollingDStarDelta(app)
 %-----------------------------------------
 %compileMSDMatrixFast()
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
+    N_cells     = size(app.movie_data.cellROI_data, 1);
     window_size = app.movie_data.state.rolling_delta_win_size;
+    px_scale    = app.movie_data.params.px_scale;
+    frame_rate  = app.movie_data.params.frame_rate;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing local D* for all tracks');
     
@@ -1471,14 +1480,14 @@ function [] = engineerRollingDStarDelta(app)
                     %construct the window pair
                     win_left  = curr_track(curr_track(:, 3) >= lims_left(1) & curr_track(:, 3) <= lims_left(2), 1:3);
                     win_right = curr_track(curr_track(:, 3) >= lims_right(1) & curr_track(:, 3) <= lims_right(2), 1:3);
-
+                    
                     %scale the position data to nm
-                    win_left(:, 1:2)  = win_left(:, 1:2) .* (app.movie_data.params.px_scale / 1000);
-                    win_right(:, 1:2) = win_right(:, 1:2) .* (app.movie_data.params.px_scale / 1000);
+                    win_left(:, 1:2)  = win_left(:, 1:2) .* (px_scale / 1000);
+                    win_right(:, 1:2) = win_right(:, 1:2) .* (px_scale / 1000);
                     
                     %compute the MSD matrices
-                    msd_left  = compileMSDMatrixFast(win_left, 1/app.movie_data.params.frame_rate, window_size);
-                    msd_right = compileMSDMatrixFast(win_right, 1/app.movie_data.params.frame_rate, window_size);
+                    msd_left  = compileMSDMatrixFast(win_left, 1/frame_rate, window_size);
+                    msd_right = compileMSDMatrixFast(win_right, 1/frame_rate, window_size);
                     
                     %remove empty MSD entries
                     msd_left  = msd_left(msd_left(:,1) ~= 0, :);
@@ -1493,7 +1502,7 @@ function [] = engineerRollingDStarDelta(app)
                         else
                             fit_left  = polyfit([0; msd_left(:, 3)], [0; msd_left(:, 4)], 1);
                         end
-    
+                        
                         if size(msd_right, 1) == 1
                             fit_right = [msd_right(1,4)/msd_right(1,3), 0];
                         elseif size(msd_right, 1) == 0
@@ -1512,7 +1521,7 @@ function [] = engineerRollingDStarDelta(app)
                         %future interpolation/imputation to replace zeros when there is insufficient data
                    end
                 end
-
+                
                 %append ratio and delta for current track to others in same cell
                 cell_Dstar_ratio = [cell_Dstar_ratio; Dstar_ratio];
                 cell_Dstar_delta = [cell_Dstar_delta; Dstar_delta];
@@ -1585,6 +1594,7 @@ function [] = engineerRollingMeanStepSizeDelta(app)
     
     N_cells = size(app.movie_data.cellROI_data, 1);
     window_size = app.movie_data.state.rolling_delta_win_size;
+    px_scale = app.movie_data.params.px_scale;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling mean step size for all tracks');
     
@@ -1615,8 +1625,8 @@ function [] = engineerRollingMeanStepSizeDelta(app)
                     %if enough points exist compute mean ratio and delta
                     if size(win_left, 1) > 1 && size(win_right, 1) > 1
                         %compute the mean 2D step sizes in units of nm
-                        mean_left  = mean(sqrt(sum(diff(win_left(:, 1:2)).^2, 2)) .* app.movie_data.params.px_scale);
-                        mean_right = mean(sqrt(sum(diff(win_right(:, 1:2)).^2, 2)) .* app.movie_data.params.px_scale);
+                        mean_left  = mean(sqrt(sum(diff(win_left(:, 1:2)).^2, 2)) .* px_scale);
+                        mean_right = mean(sqrt(sum(diff(win_right(:, 1:2)).^2, 2)) .* px_scale);
                         
                         %compute the ratio and delta
                         mean_ratio(kk) = mean_right / mean_left;
@@ -1698,8 +1708,9 @@ function [] = engineerRollingStdDevStepSizeDelta(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
+    N_cells     = size(app.movie_data.cellROI_data, 1);
     window_size = app.movie_data.state.rolling_delta_win_size;
+    px_scale    = app.movie_data.params.px_scale;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling stdev step size');
     
@@ -1730,8 +1741,8 @@ function [] = engineerRollingStdDevStepSizeDelta(app)
                     %if enough points exist compute stdev ratio and delta
                     if size(win_left, 1) > 2 && size(win_right, 1) > 2
                         %scale the position data to nm
-                        win_left(:, 1:2)  = win_left(:, 1:2) .* app.movie_data.params.px_scale;
-                        win_right(:, 1:2) = win_right(:, 1:2) .* app.movie_data.params.px_scale;
+                        win_left(:, 1:2)  = win_left(:, 1:2) .* px_scale;
+                        win_right(:, 1:2) = win_right(:, 1:2) .* px_scale;
                         
                         %compute the mean 2D step sizes
                         std_left  = std(sqrt(sum(diff(win_left(:, 1:2)).^2, 2)));
@@ -1814,8 +1825,9 @@ function [] = engineerRollingStdDevPosnDelta(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
+    N_cells     = size(app.movie_data.cellROI_data, 1);
     window_size = app.movie_data.state.rolling_delta_win_size;
+    px_scale    = app.movie_data.params.px_scale;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling stdev in position');
     
@@ -1846,8 +1858,8 @@ function [] = engineerRollingStdDevPosnDelta(app)
                     %if enough points exist compute mean ratio and delta
                     if size(win_left, 1) > 1 && size(win_right, 1) > 1
                         %scale the position data to nm
-                        win_left(:, 1:2)  = win_left(:, 1:2) .* app.movie_data.params.px_scale;
-                        win_right(:, 1:2) = win_right(:, 1:2) .* app.movie_data.params.px_scale;
+                        win_left(:, 1:2)  = win_left(:, 1:2) .* px_scale;
+                        win_right(:, 1:2) = win_right(:, 1:2) .* px_scale;
                         
                         %compute standard deviation in pos'n
                         std_left  = mean(std(win_left(:, 1:2)));
@@ -1935,8 +1947,9 @@ function [] = engineerRollingDispersionChange(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
+    N_cells     = size(app.movie_data.cellROI_data, 1);
     window_size = app.movie_data.state.rolling_delta_win_size;
+    px_scale    = app.movie_data.params.px_scale;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling dispersion changes');
     
@@ -1966,8 +1979,8 @@ function [] = engineerRollingDispersionChange(app)
                     %compute dispersion if enough points exist in both windows
                     if size(win_left, 1) > 1 && size(win_right, 1) > 1
                         %convert to nm (using a universal scale enables models to be trained with this feature on one system and applied to another)
-                        win_left(:, 1:2)  = win_left(:, 1:2) .* app.movie_data.params.px_scale;
-                        win_right(:, 1:2) = win_right(:, 1:2) .* app.movie_data.params.px_scale;
+                        win_left(:, 1:2)  = win_left(:, 1:2) .* px_scale;
+                        win_right(:, 1:2) = win_right(:, 1:2) .* px_scale;
                         
                         %compute centroids of each window
                         centroid_left   = mean(win_left(:, 1:2));
@@ -2057,8 +2070,9 @@ function [] = engineerRollingCentroidDisplacement(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
+    N_cells     = size(app.movie_data.cellROI_data, 1);
     window_size = app.movie_data.state.rolling_delta_win_size;
+    px_scale    = app.movie_data.params.px_scale;
     
     h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing centroid displacement for all tracks');
     
@@ -2088,8 +2102,8 @@ function [] = engineerRollingCentroidDisplacement(app)
                     %if enough points exist compute mean ratio and delta
                     if size(win_left, 1) > 1 && size(win_right, 1) > 1
                         %convert to nm (using a universal scale enables models to be trained with this feature on one system and applied to another)
-                        win_left(:, 1:2)  = win_left(:, 1:2) .* app.movie_data.params.px_scale;
-                        win_right(:, 1:2) = win_right(:, 1:2) .* app.movie_data.params.px_scale;
+                        win_left(:, 1:2)  = win_left(:, 1:2) .* px_scale;
+                        win_right(:, 1:2) = win_right(:, 1:2) .* px_scale;
                         
                         %compute centroids of each window
                         centroid_left   = mean(win_left(:, 1:2));
@@ -2190,7 +2204,7 @@ function [] = engineerFramesFromEnds(app)
             new_cols    = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), 4);
             %keep track of where to insert new data into new_cols each time
             idx_start   = 1;
-
+            
             %loop over all filtered molecules in cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
@@ -2268,7 +2282,8 @@ function [] = engineerSmoothedStepSize(app)
     popup = SetWindowSizeStepSmoothingPopUp(app);
     uiwait(popup.UIFigure);
     window_size = app.movie_data.state.step_smoothing_win_size;
-
+    px_scale = app.movie_data.params.px_scale;
+    
     if window_size == 0
         app.textout.Value = "User chose to cancel feature engineering for smoothed step sizes";
         return;
@@ -2276,21 +2291,21 @@ function [] = engineerSmoothedStepSize(app)
     
     N_cells = size(app.movie_data.cellROI_data, 1);
     h_progress  = waitbar(0,'Preparing....','Name','Computing smoothed steps for all tracks');
-
+    
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing smoothed steps for cell %d of %d', ii, N_cells));
-
+        
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %pre-allocate
             new_cols = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), 1);
             idx_start = 1;
-
+            
             %loop over all filtered molecules in the current cell
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
-
+                
                 %compute step sizes
-                curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* app.movie_data.params.px_scale];
+                curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* px_scale];
                 
                 %smooth step sizes using moving average
                 smoothed_steps = smoothdata(curr_steps, 'movmean', window_size);

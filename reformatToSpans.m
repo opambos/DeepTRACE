@@ -51,8 +51,6 @@ function [] = reformatToSpans(app)
 %-----------------------------------------
 %reformatDataset()   - local to this .m file
 
-%create_sliding_windows processes the trajectories with a sliding window.
-    
     span_len    = app.SpanlengthSpinner.Value;
     
     %good practice: overlap assigned inside the switch statement
@@ -82,7 +80,7 @@ function [] = reformatToSpans(app)
     if isfield(app.movie_data.results, "val_data") && isfield(app.movie_data.results, "val_labels")
         original_data   = app.movie_data.results.val_data;
         original_labels = app.movie_data.results.val_labels;
-
+        
         [windowed_data, windowed_labels] = reformatDataset(original_data, original_labels, span_len, overlap);
         
         app.movie_data.results.val_data     = windowed_data;
@@ -182,7 +180,15 @@ function [windowed_data, windowed_labels] = reformatDataset(original_data, origi
         trajectory(:, trajectory(end, :) == 0) = [];
         trajectory(end, :) = [];
         
-        labels = original_labels{ii};
+        %handle rare edge-case where there is only one track
+        if numel(original_data) > 1 
+            labels = original_labels{ii};
+        else 
+            %covers incredibly irritating edge case in which a dataset (train/val/test) contains only single track example;
+            %only runs once, but overall solution still sub-optimal
+            labels = horzcat(original_labels{:});
+        end
+        
         labels = removecats(labels, '0');   %critical; removes the now non-existent '0' class which would otherwise confuse use of the ML model
         
         %set initial window
@@ -204,6 +210,4 @@ function [windowed_data, windowed_labels] = reformatDataset(original_data, origi
             end_idx = start_idx + span_len - 1;
         end
     end
-
 end
-

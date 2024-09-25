@@ -62,21 +62,23 @@ function [common] = findCommonAnnotatedTracks(all_labels, annotation_fields)
     
     %loop over all annotation fields and check for '-1' in each track, eliminating those that are not fully annotated
     for ii = 1:numel(annotation_fields)
-        cell_array = all_labels.(annotation_fields{ii});
+        cell_array  = all_labels.(annotation_fields{ii});
+        cell_IDs    = cellfun(@(x) x.CellID, cell_array);
+        mol_IDs     = cellfun(@(x) x.MolID, cell_array);
         
         %loop over each common track
         to_remove = false(size(common, 1), 1);
         for jj = 1:size(common, 1)
-            %find the corresponding entry in the cell array
-            idx = find(cellfun(@(x) x.CellID == common(jj, 1) && x.MolID == common(jj, 2), cell_array));
+            %find corresponding entry
+            idx = find(cell_IDs == common(jj, 1) & mol_IDs == common(jj, 2), 1);
             
             %if any Labels vector contains a -1, mark it for removal
-            if any(cell_array{idx, 1}.Labels == -1)
+            if ~isempty(idx) && any(cell_array{idx, 1}.Labels == -1)
                 to_remove(jj) = true;
             end
         end
         
-        %remove the marked tracks, and move to next annotation source
+        %remove marked tracks, and move to next annotation source
         common(to_remove, :) = [];
     end
 end

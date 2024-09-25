@@ -50,7 +50,7 @@ function [] = repopulateEventLabeller(app)
 %setupDraggableLine()
     
     %load next mol, which is a callback to the next mol button
-    
+
     %clear the axes and cell_ID and mol_ID display boxes
     cla(app.UIAxes_event_labeller, 'reset');
     cla(app.UIAxes_event_labeller_status);
@@ -58,7 +58,7 @@ function [] = repopulateEventLabeller(app)
     cla(app.UIAxes_event_labeller_mesh);
     app.CellIDTextArea.Value = '';
     app.MolIDTextArea.Value = '';
-    
+
     %update the state positions
     app.movie_data.state.labeller_track_pos     = 1;
     app.movie_data.state.labeller_frame_video   = 1;
@@ -121,10 +121,10 @@ function [] = repopulateEventLabeller(app)
         yyaxis(app.UIAxes_event_labeller, 'right');
         ylim(app.UIAxes_event_labeller, y_limits_left);
         app.UIAxes_event_labeller.YColor = 'k';
-
+        app.UIAxes_event_labeller.Toolbar.Visible = 'off';
+        
         %also disable interactive tools in secondary axis while this is convenient
         disableDefaultInteractivity(app.UIAxes_event_labeller);
-        app.UIAxes_event_labeller.Toolbar.Visible = 'off';
 
         yyaxis(app.UIAxes_event_labeller, 'left');
     end
@@ -155,7 +155,7 @@ function [] = repopulateEventLabeller(app)
         app.UIAxes_event_labeller.YColor = [0.5 0.5 0.5];
         yyaxis(app.UIAxes_event_labeller, 'left');
     end
-    
+
     %prevent user being able to drag/zoom/etc.
     disableDefaultInteractivity(app.UIAxes_event_labeller);
     disableDefaultInteractivity(app.UIAxes_event_labeller_status);
@@ -179,7 +179,7 @@ function [] = repopulateEventLabeller(app)
     text(app.UIAxes_labelling_progress, app.UIAxes_labelling_progress.XLim(2)/2, 0.5, text_pc, 'HorizontalAlignment', 'center');
     
     %pull video from the correct video file
-    app.movie_data.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1);
+    app.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1);
 
     %display the first video frame (or initialise the handle if this is the first run)
     app.updateVideoFrame(app.movie_data.state.labeller_frame_video);
@@ -189,7 +189,8 @@ function [] = repopulateEventLabeller(app)
     
     %regenerate the draggable line
     setupDraggableLine(app);
-
-    %return keyboard focus to the human annotation system
-    focus(app.InVivoKineticsUIFigure);
+    
+    % if ~strcmp(app.InVivoKineticsUIFigure.CurrentObject, app.InVivoKineticsUIFigure)
+    %     focus(app.InVivoKineticsUIFigure);
+    % end
 end

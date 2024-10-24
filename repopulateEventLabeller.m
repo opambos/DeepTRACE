@@ -58,6 +58,9 @@ function [] = repopulateEventLabeller(app)
     cla(app.UIAxes_event_labeller_mesh);
     app.CellIDTextArea.Value = '';
     app.MolIDTextArea.Value = '';
+    
+%also disable interactive tools in secondary axis while this is convenient
+disableDefaultInteractivity(app.UIAxes_event_labeller);
 
     %update the state positions
     app.movie_data.state.labeller_track_pos     = 1;
@@ -122,9 +125,6 @@ function [] = repopulateEventLabeller(app)
         ylim(app.UIAxes_event_labeller, y_limits_left);
         app.UIAxes_event_labeller.YColor = 'k';
         app.UIAxes_event_labeller.Toolbar.Visible = 'off';
-        
-        %also disable interactive tools in secondary axis while this is convenient
-        disableDefaultInteractivity(app.UIAxes_event_labeller);
 
         yyaxis(app.UIAxes_event_labeller, 'left');
     end

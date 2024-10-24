@@ -58,8 +58,12 @@ function [] = computeLocMemDists(app)
     
     %loop over every cell
     for ii = 1:N_cells
+        if isempty(app.movie_data.cellROI_data(ii).tracks)
+            continue;
+        end
+        
         N_cols = size(app.movie_data.cellROI_data(ii).tracks, 2);
-
+        
         %reformat mesh into Nx2 format looping back to first vertex
         mesh = [app.movie_data.cellROI_data(ii).mesh(:,1:2); flipud(app.movie_data.cellROI_data(ii).mesh(1:end-1,3:4))];
 

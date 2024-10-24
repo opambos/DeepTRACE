@@ -56,6 +56,10 @@ function [] = engineerCellCoords(app)
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing cellular coordinates for cell %d of %d', ii, N_cells));
         
+        if isempty(app.movie_data.cellROI_data(ii).tracks)
+            continue;
+        end
+        
         %ensure heavily nested access to tracks is only performed once for each cell
         curr_tracks_x = app.movie_data.cellROI_data(ii).tracks(:,1);
         curr_tracks_y = app.movie_data.cellROI_data(ii).tracks(:,2);

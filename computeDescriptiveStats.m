@@ -173,7 +173,11 @@ function [t_obs, N_labelled, N_filtered, pc_progress, N_prefilter, pc_filtered, 
     
     %compute the number of tracks filtered during the analysis
     for ii = 1:size(movie_data.cellROI_data,1)
-        N_prefilter = N_prefilter + size(unique(movie_data.cellROI_data(ii).tracks(:,4)),1);
+        if isempty(movie_data.cellROI_data(ii).tracks)
+            continue;
+        else
+            N_prefilter = N_prefilter + size(unique(movie_data.cellROI_data(ii).tracks(:,4)),1);
+        end
     end
     pc_filtered = 100*(N_prefilter - N_filtered)/N_prefilter;
     

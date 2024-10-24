@@ -131,7 +131,16 @@ function [] = genAnnotationVideo(app)
         error("Unknown error in genAnnotationVideo");
     end
     
-    video = flipud(video);
+    if app.FixdynamicrangeacrossvideoCheckBox.Value
+        global_min_intensity = min(min(video(:)));
+        global_max_intensity = max(max(video(:)));
+    end
+    % average_min_intensity = min(video(:, :, 1:10), [], 'all');
+    % average_max_intensity = max(video(:, :, 1:10), [], 'all');
+
+    if app.FlipvideoverticallyCheckBox.Value
+        video = flipud(video);
+    end
     
     %===========================
     %Generating the animation
@@ -176,7 +185,11 @@ function [] = genAnnotationVideo(app)
     %iterate over each frame
     for frame_idx = frame_lo:frame_hi
         %display fluorescence video frame
-        imshow(video(:, :, frame_idx - frame_lo + 1), [], 'Parent', ax_fluorescence);
+        if app.FixdynamicrangeacrossvideoCheckBox.Value
+            imshow(video(:, :, frame_idx - frame_lo + 1), [global_min_intensity, global_max_intensity], 'Parent', ax_fluorescence);
+        else
+            imshow(video(:, :, frame_idx - frame_lo + 1), [], 'Parent', ax_fluorescence);
+        end
         title(ax_fluorescence, 'Fluorescence Video', 'FontSize', 18);
         
         %update each annotation plot with next segment if the frame exists in frame_numbers

@@ -1,4 +1,4 @@
-function [] = genAlignedVideo(data, t, time_range, xlim_max, bin_wid, frame_delay, file_pathname)
+function [] = genAlignedVideo(data, t, time_range, autoscale_x, xlim_min, xlim_max, bin_wid, frame_delay, file_pathname, feature_name)
 %Using the aligned event data, this function plots the step size histogram
 %over time as a video, visualising clearly any heterogeneity in the
 %distribution, Oliver Pambos, 10/11/2023.
@@ -37,11 +37,14 @@ function [] = genAlignedVideo(data, t, time_range, xlim_max, bin_wid, frame_dela
 %                           each row represents an event, each row is a series of localisations
 %t              (vec)   time relative to the transition event, each entry relates to corresponding column of the matrix 'data'
 %time_range     (vec)   2-element row vector containing the lower and upper time limits to display
+%autoscale_x    (bool)  determines whether to autoscale the X-axis (feature axis)
+%xlim_min       (float) upper limit of x-axis to display
 %xlim_max       (float) upper limit of x-axis to display; distribution can be very long-tailed and can vary substantially between frames;
 %                           fixing limits also stabilizes video; units depend on feature used
 %bin_wid        (float) histogram bin width, units depend upon feature used
 %frame_delay    (float) time between frames in animated video output, in seconds
 %file_pathname  (str)   path and file name of output animated gif file
+%feature_name   (str)   name of the feature to be plotted
 %
 %Output
 %------
@@ -92,10 +95,12 @@ function [] = genAlignedVideo(data, t, time_range, xlim_max, bin_wid, frame_dela
         ax.FontSize     = 20;
         ax.YAxis.Limits = [0 ylim_max];
         title(sprintf('Time relative to event: %.2f s', t(ii)));
-        xlabel('Step size (nm)', 'FontSize', 24);
+        xlabel(feature_name, 'FontSize', 24);
         ylabel('Normalised frequency', 'FontSize', 24);
         ax.LineWidth = 2;
-        ax.XAxis.Limits = [0 xlim_max];
+        if ~autoscale_x
+            ax.XAxis.Limits = [xlim_min, xlim_max];
+        end
         
         %set Y-axis ticks
         N_ticks             = max(4, min(7, floor(ylim_max * 10)));

@@ -1,4 +1,5 @@
-function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_rate, featureID, feature_name, entry_exit, style, display_range, max_val)
+function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_rate, feature_col, feature_name, style,...
+    display_range, autoscale_y, min_val, max_val, default_path, save_data)
 %Generate event overlays for all labelled molecules, Oliver Pambos,
 %25/05/2023.
 %oliver.pambos@physics.ox.ac.uk
@@ -51,14 +52,16 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
 %state          (int)       state being studied
 %width          (int)       width of the matrix to store the events
 %centre         (int)       column number where the first localisation of the new event should be placed
-%featureID      (int)       column number to extract from molecule data (i.e. each column represents a different feature; step size (nm), or step angle, etc.)
+%feature_col    (int)       column number to extract from molecule data (i.e. each column represents a different feature; step size (nm), or step angle, etc.)
 %feature_name   (str)       name of the feature being plotted
-%entryexit      (str)       'Entry' or 'Exit', currently unused as both plots are generates a subplots of a single figure
 %style          (str)       plot style, options are
 %                               'lines': all trajectories in grey, with median overlayed
 %display_range  (vec)       row vector of the time range to display in the plots
 %                               [t_before t_after]
+%autoscale_y    (bool)      boolean taken from checkbox input which determines whether to use y-axis auto scaling of plot or overriding with min_val and max_val
+%min_val        (float)     minimum value to display; this sets the upper limit in y-axis in static plots and x-axis in the histogram video (not currently implemented)
 %max_val        (float)     maximum value to display; this sets the upper limit in y-axis in static plots and x-axis in the histogram video
+%save_data      (bool)      determines whether to save data to CSV file
 %
 %Output
 %------
@@ -74,6 +77,8 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
 %getStateEntrances()
 %plotMedianStd()        - local to this .m file
 %findLongestMol()       - local to this .m file
+%saveLinesPlot()        - local to this .m file
+%savePointPlot()        - local to this .m file
     
     %find the longest molecule, and use this to pre-allocate the matrices
     %with the minimum possible size such that any alignment is unable to
@@ -103,7 +108,7 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
         %write state exits to data_out aligned at the len_max + 1
         for jj = 1:size(curr_events, 1)
             data_out(count_out, (len_max + 1 - curr_events(jj,2) + curr_events(jj,1)):(len_max + 1 + curr_events(jj,3) - curr_events(jj,2))) =...
-                curr_mol(curr_events(jj,1):curr_events(jj,3),featureID)';
+                curr_mol(curr_events(jj,1):curr_events(jj,3),feature_col)';
             count_out = count_out + 1;
         end
         
@@ -113,7 +118,7 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
         %write the entrances to data_in aligned at the len_max + 1
         for jj = 1:size(curr_events, 1)
             data_in(count_in, (len_max - curr_events(jj,2) + curr_events(jj,1)):(len_max + curr_events(jj,3) - curr_events(jj,2))) =...
-                curr_mol(curr_events(jj,1):curr_events(jj,3),featureID)';
+                curr_mol(curr_events(jj,1):curr_events(jj,3),feature_col)';
             count_in = count_in + 1;
         end
     end
@@ -146,7 +151,11 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
             plot(h_axes, median_std_plot(1,:), median_std_plot(3,:), 'r', 'LineWidth', 3);
             title(h_axes, [num2str(size(data_in,1)), ' entries, from ', num2str(size(mols,1)), ' molecules']);
             xlim(h_axes, display_range);
-            ylim(h_axes, [0 max_val]);
+
+            if ~autoscale_y
+                ylim(h_axes, [min_val, max_val]);
+            end
+
             %legend(h_axes, [num2str(size(data_in,1)), ' events, from ', num2str(size(mols,1)), ' molecules'], 'Location', 'northeast', 'Box', 'off');
             
             h_axes = nexttile(tiles);
@@ -155,9 +164,9 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
             h_axes.LineWidth=2;
             h_axes.FontSize = 16;
 
-            for ii = 1:size(data_out,1)
+            for ii = 1:size(data_out, 1)
                 %ignore all data points which have a zero
-                curr_plot = [t;data_out(ii,:)];
+                curr_plot = [t; data_out(ii,:)];
                 zero_cols = curr_plot(2,:) == 0;
                 curr_plot(:,zero_cols) = [];
                 plot(h_axes, curr_plot(1,:), curr_plot(2,:), 'color', [.3 .3 .3], 'linewidth', 1);
@@ -169,7 +178,14 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
             title(h_axes, [num2str(size(data_out,1)), ' exits, from ', num2str(size(mols,1)), ' molecules']);
             %legend(h_axes, [num2str(size(data_out,1)), ' events, from ', num2str(size(mols,1)), ' molecules'], 'Location', 'northwest', 'Box','off');
             xlim(h_axes, display_range);
-            ylim(h_axes, [0 max_val]);
+            
+            if ~autoscale_y
+                ylim(h_axes, [min_val, max_val]);
+            end
+            
+            if save_data
+                saveLinesPlot(median_std_plot, data_in, data_out, feature_name, default_path);
+            end
             
         case 'Points'
             tiles = tiledlayout(fig_handle,1,2);
@@ -187,7 +203,10 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
             ylabel(feature_name, 'FontSize', 18);
             title(h_axes, [num2str(size(data_in,1)), ' entries, from ', num2str(size(mols,1)), ' molecules']);
             xlim(h_axes, display_range);
-            ylim(h_axes, [0 max_val]);
+            
+            if ~autoscale_y
+                ylim(h_axes, [min_val, max_val]);
+            end
             
 
             h_axes = nexttile(tiles);
@@ -197,16 +216,24 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
             h_axes.FontSize = 16;
 
             median_std_plot = plotMedianStd(data_out, t);
-            errorbar(h_axes, median_std_plot(1,:),median_std_plot(2,:), median_std_plot(6,:), '-square', 'LineWidth', 2.5);
+            errorbar(h_axes, median_std_plot(1,:), median_std_plot(2,:), median_std_plot(6,:), '-square', 'LineWidth', 2.5);
             xlabel('Time relative to event (s)', 'FontSize', 18);
             ylabel(feature_name, 'FontSize', 18);
             title(h_axes, [num2str(size(data_out,1)), ' exits, from ', num2str(size(mols,1)), ' molecules']);
             xlim(h_axes, display_range);
-            ylim(h_axes, [0 max_val]);
-
+            
+            if ~autoscale_y
+                ylim(h_axes, [min_val, max_val]);
+            end
+            
+            if save_data
+                savePointPlot(median_std_plot, string(feature_name), string(default_path));
+            end
+            
         otherwise
 
     end
+
 end
 
 
@@ -403,23 +430,227 @@ function [median_std_plot] = plotMedianStd(data, t)
     median_std_plot = [t; zeros(2,size(data,2))];
 
     for ii = 1:size(data,2)
-        % if there are non-zero elements in column
+        %if there are non-zero elements in column
         if ~all(data(:,ii) == 0)
-            % current column, and delete the zeros
-            A = data(:,ii);
+            %current column, and delete the zeros
+            A = data(:, ii);
             A(A==0) = [];
-            % compute median and stddev, and insert into output data
-            median_std_plot(2,ii) = mean(A);
-            median_std_plot(3,ii) = median(A);
-            median_std_plot(4,ii) = std(A);
-            median_std_plot(5,ii) = var(A);
-            median_std_plot(6,ii) = std(A)/sqrt(size(A,1));
+            %compute median and stddev, and insert into output data
+            median_std_plot(2, ii) = mean(A);
+            median_std_plot(3, ii) = median(A);
+            median_std_plot(4, ii) = std(A);
+            median_std_plot(5, ii) = var(A);
+            median_std_plot(6, ii) = std(A)/sqrt(size(A,1));
         end
     end
 end
 
 
+function [] = savePointPlot(median_std_plot, feature_name, default_path)
+%Save data associated with the errorbar style plot of algined events,
+%Oliver Pambos, 06/11/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: savePointPlot
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%Saves a CSV file with the averaged event data and time base, the columns
+%represent,
+%   Col 1: time relative to event (s)
+%   Col 2: mean
+%   Col 3: median
+%   Col 4: standard deviation
+%   Col 5: variance
+%   Col 6: SEM, std/sqrt(N)
+%
+%All units are dependent upon the feature being displayed, which is set by
+%the user during runtime. The feature name is provided as a default
+%filename for the user to keep if necessary. Files are output with
+%timestamps to prevent overwriting, and to keep track of analysis.
+%
+%Input
+%-----
+%median_std_plot   (mat)    matrix for plotting median and stddev data
+%                               row 1: time
+%                               row 2: mean
+%                               row 3: median
+%                               row 4: standard deviation
+%                               row 5: variance
+%                               row 6: SEM, std/sqrt(N)
+%feature_name       (char)  name of feature being displayed
+%default_path       (char)  default filepath to save, currently set to
+%                               directory of source datafiles (ffPath)
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    
+    %remove any forbidden characters from feature name
+    feature_name = erase(feature_name, {'/', '\'});
+
+    %construct default filename with timestamp
+    date_str         = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+    default_filename = string(sprintf('%s_%s', date_str, string(feature_name)));
+    
+    %user provides file name, location
+    [file, path] = uiputfile('*.csv', 'Save data as', fullfile(default_path, default_filename));
+    
+    %if user hasn't pressed cancel, save CSV file with headers
+    if ~isequal(file, 0) && ~isequal(path, 0)
+        [~, filename, ~] = fileparts(file);
+        data_filename    = sprintf('%s_data.csv', filename);
+        
+        data_table = array2table(median_std_plot', 'VariableNames', ["Time relative to event (s)", "Mean", "Median",...
+                                               "Standard deviation", "Variance", "SEM"]);
+        
+        %write the table to a CSV file
+        writetable(data_table, fullfile(path, data_filename));
+    end
+end
 
 
-
-
+function [] = saveLinesPlot(median_std_plot, data_in, data_out, feature_name, default_path)
+%Save data associated with the 'Lines' style plot of algined events, Oliver
+%Pambos, 06/11/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: saveLinesPlot
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Saves three CSV files, one containing a the averaged data, and one each
+%containing the aligned data from every entry and exit event. In the
+%averaged file the columns represent,
+%   Col 1: time relative to event (s)
+%   Col 2: mean
+%   Col 3: median
+%   Col 4: standard deviation
+%   Col 5: variance
+%   Col 6: SEM, std/sqrt(N)
+%
+%In the files for all events, the first column is the time relative to
+%event (s), while all successive columns represent separate events. all
+%files contain headers describing the contents. Note that all units are
+%dependent upon the feature being displayed. The feature itself is provided
+%as a default filename for the user to keep if necessary. Files are output
+%with timestamps to prevent overwriting, and to keep track of analysis.
+%
+%Input
+%-----
+%median_std_plot    (mat)   data for plotting average of all aligned tracks
+%data_in            (mat)   data for all of the individual aligned track entrances
+%data_out           (mat)   data for all of the individual aligned tracks exits
+%feature_name       (char)  name of feature being displayed
+%default_path       (char)  default filepath to save, currently set to
+%                               directory of source datafiles (ffPath)
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    %remove any forbidden characters from feature name
+    feature_name = erase(feature_name, {'/', '\'});
+    
+    %construct default filename with timestamp
+    date_str         = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+    default_filename = string(sprintf('%s_%s', date_str, string(feature_name)));
+    
+    %user provides file name, location
+    [file, path] = uiputfile('*.csv', 'Save data as', fullfile(default_path, default_filename));
+    
+    %if user hasn't pressed cancel, save CSV files with headers
+    if ~isequal(file, 0) && ~isequal(path, 0)
+        [~, filename, ~] = fileparts(file);
+        
+        %=========================
+        %write average tracks data
+        %=========================
+        data_filename = sprintf('%s_average_data.csv', filename);
+        data_table = array2table(median_std_plot', 'VariableNames', ["Time relative to event (s)", "Mean", "Median", ...
+                                                  "Standard deviation", "Variance", "SEM"]);
+        writetable(data_table, fullfile(path, data_filename));
+        
+        %=================================
+        %write individual tracks exit data
+        %=================================
+        data_out_filename = sprintf('%s_individual_tracks_exit_data.csv', filename);
+        
+        %concat time col
+        data_out_with_time = [median_std_plot(1, :)', data_out'];
+        
+        %generate headers with the first column as time and remaining columns as molecules
+        col_headers = ["Time relative to event (s)", "Event " + string(1:size(data_out, 1))];
+        
+        %create table with new headers and data including time column
+        data_out_table = array2table(data_out_with_time, 'VariableNames', col_headers);
+        writetable(data_out_table, fullfile(path, data_out_filename));
+        
+        %==================================
+        %write individual tracks entry data
+        %==================================
+        data_out_filename = sprintf('%s_individual_tracks_entry_data.csv', filename);
+        
+        %concat time col
+        data_out_with_time = [median_std_plot(1, :)', data_in'];
+        
+        %generate headers with the first column as time and remaining columns as molecules
+        col_headers = ["Time relative to event (s)", "Event " + string(1:size(data_in, 1))];
+        
+        %create table with new headers and data including time column
+        data_out_table = array2table(data_out_with_time, 'VariableNames', col_headers);
+        writetable(data_out_table, fullfile(path, data_out_filename));
+    end
+end

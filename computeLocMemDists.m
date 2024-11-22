@@ -1,4 +1,4 @@
-function [] = computeLocMemDists(app)
+function [] = computeLocMemDists(app, h_progress)
 %Compute distance to membrane for every frame of every tracked molecule,
 %Oliver Pambos, 19/12/2021.
 %oliver.pambos@physics.ox.ac.uk
@@ -53,7 +53,6 @@ function [] = computeLocMemDists(app)
 %-----------------------------------------
 %findPointToMeshDist()
     
-    h_progress  = waitbar(0,'Preparing....','Name','Computing distances to membrane');
     N_cells     = size(app.movie_data.cellROI_data, 1);
     
     %loop over every cell
@@ -75,7 +74,7 @@ function [] = computeLocMemDists(app)
         %pre-allocate new column data to enable efficient single write operation
         temp_col = zeros(size(curr_tracks_x));
 
-        waitbar(ii/N_cells, h_progress, sprintf('Computing distances for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing membrane distances for cell %d of %d', ii, N_cells));
         %loop over all tracked localisations
         for jj = 1:size(curr_tracks_x, 1)
             %compute distance to nearest membrane for every localisation in nm
@@ -84,5 +83,4 @@ function [] = computeLocMemDists(app)
         app.movie_data.cellROI_data(ii).tracks(:, N_cols+1) = temp_col;
     end
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Distance to nearest membrane (nm)'];
-    close(h_progress);
 end

@@ -71,8 +71,7 @@ function [msd_result] = compileMSDMatrixFast(track, t_interframe, max_lag)
 %-----------------------------------------
 %None
     
-    %remove track number offset and initialise results matrix
-    track(:,3) = track(:,3) - min(track(:,3)) + 1;
+    %initialise results matrix
     msd_result = zeros(max_lag, 2);
     
     %loop over all pairs of localisations in track (all possible time delays)
@@ -83,12 +82,11 @@ function [msd_result] = compileMSDMatrixFast(track, t_interframe, max_lag)
             %if lag time exceeds range, stop computing further lag times for loc ii, and move to next loc
             if delta_frame > max_lag
                 break;
-            %else if the lag time is relevant, and ii and jj are different, compute squared Euclidean distance, and add to MSD matrix
-            elseif delta_frame > 0
-                distance_sq = pdist([track(ii, 1:2); track(jj, 1:2)], 'squaredeuclidean');
-                msd_result(delta_frame, 1) = msd_result(delta_frame, 1) + distance_sq;
-                msd_result(delta_frame, 2) = msd_result(delta_frame, 2) + 1;
             end
+            %else if the lag time is relevant, and ii and jj are different, compute squared Euclidean distance, and add to MSD matrix
+            distance_sq = sum((track(ii, 1:2) - track(jj, 1:2)).^2);
+            msd_result(delta_frame, 1) = msd_result(delta_frame, 1) + distance_sq;
+            msd_result(delta_frame, 2) = msd_result(delta_frame, 2) + 1;
         end
     end
     

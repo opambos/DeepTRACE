@@ -57,6 +57,12 @@ function [] = engineerFeatures(app)
 %where pre-allocation and use of a running index could improve performance
 %if needed.
 %
+%Future refactoring: the local functions for local and pairs of windows,
+%could be condensed into two functions which call smaller functions only to
+%perform the calculations on the local windowed data. This refactoring
+%offers no performance improvement, but would significantly condense this
+%.m file.
+%
 %Inputs
 %------
 %app    (handle)    main GUI handle
@@ -73,33 +79,51 @@ function [] = engineerFeatures(app)
 %computeLocPoleDists()
 %computeStepAngles()
 %compileMSDMatrixFast()
+%computeStepAngles()
+%computeStepAnglesRelToCell()
+%findColumnIdx()
+%engineerTimeFromTrackStart()           - local to this .m file
 %engineerPosInNm()                      - local to this .m file
 %engineerTimeStep()                     - local to this .m file
 %engineerExperimentTime()               - local to this .m file
-%engineerTimeFromTrackStart()           - local to this .m file
 %engineerTimeFromReferencePoints()      - local to this .m file
 %engineerStepSize()                     - local to this .m file
+%engineerShiftedStepSizes()             - local to this .m file
+%engineerLocalStepSizeKurtosis()        - local to this .m file
+%engineerLocalKurtosis()                - local to this .m file
 %engineerDistanceFromTrackStart()       - local to this .m file
 %engineerCumulativeDistanceTravelled()  - local to this .m file
 %engineerRelativeStepAngle()            - local to this .m file
+%engineerStepAngleAsymmetry()           - local to this .m file
 %engineerStepAngleRelImage()            - local to this .m file
 %engineerStepAngleRelCell()             - local to this .m file
 %engineerSpotSize()                     - local to this .m file
 %engineerSpotArea()                     - local to this .m file
+%engineerLocalEfficiency()              - local to this .m file
+%engineerLocalStraightness()            - local to this .m file
+%engineerLocalFractalDimension()        - local to this .m file
+%engineerLocalTrappedness()             - local to this .m file
 %engineerLocalDStar()                   - local to this .m file
 %engineerRollingDStarDelta()            - local to this .m file
+%engineerLocalAnomalousExponent()       - local to this .m file
 %engineerRollingMeanStepSizeDelta()     - local to this .m file
 %engineerRollingStdDevStepSizeDelta()   - local to this .m file
 %engineerRollingStdDevPosnDelta()       - local to this .m file
 %engineerRollingDispersionChange()      - local to this .m file
 %engineerRollingCentroidDisplacement()  - local to this .m file
+%engineerSmoothedStepSize()             - local to this .m file
 %engineerFramesFromEnds()               - local to this .m file
     
     
-    %obtain window size from user
+    %==========================================
+    %User selects from feature engineering menu
+    %==========================================
     popup = FeatureEngineeringMenu(app);
     uiwait(popup.FeatureEngineeringMenuUIFigure);
     
+    %==================================================================
+    %Front-load decision making to start of feature engineering process
+    %==================================================================
     %if user has requested any rolling delta features, then prompt them for a rolling window size for this
     strings_to_check = {'Local change in diffusion coefficient',...
                         'Local change in mean step size',...
@@ -112,137 +136,334 @@ function [] = engineerFeatures(app)
         uiwait(popup.SlidingPairWindowSizeFigure);
     end
     
+    %get from user a local window size if required
+    %(note that smoothed step size is not included here as it requires a separate input for smoothing method, and so has its own app)
+    strings_to_check = {'Local anomalous diffusion exponent',...
+                        'Local step angle asymmetry', ...
+                        'Local diffusion coefficient', ...
+                        'Local efficiency', ...
+                        'Local straightness', ...
+                        'Local kurtosis', ...
+                        'Local step size kurtosis', ...
+                        'Local fractal dimension', ...
+                        'Local trappedness'};
+    if any(ismember(strings_to_check, app.movie_data.state.selected_features))
+        popup = LocalWindowSizePopUp(app);
+        uiwait(popup.LocalWindowSizeFigure);
+    end
+    
+    %get from user input parameters for smoothed step size
+    strings_to_check = {'Smoothed step size'};
+    if any(ismember(strings_to_check, app.movie_data.state.selected_features))
+        popup = SetWindowSizeStepSmoothingPopUp(app);
+        uiwait(popup.UIFigure);
+    end
+    
+    %get from user reference point(s) if requested
+    strings_to_check = {'Set experiment reference timepoints'};
+    if any(ismember(strings_to_check, app.movie_data.state.selected_features))
+        popup = ReferencePointPopUp(app);
+        uiwait(popup.ReferencetimepointentryUIFigure);
+    end
+    
+    %get from user time shifts if requested
+    strings_to_check = {'Time shifted step sizes'};
+    if any(ismember(strings_to_check, app.movie_data.state.selected_features))
+        popup = TemporalContextPopUp(app);
+        uiwait(popup.UIFigure);
+    end
+    
+    %get from user time shifts if requested
+    strings_to_check = {'Local trappedness'};
+    if any(ismember(strings_to_check, app.movie_data.state.selected_features))
+        popup = TrappedConstantsPopUp(app);
+        uiwait(popup.TrappedUIFigure);
+    end
+    
+    %clear any lingering pop-ups - I've not explicitly cleared this between calls to successive popups because there are no listener objects, and there is no intention to add any
+    if exist("popup", "var")
+        clear popup;
+    end
+    
+    %==============
+    %Set up waitbar
+    %==============
+    curr_feature    = 1;    %keeps track of current feature being engineered to inform waitbar
+    N_features      = numel(app.movie_data.state.selected_features) + 3;    %3 obligatory features to engineer; update as required when adding more
+    h_progress      = waitbar(0,'Preparing....', 'Name', 'Engineering features');
+    
     %==============================
     %Obligatory engineered features
     %==============================
+    %compute the time from start of track for all tracked localisations
+    set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Time from track start"));
+    waitbar(0, h_progress, 'Computing times from track start');
+    engineerTimeFromTrackStart(app, h_progress);
+    curr_feature = curr_feature + 1;
+    
     %compute cell coordinates for all tracked localisations in dataset
-    engineerCellCoords(app);
+    set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Cell coordinates"));
+    waitbar(0, h_progress, 'Computing cell coordinates');
+    engineerCellCoords(app, h_progress);
+    curr_feature = curr_feature + 1;
     
     %convert localisation data to nm
-    engineerPosInNm(app);
+    set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Coordinates in nanometers"));
+    waitbar(0, h_progress, 'Converting to nanometers');
+    engineerPosInNm(app, h_progress);
+    curr_feature = curr_feature + 1;
     
     %============================
     %Optional engineered features
     %============================
     %compute step sizes between localisations in all tracks
     if ismember('Step size', app.movie_data.state.selected_features)
-        engineerStepSize(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Step size"));
+        waitbar(0, h_progress, 'Computing step sizes');
+        engineerStepSize(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute the time steps between localisations in all tracks
     if ismember('Time step from previous localisation', app.movie_data.state.selected_features)
-        engineerTimeStep(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Time step"));
+        waitbar(0, h_progress, 'Computing time steps');
+        engineerTimeStep(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute smoothed step sizes
     if ismember('Smoothed step size', app.movie_data.state.selected_features)
-        engineerSmoothedStepSize(app);
-    end
-
-    %compute time from start of experiment
-    if ismember('Time since start of experiment', app.movie_data.state.selected_features)
-        engineerExperimentTime(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Smoothed step size"));
+        waitbar(0, h_progress, 'Smoothing step sizes');
+        engineerSmoothedStepSize(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
-    %compute the time from start of track for all tracked localisations
-    if ismember('Time from start of track', app.movie_data.state.selected_features)
-        engineerTimeFromTrackStart(app);
+    %compute time from start of experiment
+    if ismember('Time since start of experiment', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Global experiment time"));
+        waitbar(0, h_progress, 'Computing experiment times');
+        engineerExperimentTime(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute time from all reference points
     if ismember('Set experiment reference timepoints', app.movie_data.state.selected_features)
-        engineerTimeFromReferencePoints(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Reference time point(s)"));
+        waitbar(0, h_progress, 'Computing reference timepoints');
+        engineerTimeFromReferencePoints(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute distance of current point from start of track
     if ismember('Current distance from start of track', app.movie_data.state.selected_features)
-        engineerDistanceFromTrackStart(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Distance from track start"));
+        waitbar(0, h_progress, 'Computing distances');
+        engineerDistanceFromTrackStart(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute cumulative distance travelled since start of track
     if ismember('Cumulative distance travelled', app.movie_data.state.selected_features)
-        engineerCumulativeDistanceTravelled(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Cumulative distance travelled"));
+        waitbar(0, h_progress, 'Computing cumulative distances');
+        engineerCumulativeDistanceTravelled(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute all shifted step sizes requested by user
     if ismember('Time shifted step sizes', app.movie_data.state.selected_features)
-        engineerShiftedStepSizes(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Time-shifted step size"));
+        waitbar(0, h_progress, 'Computing time shifted step sizes');
+        engineerShiftedStepSizes(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute distance-to-membrane for every tracked localisation in dataset
     if ismember('Distance to cell membrane', app.movie_data.state.selected_features)
-        computeLocMemDists(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Distance to cell membrane"));
+        waitbar(0, h_progress, 'Computing membrane distances');
+        computeLocMemDists(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute distance-to-pole for every tracked localisation in dataset
     if ismember('Distance to nearest cell pole', app.movie_data.state.selected_features)
-        computeLocPoleDists(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Distance to cell pole"));
+        waitbar(0, h_progress, 'Computing pole distances');
+        computeLocPoleDists(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute spot size
     if ismember('Spot size', app.movie_data.state.selected_features)
-        engineerSpotSize(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Spot size"));
+        waitbar(0, h_progress, 'Computing spot sizes');
+        engineerSpotSize(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute spot area
     if ismember('Spot area', app.movie_data.state.selected_features)
-        engineerSpotArea(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Spot area"));
+        waitbar(0, h_progress, 'Computing spot areas');
+        engineerSpotArea(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute step angle relative to previous step for all steps in dataset
     if ismember('Step angle relative to previous step', app.movie_data.state.selected_features)
-        engineerRelativeStepAngle(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Step angle"));
+        waitbar(0, h_progress, 'Computing step angles');
+        engineerRelativeStepAngle(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local step angle asymmetry
+    if ismember('Local step angle asymmetry', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local step angle asymmetry"));
+        waitbar(0, h_progress, 'Computing local step angle asymmetry');
+        engineerStepAngleAsymmetry(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute step angle relative to image for all steps in dataset
     if ismember('Step angle relative to field of view', app.movie_data.state.selected_features)
-        engineerStepAngleRelImage(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Step angle (image axis)"));
+        waitbar(0, h_progress, 'Computing step angles relative to image');
+        engineerStepAngleRelImage(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute step angle relative to cell major axis for all steps in dataset
     if ismember('Step angle relative to cell major axis', app.movie_data.state.selected_features)
-        engineerStepAngleRelCell(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Step angle (cell axis)"));
+        waitbar(0, h_progress, 'Computing step angles');
+        engineerStepAngleRelCell(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute the local diffusion coefficient around every tracked localisation
     if ismember('Local diffusion coefficient', app.movie_data.state.selected_features)
-        engineerLocalDStar(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local diffusion coefficient"));
+        waitbar(0, h_progress, 'Computing diffusion coefficients');
+        engineerLocalDStar(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute rolling window delta for local D*
     if ismember('Local change in diffusion coefficient', app.movie_data.state.selected_features)
-        engineerRollingDStarDelta(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Delta diffusion coefficient"));
+        waitbar(0, h_progress, 'Computing delta diffusion coefficients');
+        engineerRollingDStarDelta(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local anomalous diffusion exponent
+    if ismember('Local anomalous diffusion exponent', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local diffusion exponent"));
+        waitbar(0, h_progress, 'Computing local diffusion exponents');
+        engineerLocalAnomalousExponent(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute rolling window delta for mean step size
     if ismember('Local change in mean step size', app.movie_data.state.selected_features)
-        engineerRollingMeanStepSizeDelta(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Delta mean step size"));
+        waitbar(0, h_progress, 'Computing delta mean step sizes');
+        engineerRollingMeanStepSizeDelta(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute rolling window delta for standard deviation of step size
     if ismember('Local change in standard deviation of step sizes', app.movie_data.state.selected_features)
-        engineerRollingStdDevStepSizeDelta(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Delta stdev step size"));
+        waitbar(0, h_progress, 'Computing delta standard deviations');
+        engineerRollingStdDevStepSizeDelta(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute rolling window delta for standard deviation of position
     if ismember('Local change in standard deviation of positions', app.movie_data.state.selected_features)
-        engineerRollingStdDevPosnDelta(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Delta stdev of position"));
+        waitbar(0, h_progress, 'Computing standard deviations of positions');
+        engineerRollingStdDevPosnDelta(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute rolling window of change in dispersion
     if ismember('Local change in dispersion of positions', app.movie_data.state.selected_features)
-        engineerRollingDispersionChange(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Change in dispersion"));
+        waitbar(0, h_progress, 'Computing changes in dispersion');
+        engineerRollingDispersionChange(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
     %compute rolling window of displacement between position centroids
     if ismember('Local displacement in centroid of localisations', app.movie_data.state.selected_features)
-        engineerRollingCentroidDisplacement(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Centroid displacement"));
+        waitbar(0, h_progress, 'Computing centroid displacements');
+        engineerRollingCentroidDisplacement(app, h_progress);
+        curr_feature = curr_feature + 1;
     end
     
+    %compute local efficiency
+    if ismember('Local efficiency', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local efficiency"));
+        waitbar(0, h_progress, 'Computing local efficiencies');
+        engineerLocalEfficiency(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local straightness
+    if ismember('Local straightness', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local straightness"));
+        waitbar(0, h_progress, 'Computing local straightnesses');
+        engineerLocalStraightness(app, h_progress)
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local kurtosis
+    if ismember('Local kurtosis', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local kurtosis"));
+        waitbar(0, h_progress, 'Computing local kurtosis');
+        engineerLocalKurtosis(app, h_progress)
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local kurtosis
+    if ismember('Local step size kurtosis', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local step size kurtosis"));
+        waitbar(0, h_progress, 'Computing local step size kurtosis');
+        engineerLocalStepSizeKurtosis(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local fractal dimension
+    if ismember('Local fractal dimension', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local fractal dimension"));
+        waitbar(0, h_progress, 'Computing local fractal dimension');
+        engineerLocalFractalDimension(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local trappedness
+    if ismember('Local trappedness', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local trappedness"));
+        waitbar(0, h_progress, 'Computing local trappedness');
+        engineerLocalTrappedness(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute track end proximity
     if ismember('Proximity to ends of track', app.movie_data.state.selected_features)
-        engineerFramesFromEnds(app);
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Track ends proximity"));
+        waitbar(0, h_progress, 'Computing proximity to track ends');
+        engineerFramesFromEnds(app, h_progress);
     end
     
+    close(h_progress);
     
     %============
     %Class labels
@@ -257,7 +478,7 @@ function [] = engineerFeatures(app)
 end
 
 
-function [] = engineerPosInNm(app)
+function [] = engineerPosInNm(app, h_progress)
 %Feature engineering for conversion of position units to nm for all tracked
 %localisations in dataset, Oliver Pambos, 24/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -292,7 +513,8 @@ function [] = engineerPosInNm(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -302,15 +524,15 @@ function [] = engineerPosInNm(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Converting localisation data to nm');
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Converting localisation data for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Converting data for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute x and y in nm
-            new_cols = app.movie_data.cellROI_data(ii).tracks(:,1:2) .* app.movie_data.params.px_scale;
+            new_cols = app.movie_data.cellROI_data(ii).tracks(:,1:2) .* px_scale;
             
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_cols];
@@ -319,11 +541,10 @@ function [] = engineerPosInNm(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, {'x (nm)', 'y (nm)'}];
-    close(h_progress);
 end
 
 
-function [] = engineerStepSize(app)
+function [] = engineerStepSize(app, h_progress)
 %Feature engineering for step size from the previous localisation in a
 %track, Oliver Pambos, 24/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -359,7 +580,8 @@ function [] = engineerStepSize(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -370,11 +592,10 @@ function [] = engineerStepSize(app)
 %None
     
     N_cells     = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing for all time steps in all tracks');
     px_scale    = app.movie_data.params.px_scale;
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing time steps for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing step sizes for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -400,11 +621,10 @@ function [] = engineerStepSize(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step size (nm)'];
-    close(h_progress);
 end
 
 
-function [] = engineerTimeStep(app)
+function [] = engineerTimeStep(app, h_progress)
 %Feature engineering for the time step from the previous localisation in a
 %track, Oliver Pambos, 24/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -440,7 +660,8 @@ function [] = engineerTimeStep(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -451,7 +672,6 @@ function [] = engineerTimeStep(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing all time steps in all tracks');
     
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing time steps for cell %d of %d', ii, N_cells));
@@ -477,17 +697,16 @@ function [] = engineerTimeStep(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Time step interval from previous step (s)'];
-    close(h_progress);
 end
 
 
-function [] = engineerExperimentTime(app)
+function [] = engineerExperimentTime(app, h_progress)
 %Feature engineering for the time elapsed from start of experiment, Oliver
 %Pambos, 30/05/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
-%MATLAB FUNCTION: engineerTimeFromTrackStart
+%MATLAB FUNCTION: engineerExperimentTime
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
@@ -514,7 +733,8 @@ function [] = engineerExperimentTime(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -525,10 +745,9 @@ function [] = engineerExperimentTime(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing elapsed time for all tracks');
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing elapsed time for tracks in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing experiment time for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute times and append to tracks matrix
@@ -538,12 +757,11 @@ function [] = engineerExperimentTime(app)
     end
     
     %update column titles accordingly
-    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Time (s)'];
-    close(h_progress);
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Experiment time (s)'];
 end
 
 
-function [] = engineerTimeFromTrackStart(app)
+function [] = engineerTimeFromTrackStart(app, h_progress)
 %Feature engineering for the time elapsed from start of track, Oliver
 %Pambos, 30/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -579,7 +797,8 @@ function [] = engineerTimeFromTrackStart(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -590,11 +809,10 @@ function [] = engineerTimeFromTrackStart(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing elapsed time for all tracks');
     frame_rate = app.movie_data.params.frame_rate;
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing elapsed time for tracks in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing track times for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -618,11 +836,10 @@ function [] = engineerTimeFromTrackStart(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Time from start of track (s)'];
-    close(h_progress);
 end
 
 
-function [] = engineerTimeFromReferencePoints(app)
+function [] = engineerTimeFromReferencePoints(app, h_progress)
 %Feature engineering for the time elapsed from reference point(s) provided
 %by user, Oliver Pambos, 29/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -655,7 +872,8 @@ function [] = engineerTimeFromReferencePoints(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -665,18 +883,18 @@ function [] = engineerTimeFromReferencePoints(app)
 %-----------------------------------------
 %None
     
+    if isfield(app.movie_data.params, 't_ref_points') && iscell(app.movie_data.params.t_ref_points)
+        t_ref_points = app.movie_data.params.t_ref_points;
+    else
+        app.textout.Value = "Feature engineering for reference time points skipped";
+        return;
+    end
+    
     N_cells = size(app.movie_data.cellROI_data, 1);
-    t_ref_points = app.movie_data.params.t_ref_points;
     frame_rate = app.movie_data.params.frame_rate;
     
-    %get reference point(s) from user
-    popup = ReferencePointPopUp(app);
-    uiwait(popup.ReferencetimepointentryUIFigure);
-    
-    h_progress  = waitbar(0,'Preparing....','Name','Computing reference time(s) for all tracks');
-    
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing reference time(s) for tracks in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing reference time(s) for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             curr_tracks = app.movie_data.cellROI_data(ii).tracks;
@@ -697,12 +915,10 @@ function [] = engineerTimeFromReferencePoints(app)
     %write the new column titles
     title_t_ref_points = cellfun(@(x) ['Time from ' x ' (s)'], t_ref_points(:, 2), 'UniformOutput', false);
     app.movie_data.params.column_titles.tracks  = [app.movie_data.params.column_titles.tracks, title_t_ref_points'];
-    
-    close(h_progress);
 end
 
 
-function [] = engineerDistanceFromTrackStart(app)
+function [] = engineerDistanceFromTrackStart(app, h_progress)
 %Feature engineering for the distance of position from start of track,
 %Oliver Pambos, 30/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -748,7 +964,8 @@ function [] = engineerDistanceFromTrackStart(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -758,11 +975,11 @@ function [] = engineerDistanceFromTrackStart(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing distance travelled for all tracks');
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing distance travelled in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing distances for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -772,7 +989,7 @@ function [] = engineerDistanceFromTrackStart(app)
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 %get the current track and compute the time from start
                 curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
-                curr_dists = sqrt(sum((curr_track(:, 1:2) - curr_track(1, 1:2)).^2, 2)) .* app.movie_data.params.px_scale;
+                curr_dists = sqrt(sum((curr_track(:, 1:2) - curr_track(1, 1:2)).^2, 2)) .* px_scale;
                 
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_dists);
@@ -785,17 +1002,16 @@ function [] = engineerDistanceFromTrackStart(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Current distance from start of track (nm)'];
-    close(h_progress);
 end
 
 
-function [] = engineerCumulativeDistanceTravelled(app)
+function [] = engineerCumulativeDistanceTravelled(app, h_progress)
 %Feature engineering for the cumulative distance travelled from start of
 %track, Oliver Pambos, 30/05/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
-%MATLAB FUNCTION: engineerDistanceTravelled
+%MATLAB FUNCTION: engineerCumulativeDistanceTravelled
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
@@ -829,7 +1045,8 @@ function [] = engineerCumulativeDistanceTravelled(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -839,11 +1056,11 @@ function [] = engineerCumulativeDistanceTravelled(app)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing distance from start for all tracks');
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing distance from start of track in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing cumulative distances for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -853,7 +1070,7 @@ function [] = engineerCumulativeDistanceTravelled(app)
             for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
                 %get the current track and compute all distances between consecutive points
                 curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
-                curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* app.movie_data.params.px_scale];
+                curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* px_scale];
                 
                 %compute the cumulative sum for each step in track, and concatenate this for the current molecule into the new column
                 new_col = cat(1, new_col, cumsum(curr_steps));
@@ -866,11 +1083,10 @@ function [] = engineerCumulativeDistanceTravelled(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Cumulative distance travelled from start of track (nm)'];
-    close(h_progress);
 end
 
 
-function [] = engineerRelativeStepAngle(app)
+function [] = engineerRelativeStepAngle(app, h_progress)
 %Feature engineering for step angles relative to previous step, Oliver
 %Pambos, 24/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -906,7 +1122,8 @@ function [] = engineerRelativeStepAngle(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -917,10 +1134,9 @@ function [] = engineerRelativeStepAngle(app)
 %computeStepAngles()
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing step angles for all tracks');
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing step angles relative to previous step for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing step angles for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -944,11 +1160,10 @@ function [] = engineerRelativeStepAngle(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step angle relative to previous step (degrees, absolute)'];
-    close(h_progress);
 end
 
 
-function [] = engineerStepAngleRelImage(app)
+function [] = engineerStepAngleRelImage(app, h_progress)
 %Feature engineering for step angles relative to the image axis, Oliver
 %Pambos, 24/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -984,7 +1199,8 @@ function [] = engineerStepAngleRelImage(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -995,10 +1211,9 @@ function [] = engineerStepAngleRelImage(app)
 %computeStepAngles()
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing step angles relative to image');
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing step angles relative to image for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing step angles for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -1022,11 +1237,10 @@ function [] = engineerStepAngleRelImage(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step angle relative to image (degrees)'];
-    close(h_progress);
 end
 
 
-function [] = engineerStepAngleRelCell(app)
+function [] = engineerStepAngleRelCell(app, h_progress)
 %Feature engineering for step angles relative to the cell major axis,
 %Oliver Pambos, 24/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1062,7 +1276,8 @@ function [] = engineerStepAngleRelCell(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1073,10 +1288,9 @@ function [] = engineerStepAngleRelCell(app)
 %computeStepAnglesRelToCell()
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing step angles relative to cell');
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing step angles relative to cell for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing step angles for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -1101,11 +1315,10 @@ function [] = engineerStepAngleRelCell(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step angle relative to cell axis (degrees)'];
-    close(h_progress);
 end
 
 
-function [] = engineerSpotSize(app)
+function [] = engineerSpotSize(app, h_progress)
 %Feature engineering for spot size of all tracked localisations, Oliver
 %Pambos, 31/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1142,7 +1355,8 @@ function [] = engineerSpotSize(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1150,7 +1364,7 @@ function [] = engineerSpotSize(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%None
+%findColumnIdx()
     
     %find the required columns
     col_std_major = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
@@ -1160,26 +1374,25 @@ function [] = engineerSpotSize(app)
         return;
     end
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing spot size for all tracked localisations');
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing spot sizes in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing spot sizes for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute spot sizes and append to tracks matrix
-            new_col = 2 .* (sqrt((app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* app.movie_data.params.px_scale).^2 + (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* app.movie_data.params.px_scale).^2));
+            new_col = 2 .* (sqrt((app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* px_scale).^2 + (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* px_scale).^2));
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
     end
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Spot size (nm)'];
-    close(h_progress);
 end
 
 
-function [] = engineerSpotArea(app)
+function [] = engineerSpotArea(app, h_progress)
 %Feature engineering for spot area of all tracked localisations, Oliver
 %Pambos, 31/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1216,7 +1429,8 @@ function [] = engineerSpotArea(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1224,7 +1438,7 @@ function [] = engineerSpotArea(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%None
+%findColumnIdx()
     
     col_std_major = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
     col_std_minor = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation minor axis");
@@ -1234,26 +1448,25 @@ function [] = engineerSpotArea(app)
         return;
     end
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing spot size for all tracked localisations');
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing spot sizes in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing spot areas for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute spot sizes and append to tracks matrix
-            new_col = pi .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* app.movie_data.params.px_scale) .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* app.movie_data.params.px_scale);
+            new_col = pi .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* px_scale) .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* px_scale);
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
     end
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Spot area (nm^2)'];
-    close(h_progress);
 end
 
 
-function [] = engineerLocalDStar(app)
+function [] = engineerLocalDStar(app, h_progress)
 %Feature engineering for local apparent diffusion coefficient for all
 %tracked localisations, Oliver Pambos, 17/06/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1318,7 +1531,8 @@ function [] = engineerLocalDStar(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1328,15 +1542,9 @@ function [] = engineerLocalDStar(app)
 %-----------------------------------------
 %compileMSDMatrixFast()
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
-    app.movie_data.state.local_dstar_win_size = 0;
-
-    %obtain window size from user
-    popup = SelectLocalDiffusionParamsPopUp(app);
-    uiwait(popup.SelectLocalDiffusionParamsFigure);
-    window_size = app.movie_data.state.local_dstar_win_size;
-    
-    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing local D* for all tracks');
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
+    window_size = app.movie_data.state.local_win_size;
     
     for ii = 1:N_cells
         waitbar(ii / N_cells, h_progress, sprintf('Computing local D* for cell %d of %d', ii, N_cells));
@@ -1356,13 +1564,13 @@ function [] = engineerLocalDStar(app)
                     lim_hi = curr_track(kk, 3) + window_size;
                     
                     curr_window         = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
-                    curr_window(:, 1:2) = curr_window(:, 1:2) .* (app.movie_data.params.px_scale / 1000);
+                    curr_window(:, 1:2) = curr_window(:, 1:2) .* (px_scale / 1000);
                     
                     %compute the MSD matrix
                     msd_result = compileMSDMatrixFast(curr_window, 1/app.movie_data.params.frame_rate, window_size);
                     
-                    %calculate D* = MSD / 4t; also adding a point at (0, 0)
-                    p = polyfit([0; msd_result(:, 3)], [0; msd_result(:, 4)], 1);
+                    %calculate D* = MSD / 4t (without forcing through origin)
+                    p = polyfit(msd_result(:, 3), msd_result(:, 4), 1); %use p = polyfit([0; msd_result(:, 3)], [0; msd_result(:, 4)], 1); to fit through origin
                     curr_Dstar(kk, 1) = p(1) / 4;
                 end
                 new_col = [new_col; curr_Dstar];
@@ -1377,11 +1585,10 @@ function [] = engineerLocalDStar(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Local D* (um^2/s)'];
-    close(h_progress);
 end
 
 
-function [] = engineerRollingDStarDelta(app)
+function [] = engineerRollingDStarDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
 %D* values, Oliver Pambos, 19/06/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1440,7 +1647,8 @@ function [] = engineerRollingDStarDelta(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1455,10 +1663,8 @@ function [] = engineerRollingDStarDelta(app)
     px_scale    = app.movie_data.params.px_scale;
     frame_rate  = app.movie_data.params.frame_rate;
     
-    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing local D* for all tracks');
-    
     for ii = 1:N_cells
-        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling D* for cell %d of %d', ii, N_cells));
+        waitbar(ii / N_cells, h_progress, sprintf('Computing delta D* for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             cell_Dstar_ratio = [];
@@ -1534,11 +1740,114 @@ function [] = engineerRollingDStarDelta(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling D* ratio', 'Rolling D* delta (um^2/s)'];
-    close(h_progress);
 end
 
 
-function [] = engineerRollingMeanStepSizeDelta(app)
+function [] = engineerLocalAnomalousExponent(app, h_progress)
+%Feature engineering for local anomalous diffusion exponent, Oliver Pambos,
+%17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalAnomalousExponent
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Computes the anomalous exponent alpha by fitting the MSD over a specified
+%window size around each point in the track. The window size is specified
+%by the user, which determines the frame range used in the MSD computation.
+%The maximum lag time used is half of the window size to ensure there is
+%sufficient data to prevent statistical noise during the fitting process.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%compileMSDMatrixFast()
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing exponents for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:, 4) == track_ID, :);
+                curr_alpha  = zeros(size(curr_track, 1), 1);
+                
+                for kk = 1:size(curr_track, 1)
+                    %obtain local window of track
+                    lim_lo = curr_track(kk, 3) - window_size;
+                    lim_hi = curr_track(kk, 3) + window_size;
+                    
+                    curr_window         = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    curr_window(:, 1:2) = curr_window(:, 1:2) .* (px_scale / 1000);
+                    
+                    %compute the MSD matrix
+                    msd_result = compileMSDMatrixFast(curr_window, 1/app.movie_data.params.frame_rate, window_size);
+                    
+                    %calculate alpha by fitting log-log MSD vs time; alpha is gradient
+                    p = polyfit(log(msd_result(:, 3)), log(msd_result(:, 4)), 1);   %if the user has some future use for fitting through origin then replace with log([0; msd_result(:, 3)]) and log([0; msd_result(:, 4)])
+                    curr_alpha(kk, 1)   = p(1);
+                    
+                    %==================================================
+                    %testing: uncomment this statement block, and pause
+                    %code at end to inspect fit used for alpha calc.
+                    %==================================================
+                    % %plot fit in log space for visual verification
+                    % figure; loglog(msd_result(:, 3), msd_result(:, 4), 'o'); hold on; plot(msd_result(:, 3), exp(polyval(p, log(msd_result(:, 3)))), '-r'); title('Plot of fit in semi-log space'); hold off;
+                    % 
+                    % %plot fit in linear space for verification
+                    % figure; hold on; title('Plot of fit in linear space');
+                    % x_fit = linspace(min(msd_result(:, 3)), max(msd_result(:, 3)), 100);
+                    % y_fit = exp(p(2)) * x_fit.^p(1);
+                    % scatter(msd_result(:, 3), msd_result(:, 4));
+                    % plot(x_fit, y_fit, '-r', 'LineWidth', 1.5);
+                end
+                new_col = [new_col; curr_alpha];
+            end
+            
+            %append alpha values to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Local anomalous exponent'];
+end
+
+
+function [] = engineerRollingMeanStepSizeDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
 %mean step sizes, Oliver Pambos, 19/06/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1582,7 +1891,8 @@ function [] = engineerRollingMeanStepSizeDelta(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1596,10 +1906,8 @@ function [] = engineerRollingMeanStepSizeDelta(app)
     window_size = app.movie_data.state.rolling_delta_win_size;
     px_scale = app.movie_data.params.px_scale;
     
-    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling mean step size for all tracks');
-    
     for ii = 1:N_cells
-        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling mean step size for cell %d of %d', ii, N_cells));
+        waitbar(ii / N_cells, h_progress, sprintf('Computing mean step sizes for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             cell_mean_ratio = [];
@@ -1637,8 +1945,8 @@ function [] = engineerRollingMeanStepSizeDelta(app)
                 end
                 
                 %append ratio and delta for current track to others in same cell
-                cell_mean_ratio     = [cell_mean_ratio; mean_ratio];
-                cell_mean_delta     = [cell_mean_delta; mean_delta];
+                cell_mean_ratio = [cell_mean_ratio; mean_ratio];
+                cell_mean_delta = [cell_mean_delta; mean_delta];
             end
             
             %compute the absolute mean delta (inidicates singificance of changepoint)
@@ -1651,11 +1959,10 @@ function [] = engineerRollingMeanStepSizeDelta(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling mean step size ratio', 'Rolling mean step size delta (nm)', 'Rolling mean step size delta absolute'];
-    close(h_progress);
 end
 
 
-function [] = engineerRollingStdDevStepSizeDelta(app)
+function [] = engineerRollingStdDevStepSizeDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
 %standard deviation in step sizes, Oliver Pambos, 20/06/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1698,7 +2005,8 @@ function [] = engineerRollingStdDevStepSizeDelta(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1712,10 +2020,8 @@ function [] = engineerRollingStdDevStepSizeDelta(app)
     window_size = app.movie_data.state.rolling_delta_win_size;
     px_scale    = app.movie_data.params.px_scale;
     
-    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling stdev step size');
-    
     for ii = 1:N_cells
-        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling stdev step size for cell %d of %d', ii, N_cells));
+        waitbar(ii / N_cells, h_progress, sprintf('Computing stdev step size for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             cell_std_ratio = [];
@@ -1771,11 +2077,10 @@ function [] = engineerRollingStdDevStepSizeDelta(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling stdev step size ratio', 'Rolling stdev step size delta (nm)', 'Rolling stdev step size delta absolute'];
-    close(h_progress);
 end
 
 
-function [] = engineerRollingStdDevPosnDelta(app)
+function [] = engineerRollingStdDevPosnDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
 %standard deviation in coordinates, Oliver Pambos, 20/06/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1815,7 +2120,8 @@ function [] = engineerRollingStdDevPosnDelta(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1829,10 +2135,8 @@ function [] = engineerRollingStdDevPosnDelta(app)
     window_size = app.movie_data.state.rolling_delta_win_size;
     px_scale    = app.movie_data.params.px_scale;
     
-    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling stdev in position');
-    
     for ii = 1:N_cells
-        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling stdev position for cell %d of %d', ii, N_cells));
+        waitbar(ii / N_cells, h_progress, sprintf('Computing stdev of positions for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             cell_std_ratio = [];
@@ -1884,16 +2188,14 @@ function [] = engineerRollingStdDevPosnDelta(app)
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, cell_std_ratio, cell_std_delta, cell_std_delta_abs];
         end
-        
     end
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling stdev position ratio', 'Rolling stdev position delta (nm)', 'Rolling stdev position delta absolute'];
-    close(h_progress);
 end
 
 
-function [] = engineerRollingDispersionChange(app)
+function [] = engineerRollingDispersionChange(app, h_progress)
 %Feature engineering for the rolling difference in spread of localisations
 %between a pair of adjacent sliding windows, Oliver Pambos, 03/07/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -1937,7 +2239,8 @@ function [] = engineerRollingDispersionChange(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -1951,10 +2254,8 @@ function [] = engineerRollingDispersionChange(app)
     window_size = app.movie_data.state.rolling_delta_win_size;
     px_scale    = app.movie_data.params.px_scale;
     
-    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing rolling dispersion changes');
-    
     for ii = 1:N_cells
-        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling dipersion for cell %d of %d', ii, N_cells));
+        waitbar(ii / N_cells, h_progress, sprintf('Computing dipersion changes for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             cell_disp_ratio = [];
@@ -2004,7 +2305,7 @@ function [] = engineerRollingDispersionChange(app)
             
             %compute the absolute mean ratio (inidicates singificance of changepoint)
             cell_disp_delta_abs = abs(cell_disp_delta);
-
+            
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, cell_disp_ratio, cell_disp_delta, cell_disp_delta_abs];
         end
@@ -2012,11 +2313,10 @@ function [] = engineerRollingDispersionChange(app)
     
     %update col titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling dispersion ratio', 'Rolling dispersion delta', 'Rolling dispersion delta absolute'];
-    close(h_progress);
 end
 
 
-function [] = engineerRollingCentroidDisplacement(app)
+function [] = engineerRollingCentroidDisplacement(app, h_progress)
 %Feature engineering for the distance between centroids of a collection of
 %localisations in window pairs around the current point, Oliver Pambos,
 %04/07/2024.
@@ -2060,7 +2360,8 @@ function [] = engineerRollingCentroidDisplacement(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -2074,10 +2375,8 @@ function [] = engineerRollingCentroidDisplacement(app)
     window_size = app.movie_data.state.rolling_delta_win_size;
     px_scale    = app.movie_data.params.px_scale;
     
-    h_progress = waitbar(0, 'Preparing...', 'Name', 'Computing centroid displacement for all tracks');
-    
     for ii = 1:N_cells
-        waitbar(ii / N_cells, h_progress, sprintf('Computing rolling centroid displacement for cell %d of %d', ii, N_cells));
+        waitbar(ii / N_cells, h_progress, sprintf('Computing centroid displacements for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             cell_displacement = [];
@@ -2126,11 +2425,10 @@ function [] = engineerRollingCentroidDisplacement(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Rolling centroid displacement (nm)'];
-    close(h_progress);
 end
 
 
-function [] = engineerFramesFromEnds(app)
+function [] = engineerFramesFromEnds(app, h_progress)
 %Feature engineering for the number of frames from start and end of the
 %track, Oliver Pambos, 09/07/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -2183,7 +2481,8 @@ function [] = engineerFramesFromEnds(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -2194,10 +2493,9 @@ function [] = engineerFramesFromEnds(app)
 %None
     
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing proximity to track ends');
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing track end proximity in cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing track end proximity for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %pre-allocate new cols
@@ -2229,11 +2527,10 @@ function [] = engineerFramesFromEnds(app)
     %update column titles accordingly
     additional_titles = {'Localisations from track start', 'Localisations from track end', 'Frames from track start', 'Frames from track end'};
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, additional_titles];
-    close(h_progress);
 end
 
 
-function [] = engineerSmoothedStepSize(app)
+function [] = engineerSmoothedStepSize(app, h_progress)
 %Feature engineering for smoothed step sizes, Oliver Pambos, 09/07/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -2268,7 +2565,8 @@ function [] = engineerSmoothedStepSize(app)
 %
 %Input
 %-----
-%app    (handle)    main GUI handle
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
 %
 %Output
 %------
@@ -2278,22 +2576,50 @@ function [] = engineerSmoothedStepSize(app)
 %-----------------------------------------
 %None
     
-    %get the step size input for smoothing from user using pop-up app
-    popup = SetWindowSizeStepSmoothingPopUp(app);
-    uiwait(popup.UIFigure);
-    window_size = app.movie_data.state.step_smoothing_win_size;
-    px_scale = app.movie_data.params.px_scale;
-    
-    if window_size == 0
+    if isfield(app.movie_data.state, 'step_smoothing_win_size') && app.movie_data.state.step_smoothing_win_size ~= 0
+        window_size = app.movie_data.state.step_smoothing_win_size;
+    else
         app.textout.Value = "User chose to cancel feature engineering for smoothed step sizes";
         return;
     end
     
+    px_scale = app.movie_data.params.px_scale;
+    
+    %convert the smoothing method to MATLAB-compatible string option
+    switch app.movie_data.state.smoothing_method
+        case 'Moving mean'
+            smooth_method = 'movmean';
+            
+        case 'Moving median'
+            smooth_method = 'movmedian';
+            
+        case 'Gaussian kernel'
+            smooth_method = 'gaussian';
+            
+        case 'Local linear regression (LOWESS)'
+            smooth_method = 'lowess';
+            
+        case 'Local quadratic regression (LOESS)'
+            smooth_method = 'loess';
+            
+        case 'Robust local linear regression (RLOWESS)'
+            smooth_method = 'rlowess';
+            
+        case 'Robust local quadratic regression (RLOESS)'
+            smooth_method = 'rloess';
+            
+        case 'Savitzky-Golay filter'
+            smooth_method = 'sgolay';
+            
+        otherwise
+            app.textout.Value = "Unknown smoothing method, skipping smoothing";
+            return;
+    end
+    
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing smoothed steps for all tracks');
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing smoothed steps for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Smoothing steps for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %pre-allocate
@@ -2308,7 +2634,7 @@ function [] = engineerSmoothedStepSize(app)
                 curr_steps = [0; sqrt(sum(diff(curr_track(:, 1:2)).^2, 2)) .* px_scale];
                 
                 %smooth step sizes using moving average
-                smoothed_steps = smoothdata(curr_steps, 'movmean', window_size);
+                smoothed_steps = [0; smoothdata(curr_steps(2:end, 1), smooth_method, window_size)];
                 
                 %insert smoothed steps into appropriate rows
                 idx_end = idx_start + size(curr_track, 1) - 1;
@@ -2323,5 +2649,783 @@ function [] = engineerSmoothedStepSize(app)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Smoothed step size (nm)'];
-    close(h_progress);
+end
+
+
+function [] = engineerLocalEfficiency(app, h_progress)
+%Feature engineering for local efficiency, Oliver Pambos, 17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalEfficiency
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Efficiency measures the directness of the particle's motion. For a series
+%of N localisations, it is defined as the ratio of the squared total
+%displacement (between start and end points) to the product of the number
+%of steps and the sum of the squared step lengths.
+%
+%Efficiency is useful for identifying specific mobility states such as
+%directed or constrained motion. E->1 indicates highly directed motion; and
+%E->0 indicated extremely convoluted paths.
+%
+%There is an error checking step included to handle possible future edge
+%cases from users using poorly-designed simulations in which there is zero
+%step length change (ie. no movement to the data precision used). This is
+%not the case for my own simulations, but prevents future abuse.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local efficiency for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                
+                curr_efficiency  = zeros(size(curr_track, 1), 1);
+                
+                %loop over all steps in track
+                for kk = 1:size(curr_track, 1)
+                    %obtain local window
+                    lim_lo      = curr_track(kk, 3) - window_size;
+                    lim_hi      = curr_track(kk, 3) + window_size;
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    
+                    %compute efficiency
+                    net_sq_displacement = sum((curr_window(end, 1:2) - curr_window(1, 1:2)).^2);
+                    
+                    sum_step_lengths_sq = sum(sum(diff(curr_window(:, 1:2)).^2, 2));
+                    if sum_step_lengths_sq > 0
+                        curr_efficiency(kk, 1) = net_sq_displacement / ((size(curr_window, 1) - 1) * sum_step_lengths_sq);
+                    else
+                        %handle rare edge cases in future poorly-designed simulations (see notes in header)
+                        curr_efficiency(kk, 1) = 0;
+                    end
+                end
+                new_col = [new_col; curr_efficiency];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Local Efficiency'];
+end
+
+
+function [] = engineerLocalStraightness(app, h_progress)
+%Feature engineering for local straightness, Oliver Pambos, 17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalStraightness
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Computation of straightness feature for local sliding windows. The feature
+%describes the directness of a path, and is defined as the ratio of the
+%distance between the start and end points of the path in the local window
+%to the total length travelled over the local window.
+%
+%Note that as this feature is not normalised by number of points in the
+%path, this would lead to an aritificial increase in the features value
+%when there are fewer points towards the start and end of the path where
+%the local window becomes compressed. To combat this the feature is set to
+%zero (an infinitely convoluted path) in the end regions, and automatically masked out of the training data later. 
+%Note that this can also be caused by the presence of photoblinking, but
+%this is ignored as this can also be handled by training of this feature
+%with the time from previous frame feature. While end regions can similarly
+%be handled by training with the distance to track ends feature, the user
+%is advised to instead use the path efficiency feature, as its
+%normalisation allows more accurate representation in regions of compressed
+%window size.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local straightness for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                
+                curr_straight  = zeros(size(curr_track, 1), 1);
+                
+                %loop over every window in track, computing the feature for the current timepoint kk
+                for kk = 1:size(curr_track, 1)
+                    %ignore the starts and ends of each track where window contains too few points causing error in denominator
+                    if kk <= window_size || kk > (size(curr_track, 1) - window_size)
+                        curr_straight(kk, 1) = 0;
+                        continue;
+                    end
+                    
+                    %obtain local window
+                    lim_lo      = curr_track(kk, 3) - window_size;
+                    lim_hi      = curr_track(kk, 3) + window_size;
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    
+                    %calc for curr pos in window
+                    net_displacement = sqrt(sum((curr_window(end, 1:2) - curr_window(1, 1:2)).^2));
+                    sum_step_len            = sum(sqrt(sum(diff(curr_window(:, 1:2)).^2, 2)));
+                    curr_straight(kk, 1)    = net_displacement ./ sum_step_len;
+                end
+                new_col = [new_col; curr_straight];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Local straightness'];
+end
+
+
+function [] = engineerLocalKurtosis(app, h_progress)
+%Feature engineering for local kurtosis using the gyration tensor, Oliver
+%Pambos, 17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalKurtosis
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This feature is the local kurtosis obtained from projection of step sizes
+%along the dominant eigenvector of the gyration tensor.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local kurtosis for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                
+                %convert coordinates of curr track to nm
+                curr_track(:, 1:2) = curr_track(:, 1:2) .* px_scale;
+                
+                %initialise values to write
+                curr_kurtosis  = zeros(size(curr_track, 1), 1);
+                
+                %loop over every window in track, computing the feature for the current timepoint kk
+                for kk = 1:size(curr_track, 1)
+                    %obtain local window
+                    lim_lo      = curr_track(kk, 3) - window_size;
+                    lim_hi      = curr_track(kk, 3) + window_size;
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    
+                    %shift coordinates to relative to centre of mass, and compute gyration tensor
+                    shifted_coords = curr_window(:, 1:2) - mean(curr_window(:, 1:2), 1);
+                    gyration_tensor = (shifted_coords' * shifted_coords) / size(curr_window, 1);
+                    
+                    %find dominant eigenvector of the gyration tensor, and project points onto dominant eigenvector
+                    [eigenvectors, ~]       = eig(gyration_tensor);
+                    dominant_eigenvector    = eigenvectors(:, end); %last col is largest eigenvalue
+                    proj_pos                = shifted_coords * dominant_eigenvector;
+                    
+                    %compute projected mean and std
+                    mean_proj = mean(proj_pos);
+                    std_proj  = std(proj_pos);
+                    
+                    %compute projected kurtosis
+                    curr_kurtosis(kk, 1) = mean(((proj_pos - mean_proj) ./ std_proj).^4);   %could be simplified to (proj_pos ./ std_proj).^4 since mean_proj is always going to be approx. 0 after shifting coords to centre of mass
+                end
+                new_col = [new_col; curr_kurtosis];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Kurtosis'];
+end
+
+
+function [] = engineerLocalStepSizeKurtosis(app, h_progress)
+%Feature engineering for local kurtosis for step sizes in each local
+%window, Oliver Pambos, 17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalStepSizeKurtosis
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%This feature is the local kurtosis of unprojected step sizes within a
+%local window.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local step size kurtosis for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                
+                if isempty(curr_track)
+                    continue;
+                end
+                
+                %convert coordinates of curr track to nm
+                curr_track(:, 1:2) = curr_track(:, 1:2) .* px_scale;
+                
+                %initialise values to write
+                curr_kurtosis  = zeros(size(curr_track, 1), 1);
+                
+                %loop over every window in track, computing the feature for the current timepoint kk
+                for kk = 1:size(curr_track, 1)
+                    %obtain local window
+                    lim_lo      = curr_track(kk, 3) - window_size;
+                    lim_hi      = curr_track(kk, 3) + window_size;
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    
+                    %obtain step sizes
+                    local_steps = sqrt(sum(diff(curr_window(:, 1:2)).^2, 2));
+                    
+                    %compute kurtosis of step sizes if enough steps are available, otherwise assign a value of zero
+                    if numel(local_steps) >= 4
+                        curr_kurtosis(kk, 1) = kurtosis(local_steps);
+                    else
+                        curr_kurtosis(kk, 1) = 0;
+                    end
+                end
+                new_col = [new_col; curr_kurtosis];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step size kurtosis'];
+end
+
+
+function [] = engineerLocalFractalDimension(app, h_progress)
+%Feature engineering for local fractal dimension, Oliver Pambos,
+%17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalFractalDimension
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Feature engineering for fractal dimension as defined by Katz, M.J.,
+%George, E.B. Fractals and the analysis of growth paths. Bltn Mathcal
+%Biology 47, 273–286 (1985). https://doi.org/10.1007/BF02460036,
+%specifically,
+%Df = log(N)/(log(N) + log(d/L))
+%   where N is the number of steps in a path
+%         d is the maximum step size in the path
+%         L is the total path length
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local fractal dimension for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                
+                if isempty(curr_track)
+                    continue;
+                end
+                
+                %convert coordinates of curr track to nm
+                curr_track(:, 1:2) = curr_track(:, 1:2) .* px_scale;
+                
+                %initialise values to write
+                curr_Df  = zeros(size(curr_track, 1), 1);
+                
+                %loop over every window in track, computing the feature for the current timepoint kk
+                for kk = 1:size(curr_track, 1)
+                    %obtain local window
+                    lim_lo      = curr_track(kk, 3) - window_size;
+                    lim_hi      = curr_track(kk, 3) + window_size;
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    
+                    %calculate feature, or assign zero is window is too small
+                    if size(curr_window, 1) < 2
+                        curr_Df(kk, 1) = 0;
+                    else
+                        N_steps = size(curr_window, 1) - 1;
+                        
+                        %max pairwise distance between any two points
+                        max_dist = max(pdist(curr_window(:, 1:2)));
+                        
+                        %total length of the path
+                        L = sum(sqrt(sum(diff(curr_window(:, 1:2)).^2, 2)));
+                        
+                        %assign values
+                        if L > 0 && max_dist > 0
+                            curr_Df(kk, 1) = log(N_steps) / log(N_steps * max_dist / L);
+                        else
+                            curr_Df(kk, 1) = 0;
+                        end
+                    end
+                    
+                end
+                new_col = [new_col; curr_Df];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Fractal dimension'];
+end
+
+
+function [] = engineerLocalTrappedness(app, h_progress)
+%Feature engineering for local trappedness, Oliver Pambos, 17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalTrappedness
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%compileMSDMatrixFast()
+    
+    if isfield(app.movie_data.state, 'trapped_consts') && isvector(app.movie_data.state.trapped_consts)
+        c1 = app.movie_data.state.trapped_consts(1);
+        c2 = app.movie_data.state.trapped_consts(2);
+    else
+        warndlg("User did not provide constants for trappedness feature; skipping feature engineering for trappedness", "Missing inputs, skipping feature.");
+        return;
+    end
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    px_scale    = app.movie_data.params.px_scale;
+    window_size = app.movie_data.state.local_win_size;
+    lag_time    = 1 / app.movie_data.params.frame_rate;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local trappedness for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                
+                if isempty(curr_track)
+                    continue;
+                end
+                
+                %convert coordinates of curr track to micrometers
+                curr_track(:, 1:2) = curr_track(:, 1:2) .* (px_scale / 1000);
+                
+                %initialise values to write
+                curr_trappedness  = zeros(size(curr_track, 1), 1);
+                
+                %loop over every window in track, computing the feature for the current timepoint kk
+                for kk = 1:size(curr_track, 1)
+                    %obtain local window
+                    lim_lo      = curr_track(kk, 3) - window_size;
+                    lim_hi      = curr_track(kk, 3) + window_size;
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:3);
+                    
+                    %calculate feature, or assign zero if window too small
+                    if size(curr_window, 1) < 3
+                        curr_trappedness = 0;
+                    else
+                        %r_0 is half max pairwise dist
+                        r_0 = max(pdist(curr_window(:, 1:2))) / 2;
+                        
+                        %compute MSD using a maximum lag of 2
+                        t_interframe = 1 / app.movie_data.params.frame_rate;
+                        msd_result = compileMSDMatrixFast(curr_window, t_interframe, 2);
+                        
+                        %compute diffusion coefficient, D, from first two time lags
+                        if msd_result(1, 2) > 0 && msd_result(2, 2) > 0
+                            D = (msd_result(2, 4) - msd_result(1, 4)) / (4 * msd_result(1, 3)); %MSD = 4Dt; D = MSD / 4t; note that (msd_result(2, 3) - msd_result(1, 3)) == msd_result(1, 3), this substitution improves computational efficiency
+                        else
+                            D = 0;
+                        end
+                        
+                        %compute trappedness
+                        if r_0 > 0 && D ~= 0
+                            curr_trappedness(kk, 1) = 1 - exp(c1 - c2 * (D * lag_time / r_0^2));
+                        else
+                            curr_trappedness(kk, 1) = 0;
+                        end
+                    end
+                end
+                
+                new_col = [new_col; curr_trappedness];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Trappedness'];
+end
+
+
+function [] = engineerStepAngleAsymmetry(app, h_progress)
+%Feature engineering for local setp angle asymmetry, Oliver Pambos,
+%17/06/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerStepAngleAsymmetry
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Compute step angle asymmetry for each localisation. The asymmetry
+%coefficient is defined as log2 ratio of forward (0 – 30 degrees) to
+%backward (150 – 180 degrees) step angles,
+%   AC = log2(N_forward_angles + 1 / N_backward_angles + 1)
+%
+%The use of +1 here is intended to prevent division/multiplication by zero
+%if there are no values present in the small window. This handles this
+%situation without introducing discontinuities or requiring a piecewise
+%law.
+%Positive values indicate forward bias; negative values indicate backward
+%bias.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%computeStepAngles()
+    
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing step angle asymmetry for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID    = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track  = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == track_ID, :);
+                
+                if isempty(curr_track)
+                    continue;
+                end
+                
+                %compute step angles for entire track
+                track_step_angles = computeStepAngles(curr_track(:, 1:2));
+                track_step_angles = [track_step_angles(:, 2), curr_track(:, 3)];
+                
+                if size(curr_track, 1) < 3
+                    curr_asymmetry = zeros(size(curr_track, 1), 1);
+                else
+                    %initialise values to write
+                    curr_asymmetry  = zeros(size(curr_track, 1), 1);
+                    
+                    %loop over every window in track, computing step asymmetry for each time point - ignore the first two
+                    %points as step angles can only be engineered for points with at least two previous localisations
+                    for kk = 3:size(track_step_angles, 1)
+                        %obtain local window
+                        lim_lo      = track_step_angles(kk, 2) - window_size;
+                        lim_hi      = track_step_angles(kk, 2) + window_size;
+                        
+                        %ensure empty region where step sizes cannot be caculated due to insufficient previous steps is not part of calculation
+                        lim_lo = max(lim_lo, curr_track(3, 3));
+                        
+                        curr_angles = track_step_angles(track_step_angles(:, 2) >= lim_lo & track_step_angles(:, 2) <= lim_hi, 1);
+                        
+                        %count step angles in forward and backward regions
+                        N_fwd = sum(abs(curr_angles) <= deg2rad(30));
+                        N_bwd = sum(abs(curr_angles) >= deg2rad(150));
+                        
+                        %compute step asymmetry
+                        curr_asymmetry(kk, 1) = log2((N_fwd + 1) / (N_bwd + 1));
+                    end
+                end
+                
+                new_col = [new_col; curr_asymmetry];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step angle asymmetry'];
 end

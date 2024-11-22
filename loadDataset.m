@@ -166,7 +166,8 @@ function [] = loadLoColiData(app)
             app.movie_data.params.title = inputdlg({'Please choose a sensible name for the dataset'}, 'Name this dataset', [1 80], {temp_file});
             app.movie_data.params.pipeline = "LoColi";
             app.CurrentlyloadeddatasetTextArea.Value = app.movie_data.params.title;
-    
+            
+            focus(app.InVivoKineticsUIFigure);
             app.textout.Value = "A data file from the LoColi analysis pipeline has been loaded successfully. Please now proceed to data preparation via the [Prepare] tab.";
         end
     catch ME

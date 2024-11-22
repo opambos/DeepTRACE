@@ -106,6 +106,7 @@ function [filter_status] = filterTracks(app)
             
         case 'truncate_tracks'
             
+            focus(app.InVivoKineticsUIFigure);
             f = waitbar(0,'Processing tracks; please wait....','Name','Filtering tracks');
             %identify clashing tracks, and short tracks
             %loop over all cells

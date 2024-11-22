@@ -1,4 +1,4 @@
-function [] = computeLocPoleDists(app)
+function [] = computeLocPoleDists(app, h_progress)
 %Compute distance to membrane for every frame of every tracked molecule,
 %Oliver Pambos, 22/05/2021.
 %oliver.pambos@physics.ox.ac.uk
@@ -45,7 +45,6 @@ function [] = computeLocPoleDists(app)
 %-----------------------------------------
 %None
     
-    h_progress  = waitbar(0,'Preparing....','Name','Computing distances to cell poles');
     N_cells     = size(app.movie_data.cellROI_data, 1);
     px_scale    = app.movie_data.params.px_scale;
     
@@ -55,7 +54,7 @@ function [] = computeLocPoleDists(app)
         curr_tracks = app.movie_data.cellROI_data(ii).tracks;
 
         N_cols = size(curr_tracks, 2);
-        waitbar(ii/N_cells, h_progress, sprintf('Computing distances for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing pole distances for cell %d of %d', ii, N_cells));
         %loop over all tracked localisations
         for jj = 1:size(curr_tracks, 1)
             %compute distance to nearest pole for every localisation
@@ -67,5 +66,4 @@ function [] = computeLocPoleDists(app)
        app.movie_data.cellROI_data(ii).tracks = curr_tracks;
     end
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Distance to pole'];
-    close(h_progress);
 end

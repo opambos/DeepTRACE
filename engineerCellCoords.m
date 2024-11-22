@@ -1,4 +1,4 @@
-function [] = engineerCellCoords(app)
+function [] = engineerCellCoords(app, h_progress)
 %Feature engineering of the cellcular coordinates for all cells, Oliver
 %Pambos, 23/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -51,10 +51,11 @@ function [] = engineerCellCoords(app)
 %-----------------------------------------
 %convertToCellCoords()
     
+    waitbar(0, h_progress, 'Computing cell coordinates');
+    
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing cellular coordinates for all molecules');
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing cellular coordinates for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing coordinates for cell %d of %d', ii, N_cells));
         
         if isempty(app.movie_data.cellROI_data(ii).tracks)
             continue;
@@ -91,5 +92,4 @@ function [] = engineerCellCoords(app)
         app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, track_coord_data];
     end
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, {'Longitude', 'Latitude', 'Longitude (absolute)', 'Latitude (absolute)'}];
-    close(h_progress);
 end

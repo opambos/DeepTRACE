@@ -1,4 +1,4 @@
-function [] = engineerShiftedStepSizes(app)
+function [] = engineerShiftedStepSizes(app, h_progress)
 %Feature engineering of time-shifted step sizes for use with ML models that
 %lack temporal context, Oliver Pambos, 24/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -56,32 +56,25 @@ function [] = engineerShiftedStepSizes(app)
 %-----------------------------------------
 %engineerStepSize()
     
-    %set defaults if none exist already
-    if ~isfield(app.movie_data.state, "frames_before") && ~isfield(app.movie_data.state, "frames_after")
-        app.movie_data.state.frames_before = 5;
-        app.movie_data.state.frames_after = 2;
+    if isfield(app.movie_data.state, "frames_before") && isfield(app.movie_data.state, "frames_after")
+        %get range of contextual frames before and after from user
+        frames_before   = int32((-1) .* app.movie_data.state.frames_before);
+        frames_after    = int32(app.movie_data.state.frames_after);
+    else
+        app.textout.Value = "Skipping feature engineering for time shift.";
+        return;
     end
     
-    %get range of contextual frames before and after from user
-    popup = TemporalContextPopUp(app, app.movie_data.state.frames_before, app.movie_data.state.frames_after);
-    uiwait(popup.UIFigure);
-    
-    %printing to screen to ensure everything worked OK
-    frames_before   = int32((-1) .* app.movie_data.state.frames_before);
-    frames_after    = int32(app.movie_data.state.frames_after);
-    
-    %if the user provides no time shift in either direction, notify them,
-    %and skip remaining actions
+    %if the user provides no time shift in either direction, notify them, and skip remaining actions
     if frames_before == 0 && frames_after == 0
         warndlg("You have selected no relative time shift in either direction; feature engineering for time shift will not be implemented.", "Skipping time shift feature engineering", "modal");
         return;
     end
 
     N_cells = size(app.movie_data.cellROI_data, 1);
-    h_progress  = waitbar(0,'Preparing....','Name','Computing time-shifted step sizes');
     
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing shifted step sizes for for cell %d of %d', ii, N_cells));
+        waitbar(ii/N_cells, h_progress, sprintf('Computing shifted step sizes for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
@@ -141,5 +134,4 @@ function [] = engineerShiftedStepSizes(app)
     labels = arrayfun(@(x) sprintf('Step size (nm) at t%+d frames', x), frame_shifts, 'UniformOutput', false);
     
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, labels];
-    close(h_progress);
 end

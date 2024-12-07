@@ -83,6 +83,7 @@ function [] = genDHistograms(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %compileMSDMatrixFast()
+%fitGammas()
     
     %check valid data available
     if ~isprop(app, "movie_data")
@@ -93,6 +94,12 @@ function [] = genDHistograms(app)
     if ~isfield(app.movie_data, "results") && isfield(app.movie_data.results, "Insight data")
         warndlg("You must select a valid segmentation source before performing diffusion analysis. In the [Insights] tab, select the [Dataset overview] sub-tab, and select a dataset from the [Source data] dropdown menu.", "No segmented data available yet!");
         app.textout.Value = "You must select a valid segmentation source before performing diffusion analysis. In the [Insights] tab, select the [Dataset overview] sub-tab, and select a dataset from the [Source data] dropdown menu.";
+        return;
+    end
+
+    if strcmp(app.DiffusionHistStateDropDown.Value, "<< Select state >>")
+        warndlg("You must select a valid state from the from the [State] dropdown menu.", "No state selected!");
+        app.textout.Value = "You must select a valid state from the from the [State] dropdown menu.";
         return;
     end
     
@@ -153,6 +160,7 @@ function [] = genDHistograms(app)
                 cla(app.UIAxes_compiled_events, 'reset');
                 h = histogram(app.UIAxes_compiled_events, diffusion_coeffs, 'BinWidth', app.DiffusionHistBinSizeSpinner.Value);
                 ylim(app.UIAxes_compiled_events, [0, ceil(max(h.Values) * 1.05)]);  %rescale y-axis to provide 5% headroom
+                h_axes = app.UIAxes_compiled_events; %save ax handle for fitting
                 title(app.UIAxes_compiled_events, sprintf('Diffusion coefficient histogram for %d tracks', numel(diffusion_coeffs)));
                 xlabel(app.UIAxes_compiled_events, 'Diffusion coefficient (\mum^2/s)');
                 ylabel(app.UIAxes_compiled_events, 'Number of tracks');
@@ -161,6 +169,7 @@ function [] = genDHistograms(app)
                 ax = axes(h_fig);
                 h = histogram(diffusion_coeffs, 'BinWidth', app.DiffusionHistBinSizeSpinner.Value);
                 ylim(ax, [0, ceil(max(h.Values) * 1.05)]);  %rescale y-axis to provide 5% headroom
+                h_axes = ax; %save ax handle for fitting
                 title(ax, sprintf('Diffusion coefficient histogram for %d tracks', numel(diffusion_coeffs)));
                 xlabel(ax, 'Diffusion coefficient (\mum^2/s)');
                 ylabel(ax, 'Number of tracks');
@@ -189,6 +198,15 @@ function [] = genDHistograms(app)
                 end
             end
             
+            %extracted binned data from histogram
+            bin_centers = (h.BinEdges(1:end-1) + diff(h.BinEdges) / 2)';
+            bin_values = h.Values';
+            
+            %perform multi-gamma fit to binned data
+            if app.DiffusionHistPerformgammafitCheckBox.Value
+                fitGammas(app, h_axes, h, [bin_centers, bin_values]);
+            end
+
         case "Stack states"
             N_states = numel(app.movie_data.params.class_names);
             
@@ -255,16 +273,16 @@ function [] = genDHistograms(app)
             bin_edges   = min(all_data):bin_width:max(all_data);
             
             %compute hist counts for each state
-            histogram_counts = zeros(N_states, numel(bin_edges) - 1);
+            hist_counts = zeros(N_states, numel(bin_edges) - 1);
             for state_idx = 1:N_states
-                histogram_counts(state_idx, :) = histcounts(state_diffusion_coeffs{state_idx}, bin_edges);
+                hist_counts(state_idx, :) = histcounts(state_diffusion_coeffs{state_idx}, bin_edges);
             end
             
             %reverse the stacking order so that later states appear on bottom of stack
-            histogram_counts = flipud(histogram_counts);
+            hist_counts = flipud(hist_counts);
             
             %compute total for each state
-            state_totals = sum(histogram_counts, 2);
+            state_totals = sum(hist_counts, 2);
             total_tracks = sum(state_totals);
             
             legend_labels = strcat(flipud(app.movie_data.params.class_names), " (", string(flipud(state_totals)), ")");
@@ -273,15 +291,16 @@ function [] = genDHistograms(app)
             if strcmp(app.DiffusionHistPlotlocationDropDown.Value, "Inside GUI")
                 %in GUI axes
                 cla(app.UIAxes_compiled_events, 'reset');
-                b = bar(app.UIAxes_compiled_events, bin_edges(1:end-1) + bin_width / 2, histogram_counts', 'stacked', 'BarWidth', 0.9);
-                ylim(app.UIAxes_compiled_events, [0, ceil(max(sum(histogram_counts, 1)) * 1.05)]);
-                
+                b = bar(app.UIAxes_compiled_events, bin_edges(1:end-1) + bin_width / 2, hist_counts', 'stacked', 'BarWidth', 0.9);
+                ylim(app.UIAxes_compiled_events, [0, ceil(max(sum(hist_counts, 1)) * 1.05)]);
+                h_axes = app.UIAxes_compiled_events; %save ax handle for fitting
+
                 %remove black outline
                 for state_idx = 1:N_states
                     b(state_idx).EdgeColor = 'none';
                 end
                 
-                title(app.UIAxes_compiled_events, sprintf('Diffusion coefficient histogram from segmented %d subtracks', total_tracks));
+                title(app.UIAxes_compiled_events, sprintf('Diffusion coefficient histogram from %d segmented subtracks', total_tracks));
                 xlabel(app.UIAxes_compiled_events, 'Diffusion coefficient (\mum^2/s)');
                 ylabel(app.UIAxes_compiled_events, 'Number of subtracks');
                 legend(app.UIAxes_compiled_events, legend_labels, 'Location', 'Best');
@@ -289,15 +308,16 @@ function [] = genDHistograms(app)
                 %in new figure
                 h_fig = figure;
                 ax = axes(h_fig);
-                b = bar(ax, bin_edges(1:end-1) + bin_width / 2, histogram_counts', 'stacked', 'BarWidth', 0.9);
-                ylim(ax, [0, ceil(max(sum(histogram_counts, 1)) * 1.05)]);
-                
+                b = bar(ax, bin_edges(1:end-1) + bin_width / 2, hist_counts', 'stacked', 'BarWidth', 0.9);
+                ylim(ax, [0, ceil(max(sum(hist_counts, 1)) * 1.05)]);
+                h_axes = ax; %save ax handle for fitting
+
                 %remove black outline
                 for state_idx = 1:N_states
                     b(state_idx).EdgeColor = 'none';
                 end
                 
-                title(sprintf('Diffusion coefficient histogram from segmented %d subtracks', total_tracks));
+                title(sprintf('Diffusion coefficient histogram from %d segmented subtracks', total_tracks));
                 xlabel('Diffusion coefficient (\mum^2/s)');
                 ylabel('Number of subtracks');
                 legend(legend_labels, 'Location', 'Best');
@@ -307,7 +327,7 @@ function [] = genDHistograms(app)
             state_colors = flipud(app.movie_data.params.event_label_colours);
             for state_idx = 1:N_states
                 b(state_idx).FaceColor = 'flat';
-                b(state_idx).CData = repmat(state_colors(state_idx, :), size(histogram_counts, 2), 1);
+                b(state_idx).CData = repmat(state_colors(state_idx, :), size(hist_counts, 2), 1);
             end
             
             %export data if the export checkbox is selected
@@ -331,11 +351,20 @@ function [] = genDHistograms(app)
                     
                     %save binned data
                     binned_filename = fullfile(path, strcat(prefix_name, '_binned_data.csv'));
-                    binned_data     = [bin_edges(1:end-1)' + bin_width / 2, histogram_counts'];
+                    binned_data     = [bin_edges(1:end-1)' + bin_width / 2, hist_counts'];
                     writematrix(binned_data, binned_filename);
                 end
             end
             
+            %compute binned data for stacked histogram
+            bin_centers = bin_edges(1:end-1)' + bin_width / 2;
+            stacked_counts = sum(hist_counts, 1)';
+            
+            %perform multi-Gamma fit to binned data
+            if app.DiffusionHistPerformgammafitCheckBox.Value
+                fitGammaFn(app, h_axes, b, [bin_centers, stacked_counts]);
+            end
+
         otherwise
             selected_class = app.DiffusionHistStateDropDown.Value;
             
@@ -397,6 +426,7 @@ function [] = genDHistograms(app)
                 cla(app.UIAxes_compiled_events, 'reset');
                 h = histogram(app.UIAxes_compiled_events, diffusion_coeffs, 'BinWidth', app.DiffusionHistBinSizeSpinner.Value);
                 ylim(app.UIAxes_compiled_events, [0, ceil(max(h.Values) * 1.05)]);  %add extra 5% headroom
+                h_axes = app.UIAxes_compiled_events; %save ax handle for fitting
                 title(app.UIAxes_compiled_events, sprintf('Diffusion coefficient histogram for %d subtracks in state %s', N_subtracks, selected_class));
             else
                 %plot in external figure
@@ -404,6 +434,7 @@ function [] = genDHistograms(app)
                 ax = axes(h_fig);
                 h = histogram(ax, diffusion_coeffs, 'BinWidth', app.DiffusionHistBinSizeSpinner.Value);
                 ylim(ax, [0, ceil(max(h.Values) * 1.05)]);  %add extra 5% headroom
+                h_axes = ax; %save ax handle for fitting
                 title(ax, sprintf('Diffusion coefficient histogram for %d subtracks in state %s', N_subtracks, selected_class));
                 xlabel(ax, 'Diffusion coefficient (\mum^2/s)');
                 ylabel(ax, 'Number of subtracks');
@@ -429,6 +460,15 @@ function [] = genDHistograms(app)
                     binned_data = [h.BinEdges(1:end-1)', h.Values'];
                     writematrix(binned_data, binned_filename);
                 end
+            end
+
+            %get binned data from histogram
+            bin_centers = (h.BinEdges(1:end-1) + diff(h.BinEdges) / 2)';
+            bin_values  = h.Values';
+            
+            %perform multi-Gamma fit to binned data
+            if app.DiffusionHistPerformgammafitCheckBox.Value
+                fitGammaFn(app, h_axes, h, [bin_centers, bin_values]);
             end
     end
 end

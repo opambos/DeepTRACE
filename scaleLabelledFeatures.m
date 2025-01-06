@@ -145,7 +145,7 @@ function [success] = scaleLabelledFeatures(app)
                 app.movie_data.results.FeatureScaledData.LabelledMols{jj, 1}.source_data    = 1;
             end
             
-        case 'Human annotations (mulitple experiments)'
+        case 'Human annotations (multiple experiments)'
             popup = SelectTrainingFilesPopUp(app);
             uiwait(popup.UIFigure);
             
@@ -251,7 +251,7 @@ function [success] = scaleLabelledFeatures(app)
                 end
             end
             
-        case 'Ground truth (mulitple simulations)'
+        case 'Ground truth (multiple simulations)'
             popup = SelectTrainingFilesPopUp(app);
             uiwait(popup.UIFigure);
             
@@ -358,7 +358,8 @@ function [success] = scaleLabelledFeatures(app)
             end
             
         otherwise
-            app.textout.Value = "The training dataset is not currently available";
+            app.textout.Value = "The training dataset is not currently available: please select a data source from the [Source data] dropdown menu.";
+            warndlg("Please first select a data source from the [Source data] dropdown menu.", "No source data selected!");
             success = false;
             return;
     end
@@ -388,6 +389,7 @@ function [success] = scaleLabelledFeatures(app)
     switch method
         case "None"
             % << placeholder >>
+            success = true;
             
         case "Z-score"
             %Z-score feature scaling of relevant features

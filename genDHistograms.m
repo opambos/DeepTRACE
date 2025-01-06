@@ -362,7 +362,7 @@ function [] = genDHistograms(app)
             
             %perform multi-Gamma fit to binned data
             if app.DiffusionHistPerformgammafitCheckBox.Value
-                fitGammaFn(app, h_axes, b, [bin_centers, stacked_counts]);
+                fitGammas(app, h_axes, b, [bin_centers, stacked_counts]);
             end
 
         otherwise
@@ -468,7 +468,7 @@ function [] = genDHistograms(app)
             
             %perform multi-Gamma fit to binned data
             if app.DiffusionHistPerformgammafitCheckBox.Value
-                fitGammaFn(app, h_axes, h, [bin_centers, bin_values]);
+                fitGammas(app, h_axes, h, [bin_centers, bin_values]);
             end
     end
 end

@@ -549,7 +549,7 @@ function [mesh] = removeCollinearVertices(mesh, threshold_angle)
 %WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
 %
 %
-%Segmented cell meshes often contain mulitple points in an almost perfect
+%Segmented cell meshes often contain multiple points in an almost perfect
 %straight line (collinear). These points reduce performance of the
 %algorithm during both feature engineering and assigning localisations and
 %tracks to cells. These collinear regions of segmented meshes can be

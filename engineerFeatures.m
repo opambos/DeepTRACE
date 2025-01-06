@@ -146,6 +146,8 @@ function [] = engineerFeatures(app)
                         'Local kurtosis', ...
                         'Local step size kurtosis', ...
                         'Local fractal dimension', ...
+                        'Local velocity autocorrelation function', ...
+                        'Local maximal excursion', ...
                         'Local trappedness'};
     if any(ismember(strings_to_check, app.movie_data.state.selected_features))
         popup = LocalWindowSizePopUp(app);
@@ -360,11 +362,75 @@ function [] = engineerFeatures(app)
         curr_feature = curr_feature + 1;
     end
     
+    %compute local trappedness
+    if ismember('Local trappedness', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local trappedness"));
+        waitbar(0, h_progress, 'Computing local trappedness');
+        engineerLocalTrappedness(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+
     %compute local anomalous diffusion exponent
     if ismember('Local anomalous diffusion exponent', app.movie_data.state.selected_features)
         set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local diffusion exponent"));
         waitbar(0, h_progress, 'Computing local diffusion exponents');
         engineerLocalAnomalousExponent(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local efficiency
+    if ismember('Local efficiency', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local efficiency"));
+        waitbar(0, h_progress, 'Computing local efficiencies');
+        engineerLocalEfficiency(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local straightness
+    if ismember('Local straightness', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local straightness"));
+        waitbar(0, h_progress, 'Computing local straightnesses');
+        engineerLocalStraightness(app, h_progress)
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local kurtosis
+    if ismember('Local kurtosis', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local kurtosis"));
+        waitbar(0, h_progress, 'Computing local kurtosis');
+        engineerLocalKurtosis(app, h_progress)
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local step size kurtosis
+    if ismember('Local step size kurtosis', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local step size kurtosis"));
+        waitbar(0, h_progress, 'Computing local step size kurtosis');
+        engineerLocalStepSizeKurtosis(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local fractal dimension
+    if ismember('Local fractal dimension', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local fractal dimension"));
+        waitbar(0, h_progress, 'Computing local fractal dimension');
+        engineerLocalFractalDimension(app, h_progress);
+        curr_feature = curr_feature + 1;
+    end
+    
+    %compute local maximal excursion
+    if ismember('Local maximal excursion', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local maximal excursion"));
+        waitbar(0, h_progress, 'Computing local maximal excursion');
+        engineerLocalMaximalExcursion(app, h_progress)
+        curr_feature = curr_feature + 1;
+    end
+
+    %compute local VACF
+    if ismember('Local velocity autocorrelation function', app.movie_data.state.selected_features)
+        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local VACF"));
+        waitbar(0, h_progress, 'Computing local velocity autocorrelation function');
+        engineerLocalVACF(app, h_progress);
         curr_feature = curr_feature + 1;
     end
     
@@ -405,54 +471,6 @@ function [] = engineerFeatures(app)
         set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Centroid displacement"));
         waitbar(0, h_progress, 'Computing centroid displacements');
         engineerRollingCentroidDisplacement(app, h_progress);
-        curr_feature = curr_feature + 1;
-    end
-    
-    %compute local efficiency
-    if ismember('Local efficiency', app.movie_data.state.selected_features)
-        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local efficiency"));
-        waitbar(0, h_progress, 'Computing local efficiencies');
-        engineerLocalEfficiency(app, h_progress);
-        curr_feature = curr_feature + 1;
-    end
-    
-    %compute local straightness
-    if ismember('Local straightness', app.movie_data.state.selected_features)
-        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local straightness"));
-        waitbar(0, h_progress, 'Computing local straightnesses');
-        engineerLocalStraightness(app, h_progress)
-        curr_feature = curr_feature + 1;
-    end
-    
-    %compute local kurtosis
-    if ismember('Local kurtosis', app.movie_data.state.selected_features)
-        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local kurtosis"));
-        waitbar(0, h_progress, 'Computing local kurtosis');
-        engineerLocalKurtosis(app, h_progress)
-        curr_feature = curr_feature + 1;
-    end
-    
-    %compute local kurtosis
-    if ismember('Local step size kurtosis', app.movie_data.state.selected_features)
-        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local step size kurtosis"));
-        waitbar(0, h_progress, 'Computing local step size kurtosis');
-        engineerLocalStepSizeKurtosis(app, h_progress);
-        curr_feature = curr_feature + 1;
-    end
-    
-    %compute local fractal dimension
-    if ismember('Local fractal dimension', app.movie_data.state.selected_features)
-        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local fractal dimension"));
-        waitbar(0, h_progress, 'Computing local fractal dimension');
-        engineerLocalFractalDimension(app, h_progress);
-        curr_feature = curr_feature + 1;
-    end
-    
-    %compute local trappedness
-    if ismember('Local trappedness', app.movie_data.state.selected_features)
-        set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local trappedness"));
-        waitbar(0, h_progress, 'Computing local trappedness');
-        engineerLocalTrappedness(app, h_progress);
         curr_feature = curr_feature + 1;
     end
     
@@ -3428,4 +3446,217 @@ function [] = engineerStepAngleAsymmetry(app, h_progress)
     
     %update column titles accordingly
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Step angle asymmetry'];
+end
+
+
+function [] = engineerLocalVACF(app, h_progress)
+%Feature engineering for local velocity autocorrelation function, Oliver
+%Pambos, 19/12/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalVACF
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Computes local empirical velocity autocorrelation function (VACF) for each
+%localisation. The VACF is defined as the mean dot product of consecutive
+%step vectors within a sliding window around each localisation,
+%   VACF = (1 / (N - 2)) * sum((X(i+2) - X(i+1)) · (X(i+1) - X(i)))
+%
+%For each localisation, step vectors are computed as the difference
+%between consecutive (x, y) coordinates (i.e., the displacement between
+%frames) within a local window centred on that localisation. The dot
+%product of each pair of consecutive step vectors is calculated and summed
+%over the window, and the result is normalized by the number of such pairs
+%(N - 2). This quantifies the correlation in the particle's movement over
+%short time scales.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing local VACF for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:, 4) == track_ID, :);
+                
+                if isempty(curr_track)
+                    continue;
+                end
+                
+                %compute VACF vals for curr track
+                curr_VACF = zeros(size(curr_track, 1), 1);
+                for kk = 1:size(curr_track, 1)
+                    lim_lo = curr_track(kk, 3) - window_size;
+                    lim_hi = curr_track(kk, 3) + window_size;
+                    
+                    %get (x, y) coords of curr window
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:2);
+                    
+                    if size(curr_window, 1) > 2
+                        velocities      = diff(curr_window);
+                        curr_VACF(kk)   = mean(sum(velocities(1:end-1, :) .* velocities(2:end, :), 2));
+                    end
+                end
+                new_col = [new_col; curr_VACF];
+            end
+            
+            %append feature to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+    
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Local VACF'];
+end
+
+
+function [] = engineerLocalMaximalExcursion(app, h_progress)
+%Feature engineering for local maximal excursion, Oliver Pambos,
+%19/12/2024.
+%oliver.pambos@physics.ox.ac.uk
+%
+%
+%MATLAB FUNCTION: engineerLocalMaximalExcursion
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%LEGAL DISCLAIMER
+%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
+%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
+%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
+%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
+%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
+%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
+%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
+%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%
+%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
+%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
+%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%
+%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
+%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
+%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
+%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
+%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%
+%
+%Compute local maximal excursion (ME) for each localisation. Maximal
+%excursion is defined as the ratio of the maximum step size to the net
+%displacement within a sliding window around each localisation as
+%follows,
+%   ME = max(|X(i+1) - X(i)|) / |X(N) - X(1)|
+%
+%For each localisation, step sizes are computed within a local window
+%centered on that localisation. The maximum step size in the window is
+%identified, and this is divided by the net displacement (the distance
+%between the first and last points in the window). This feature captures
+%significant jumps relative to the overall displacement, with higher values
+%indicating large isolated steps.
+%
+%Note that this feature does not currently account for blinking, however it
+%is possible to combine the feature with the 'Time from previous
+%localisation' feature to enable this to be learned directly by the model
+%during training when using datasets with excessive photoblinking.
+%
+%Input
+%-----
+%app        (handle)    main GUI handle
+%h_progress (handle)    handle to existing progress bar
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
+    
+    N_cells = size(app.movie_data.cellROI_data, 1);
+    window_size = app.movie_data.state.local_win_size;
+    
+    for ii = 1:N_cells
+        waitbar(ii / N_cells, h_progress, sprintf('Computing maximal excursion for cell %d of %d', ii, N_cells));
+        
+        if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
+            new_col = [];
+            
+            %loop through filtered tracks
+            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+                track_ID = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj, 1);
+                curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:, 4) == track_ID, :);
+                
+                if isempty(curr_track)
+                    continue;
+                end
+                
+                %evaluate maximal excursion for track
+                curr_ME = zeros(size(curr_track, 1), 1);
+                for kk = 1:size(curr_track, 1)
+                    lim_lo = curr_track(kk, 3) - window_size;
+                    lim_hi = curr_track(kk, 3) + window_size;
+                    curr_window = curr_track(curr_track(:, 3) >= lim_lo & curr_track(:, 3) <= lim_hi, 1:2);
+                    
+                    if size(curr_window, 1) > 1
+                        step_sizes = sqrt(sum(diff(curr_window).^2, 2));
+                        max_step_size = max(step_sizes);
+                        net_displacement = norm(curr_window(end, :) - curr_window(1, :));
+                        if net_displacement ~= 0
+                            curr_ME(kk) = max_step_size / net_displacement;
+                        else
+                            curr_ME(kk) = 0; %handle zero net displacement - useful for handling any badly-designed simulations without noise
+                        end
+                    end
+                end
+                new_col = [new_col; curr_ME];
+            end
+            
+            %append to tracks matrix
+            app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
+        end
+    end
+
+    %update column titles accordingly
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Maximal local excursion'];
 end

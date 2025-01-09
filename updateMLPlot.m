@@ -1,4 +1,4 @@
-function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, class_colours, text_title, N_max, viewer_state)
+function [] = updateMLPlot(h_axes, data, feat_cols, feature_names, class_names, class_colours, text_title, N_max, viewer_state)
 %Update the ML data viewer axes, Oliver Pambos, 01/05/2023.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -60,6 +60,8 @@ function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, c
     idx_keep    = randperm(size(data, 1), N_keep);
     data        = data(idx_keep, :);
     
+    %find the feature column IDs
+
     %if the last plot wasn't data visualisation
     if ~strcmp(viewer_state, "Visualisation")
         reset(h_axes);
@@ -72,11 +74,11 @@ function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, c
     hold(h_axes, 'on');
     zoom(h_axes, 'off');
     pan(h_axes, 'off');
-
+    
     %handling error in call to xlim, ylim when a feature contains a single
     %repeating value (f'ns require a pair of non-identical values)
-    x_lims = [min(data(:,feat_idx(1))) max(data(:,feat_idx(1)))];
-    y_lims = [min(data(:,feat_idx(2))) max(data(:,feat_idx(2)))];
+    x_lims = [min(data(:,feat_cols(1))) max(data(:,feat_cols(1)))];
+    y_lims = [min(data(:,feat_cols(2))) max(data(:,feat_cols(2)))];
     if x_lims(1) == x_lims(2)
         x_lims(1) = x_lims(1) - 0.1*x_lims(1);
         x_lims(2) = x_lims(2) + 0.1*x_lims(2);
@@ -90,9 +92,9 @@ function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, c
     xlim(h_axes, x_lims);
     ylim(h_axes, y_lims);
     
-    if size(feat_idx,2) > 2
+    if size(feat_cols,2) > 2
         rotate3d(h_axes, 'on');
-        zlim(h_axes, [min(data(:,feat_idx(3))) max(data(:,feat_idx(3)))]);
+        zlim(h_axes, [min(data(:,feat_cols(3))) max(data(:,feat_cols(3)))]);
     else
         rotate3d(h_axes, 'off');
         view(h_axes, 0, 90);
@@ -108,17 +110,17 @@ function [] = updateMLPlot(h_axes, data, feat_idx, feature_names, class_names, c
     %separate data into the labelled classes, plot with different colours for each class, then plot either 3D or 2D scatter
     for ii = 1:size(class_names, 1)
         plot_class = data(data(:,end)==ii,:);
-        if size(feat_idx,2) > 2
-            scatter3(h_axes, plot_class(:,feat_idx(1)), plot_class(:,feat_idx(2)), plot_class(:,feat_idx(3)), [], plot_class(:,end), 'filled', 'CData', class_colours(ii,:));
+        if size(feat_cols,2) > 2
+            scatter3(h_axes, plot_class(:,feat_cols(1)), plot_class(:,feat_cols(2)), plot_class(:,feat_cols(3)), [], plot_class(:,end), 'filled', 'CData', class_colours(ii,:));
         else
-            scatter(h_axes, plot_class(:,feat_idx(1)), plot_class(:,feat_idx(2)), 36, plot_class(:,end), 'filled', 'CData', class_colours(ii,:));
+            scatter(h_axes, plot_class(:,feat_cols(1)), plot_class(:,feat_cols(2)), 36, plot_class(:,end), 'filled', 'CData', class_colours(ii,:));
         end
     end
     
     %display labels
     xlabel(h_axes, string(feature_names{1}));
     ylabel(h_axes, string(feature_names{2}));
-    if size(feat_idx, 2) > 2
+    if size(feat_cols, 2) > 2
         zlabel(h_axes, string(feature_names{3}));
     end
     title(h_axes, text_title);

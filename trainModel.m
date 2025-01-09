@@ -32,6 +32,11 @@ function [] = trainModel(app)
 %main .mlapp code. The modularisation is intended to improve clarity, and
 %also to better support cross-validation, and reinforcement learning.
 %
+%Note: Training RNNs has previously moved to using trainRNN. This function
+%remains for use for training of Random Forest models with the 'Final
+%training' training mode. The use of cross-validation is temporarily
+%unavailable, and will be re-enabled in a future update.
+%
 %Inputs
 %------
 %app    (handle)    main GUI handle
@@ -299,9 +304,9 @@ function [] = trainFinalModel(app)
             trainGRU(app, model_name, model_type, app.movie_data.results.train_data, app.movie_data.results.train_labels, app.movie_data.results.val_data, app.movie_data.results.val_labels, true);
     end
     
-    %compute and report metrics
-    [accuracy, precision, recall, f1_score] = computeMetricsWithTestData(app.movie_data.models.(model_type).model, app.movie_data.results.test_data, app.movie_data.results.test_labels, app.movie_data.results.padding, true);
-    app.textout.Value = "Accuracy: " + num2str(accuracy) + newline + "Precision: " + num2str(precision) + newline + "Recall: " + num2str(recall) + newline + "F1 Score: " + num2str(f1_score);
+    %compute and report metrics - currently disabled as not required for RF model call which computed metrics locally within trainRF()
+    %[accuracy, precision, recall, f1_score] = computeMetricsWithTestData(app.movie_data.models.(model_type).model, app.movie_data.results.test_data, app.movie_data.results.test_labels, app.movie_data.results.padding, true);
+    %app.textout.Value = "Accuracy: " + num2str(accuracy) + newline + "Precision: " + num2str(precision) + newline + "Recall: " + num2str(recall) + newline + "F1 Score: " + num2str(f1_score);
 end
 
 
@@ -1169,7 +1174,7 @@ function [] = trainLSTM(app, model_name, model_type, train_data, train_labels, v
         
         layers = [
             sequenceInputLayer(N_features)
-            bilstmLayer(app.movie_data.models.LSTM.N_units, 'OutputMode', 'sequence', ...
+            lstmLayer(app.movie_data.models.LSTM.N_units, 'OutputMode', 'sequence', ...
                 'InputWeightsL2Factor', app.movie_data.models.LSTM.input_l2_factor, ...
                 'RecurrentWeightsL2Factor', app.movie_data.models.LSTM.recurrent_l2_factor, ...
                 'BiasL2Factor', app.movie_data.models.LSTM.bias_l2_factor)
@@ -1326,7 +1331,7 @@ function [] = trainBiGRU(app, model_name, model_type, train_data, train_labels, 
         
         layers = [
             sequenceInputLayer(N_features)
-            bilstmLayer(app.movie_data.models.BiGRU.N_units, 'OutputMode', 'sequence', ...
+            gruLayer(app.movie_data.models.BiGRU.N_units, 'OutputMode', 'sequence', ...
                 'InputWeightsL2Factor', app.movie_data.models.BiGRU.input_l2_factor, ...
                 'RecurrentWeightsL2Factor', app.movie_data.models.BiGRU.recurrent_l2_factor, ...
                 'BiasL2Factor', app.movie_data.models.BiGRU.bias_l2_factor)
@@ -1479,7 +1484,7 @@ function [] = trainGRU(app, model_name, model_type, train_data, train_labels, va
         
         layers = [
             sequenceInputLayer(N_features)
-            bilstmLayer(app.movie_data.models.GRU.N_units, 'OutputMode', 'sequence', ...
+            gruLayer(app.movie_data.models.GRU.N_units, 'OutputMode', 'sequence', ...
                 'InputWeightsL2Factor', app.movie_data.models.GRU.input_l2_factor, ...
                 'RecurrentWeightsL2Factor', app.movie_data.models.GRU.recurrent_l2_factor, ...
                 'BiasL2Factor', app.movie_data.models.GRU.bias_l2_factor)
@@ -1595,7 +1600,18 @@ function [] = trainRF(app, model_name)
     tic
     %train the model; future versions likely move this substruct/cell array app.movie_data.models{} to allow multiple models to be loaded simultaneously
     %this will be replaced with a call to fitcensemble in future
+    
+    %TreeBagger implementation of RF (faster, global feature importance)
     app.movie_data.models.RF.model = TreeBagger(N_trees, features, labels, 'Method', 'classification', 'OOBPredictorImportance','On');
+    
+    %fitcensemble implementation of RF (adaptable, feature interactions)
+    % app.movie_data.models.RF.model = fitcensemble(features, labels, ...
+    %     'Method', 'Bag', ...                   
+    %     'NumLearningCycles', N_trees, ...     
+    %     'Learners', templateTree('Surrogate', 'on'), ... 
+    %     'ClassNames', unique(labels), ...
+    %     'CategoricalPredictors', 'all');
+
     t = toc;
     app.textout.Value = "Completed training of random forest model in " + num2str(t) + " seconds";
     
@@ -1603,7 +1619,7 @@ function [] = trainRF(app, model_name)
     X_test = app.movie_data.results.test_data(:, 1:end-1);
     Y_test = app.movie_data.results.test_data(:, end);
     [Y_pred, ~] = predict(app.movie_data.models.RF.model, X_test);
-    Y_pred = str2double(Y_pred);
+    %Y_pred = str2double(Y_pred);
     
     accuracy = sum(Y_pred == Y_test) / numel(Y_test);
     

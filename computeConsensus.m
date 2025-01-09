@@ -42,6 +42,11 @@ function [tracks_cell_array] = computeConsensus(tracks_cell_array, probabilities
 %Note: this function was moved from labelWithSlidingWindow.m to a discrete
 %.m file for use in feature permutation analysis.
 %
+%Performance here could be slightly further improved by pre-computing track
+%windows, and logical indexing to remove further overhead, but this is
+%currently unnecessary as total runtime is < 250 ms for an entire live cell
+%dataset.
+%
 %Input
 %-----
 %tracks_cell_array  (cell)      Nx1 cell array containing N tracks
@@ -68,8 +73,8 @@ function [tracks_cell_array] = computeConsensus(tracks_cell_array, probabilities
 %-----------------------------------------
 %None
     
-    f = waitbar(0,"Annotation complete for all track, studying consensus...");
-    update_freq = 5;
+    %convert dlarray to matrix for faster computation
+    probabilities = extractdata(probabilities);
     
     N_tracks    = max(source_track);
     window_size = size(probabilities, 3);
@@ -79,11 +84,6 @@ function [tracks_cell_array] = computeConsensus(tracks_cell_array, probabilities
     final_predictions_cell = cell(N_tracks, 1);
     
     for ii = 1:N_tracks
-        %update waitbar every 5 tracks
-        if mod(ii, update_freq) == 0
-            waitbar(ii/N_tracks, f, "Classification complete, computing consensus annotations for track " + num2str(ii) + "/" + N_tracks);
-        end
-        
         %get section of array corresponding to current track
         track_window = find(source_track == ii);
         
@@ -94,7 +94,7 @@ function [tracks_cell_array] = computeConsensus(tracks_cell_array, probabilities
         confidence_scores   = zeros(curr_track_len, N_classes);
         
         %loop over windows in the current track
-        for jj = 1:length(track_window)
+        for jj = 1:size(track_window, 1)
             window_idx = track_window(jj);
             
             %extract probs for window, and predict classes
@@ -137,6 +137,4 @@ function [tracks_cell_array] = computeConsensus(tracks_cell_array, probabilities
         tracks_cell_array{ii, 1}.consensus_prediction = [final_predictions, window_counts];
         tracks_cell_array{ii, 1}.confidence_scores = confidence_scores;
     end
-    
-    close(f);
 end

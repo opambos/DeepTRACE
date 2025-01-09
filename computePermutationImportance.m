@@ -151,9 +151,19 @@ function [] = computePermutationImportance(app)
         scores_all = zeros(N_features, N_repeats);
     end
     
+    %init waitbar
+    h           = waitbar(0, 'Computing permutation importance...');
+    set(h, 'Name', 'Permutation Importance Progress', 'NumberTitle', 'off');
+    total_iter  = N_features * N_repeats;
+    curr_iter   = 0;
+    
     %for each feature, permute and evaluate drop in performance
     for ii = 1:N_features
         for rr = 1:N_repeats
+            %update waitbar
+            curr_iter = curr_iter + 1;
+            waitbar(curr_iter / total_iter, h, "Permuting feature " + ii + "/" + N_features + ", repeat " + rr + "/" + N_repeats + "; (" + round(100*curr_iter/total_iter) + "% complete)");
+            
             %shuffle data for current feature
             shuffled_data_dlarray = scaled_data_dlarray;
             flattened_data = reshape(shuffled_data_dlarray(ii, :, :), [], 1);
@@ -175,6 +185,8 @@ function [] = computePermutationImportance(app)
             end
         end
     end
+
+    close(h);
     
     %collect results into matrix, and sort by importance (all data) or total importance (proximal + distal)
     if strcmp(data_source, "All data")

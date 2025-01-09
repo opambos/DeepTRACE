@@ -3658,5 +3658,5 @@ function [] = engineerLocalMaximalExcursion(app, h_progress)
     end
 
     %update column titles accordingly
-    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Maximal local excursion'];
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, 'Local maximal excursion'];
 end

@@ -71,6 +71,7 @@ function [] = genHeatmap(app)
     classes_to_plot = app.HeatmapAvailableDatasetsTree.CheckedNodes;
     heatmap_style   = app.HeatmapstyleDropDown.Value;
     PSF_FWHM_um     = app.ReconstructionPSFFWHMSpinner.Value / 1000;
+    bg_colour       = app.BackgroundcolourDropDown.Value;
     
     %calc number of bins based on cell dimensions and bin size
     N_bins_x = ceil(cell_len_um / bin_wid_um);
@@ -136,14 +137,14 @@ function [] = genHeatmap(app)
 
     %plot single heatmap containing all localisations for all classes if requested by user
     if any(strcmp({classes_to_plot.Text}, 'All localisastions combined'))
-        plotHeatmap(accumulated_heatmap, cell_len_um, cell_wid_um, source_description, width_fig, height_fig);
+        plotHeatmap(accumulated_heatmap, cell_len_um, cell_wid_um, source_description, width_fig, height_fig, bg_colour);
     end
 
     %plot heatmaps for each class requested by user
     for kk = 1:N_classes
         if any(strcmp({classes_to_plot.Text}, app.movie_data.params.class_names{kk}))
-            colorMap = createColorMap(app.movie_data.params.event_label_colours(kk, :));
-            plotClassHeatmap(class_heatmaps(:, :, kk), cell_len_um, cell_wid_um, colorMap, app.movie_data.params.class_names{kk}, source_description, width_fig, height_fig);
+            colour_map = createColourMap(app.movie_data.params.event_label_colours(kk, :), bg_colour);
+            plotClassHeatmap(class_heatmaps(:, :, kk), cell_len_um, cell_wid_um, colour_map, app.movie_data.params.class_names{kk}, source_description, width_fig, height_fig, bg_colour);
         end
     end
 end
@@ -323,7 +324,7 @@ function [heatmap_data] = generate2DHeatmap(X, Y, valid, N_bins_x, N_bins_y, cel
 end
 
 
-function plotHeatmap(heatmap_data, cell_len, cell_wid, source_description, width_fig, height_fig)
+function plotHeatmap(heatmap_data, cell_len, cell_wid, source_description, width_fig, height_fig, bg_colour)
 %Plot a heatmap for all localisations, Oliver Pambos, 23/05/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -361,6 +362,10 @@ function plotHeatmap(heatmap_data, cell_len, cell_wid, source_description, width
 %source_description (str)   description of the source of annotations to be used in the figure title
 %width_fig          (int)   width of figure (in pixels)
 %height_fig         (int)   height of figure (in pixels)
+%bg_colour          (str)   determines the background colour of the plot,
+%                               and start of the colour map; options are,
+%                                   "Black" (default)
+%                                   "White"
 %
 %Output
 %------
@@ -370,27 +375,43 @@ function plotHeatmap(heatmap_data, cell_len, cell_wid, source_description, width
 %-----------------------------------------
 %drawCellOutline()
     
+    switch bg_colour
+        case "Black"
+            bg_code         = 'k';
+            txt_code        = 'w';
+            mesh_style_str  = 'w--';
+        case "White"
+            bg_code         = 'w';
+            txt_code        = 'k';
+            mesh_style_str  = 'k--';
+        otherwise
+            %default to black, text white, and mesh white with dashed lines
+            bg_code         = 'k';
+            txt_code        = 'w';
+            mesh_style_str  = 'w--';
+    end
+    
     figure('Position', [100, 100, width_fig, height_fig]);
-
+    
     %plotting
     imagesc([-cell_len / 2, cell_len / 2], [-cell_wid / 2, cell_wid / 2], heatmap_data);
     axis equal; axis off;
-    set(gcf, 'Color', 'k');
+    set(gcf, 'Color', bg_code);
     colormap('hot');
-    title("Density heatmap of all localisations " + source_description, 'Color', 'w', 'FontSize', 16);
+    title("Density heatmap of all localisations " + source_description, 'Color', txt_code, 'FontSize', 16);
     
     %colour bar
     cb = colorbar('south');
-    set(cb, 'Color', 'w', 'FontSize', 12);
-    ylabel(cb, 'Normalised density of localisations', 'Color', 'w', 'FontSize', 16);
+    set(cb, 'Color', txt_code, 'FontSize', 12);
+    ylabel(cb, 'Normalised density of localisations', 'Color', txt_code, 'FontSize', 16);
     
     %cell outline
-    drawCellOutline(cell_len, cell_wid);
+    drawCellOutline(cell_len, cell_wid, mesh_style_str);
 end
 
 
 
-function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, class_name, source_description, width_fig, height_fig)
+function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, class_name, source_description, width_fig, height_fig, bg_colour)
 %Plot the heatmap for a single class for all segmented localisations in the
 %dataset, Oliver Pambos, 23/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -431,6 +452,10 @@ function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, cla
 %source_description (str)   description of the source of annotations to be used in the figure title
 %width_fig          (int)   width of figure (in pixels)
 %height_fig         (int)   height of figure (in pixels)
+%bg_colour          (str)   determines the background colour of the plot,
+%                               and start of the colour map; options are,
+%                                   "Black" (default)
+%                                   "White"
 %
 %Output
 %------
@@ -440,6 +465,22 @@ function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, cla
 %-----------------------------------------
 %drawCellOutline()
     
+    switch bg_colour
+        case "Black"
+            bg_code         = 'k';
+            txt_code        = 'w';
+            mesh_style_str  = 'w--';
+        case "White"
+            bg_code         = 'w';
+            txt_code        = 'k';
+            mesh_style_str  = 'k--';
+        otherwise
+            %default to black, text white, and mesh white with dashed lines
+            bg_code         = 'k';
+            txt_code        = 'w';
+            mesh_style_str  = 'w--';
+    end
+    
     figure('Position', [100, 100, width_fig, height_fig]);
     
     %min-max normalize heatmap (0 to 1)
@@ -448,24 +489,24 @@ function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, cla
     %plotting
     imagesc([-cell_len / 2, cell_len / 2], [-cell_wid / 2, cell_wid / 2], scaled_heatmap_data);
     axis equal; axis off;
-    set(gcf, 'Color', 'k');
+    set(gcf, 'Color', bg_code);
     colormap(colour_map);
-    title("Density heatmap for localisations in the class '" + lower(class_name) + "' " + source_description, 'Color', 'w', 'FontSize', 16);
+    title("Density heatmap for localisations in the class '" + lower(class_name) + "' " + source_description, 'Color', txt_code, 'FontSize', 16);
     
     %colour bar
     h_cb = colorbar('south');
-    set(h_cb, 'Color', 'w', 'FontSize', 12);
-    ylabel(h_cb, 'Normalised density of localisations', 'Color', 'w', 'FontSize', 16);
+    set(h_cb, 'Color', txt_code, 'FontSize', 12);
+    ylabel(h_cb, 'Normalised density of localisations', 'Color', txt_code, 'FontSize', 16);
     
     %cell outline
-    drawCellOutline(cell_len, cell_wid)
+    drawCellOutline(cell_len, cell_wid, mesh_style_str)
     
     %ensure displaying full range of data
     clim([0 1]);
 end
 
 
-function colour_map = createColorMap(RGB)
+function colour_map = createColourMap(RGB, bg_colour)
 %Construct custom colour map for the class running from black to its
 %defined colour, Oliver Pambos, 23/05/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -499,6 +540,10 @@ function colour_map = createColorMap(RGB)
 %Inputs
 %------
 %RGB        (vec)   3-element row vector containing the colour of a class
+%bg_colour  (str)   determines the background colour of the plot, and start
+%                       of the colour map; options are,
+%                           "Black" (default)
+%                           "White"
 %
 %Output
 %------
@@ -509,12 +554,22 @@ function colour_map = createColorMap(RGB)
 %-----------------------------------------
 %None
     
-    %generate colormap that transitions from black to the specified RGB colour
-    colour_map = [linspace(0, RGB(1), 256)', linspace(0, RGB(2), 256)', linspace(0, RGB(3), 256)'];
+    switch bg_colour
+        case "Black"
+            bg_code = 0;
+        case "White"
+            bg_code = 1;
+        otherwise
+            %default to black
+            bg_code = 0;
+    end
+
+    %generate colormap that transitions using a colour map from the background colour to the specified RGB colour
+    colour_map = [linspace(bg_code, RGB(1), 256)', linspace(bg_code, RGB(2), 256)', linspace(bg_code, RGB(3), 256)'];
 end
 
 
-function [] = drawCellOutline(cell_len, cell_wid)
+function [] = drawCellOutline(cell_len, cell_wid, mesh_style_str)
 %Annotate onto a heatmap a cell boundary, Oliver Pambos, 23/05/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
@@ -578,7 +633,7 @@ function [] = drawCellOutline(cell_len, cell_wid)
     y_outline = [y_cap_left, fliplr(y_cap_right), y_cap_left(1)];
     
     hold on;
-    plot(x_outline, y_outline, 'w', 'LineWidth', 2);
+    plot(x_outline, y_outline, mesh_style_str, 'LineWidth', 2);
 end
 
 

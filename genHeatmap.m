@@ -76,7 +76,7 @@ function [] = genHeatmap(app)
     %calc number of bins based on cell dimensions and bin size
     N_bins_x = ceil(cell_len_um / bin_wid_um);
     N_bins_y = ceil(cell_wid_um / bin_wid_um);
-
+    
     %get relevant column indices
     idx_long = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Longitude');
     idx_lat  = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Latitude');    
@@ -101,6 +101,10 @@ function [] = genHeatmap(app)
     %loop over cells
     for ii = 1:size(app.movie_data.results.(substruct_name).LabelledMols, 1)
         curr_cell_data  = app.movie_data.results.(substruct_name).LabelledMols{ii, 1}.Mol;
+        
+        %erase any rows that contain NaN latitude or longitude
+        curr_cell_data(any(isnan(curr_cell_data(:, [idx_long, idx_lat])), 2), :) = [];
+        
         curr_cell_locs  = curr_cell_data(:, [idx_long, idx_lat]);
         classes         = curr_cell_data(:, end);
         
@@ -119,7 +123,7 @@ function [] = genHeatmap(app)
                 class_heatmap_data = generate2DHeatmap(X, Y, class_valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um);
                 class_heatmaps(:, :, kk) = class_heatmaps(:, :, kk) + class_heatmap_data;
             end
-
+            
         elseif strcmp(heatmap_style, 'Normalised image reconstruction')
             %add all locs in curr cell to general reconstructed image
             all_reconstructed_image = reconstructImage(X, Y, valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um, PSF);
@@ -132,14 +136,14 @@ function [] = genHeatmap(app)
                 class_heatmaps(:, :, kk) = class_heatmaps(:, :, kk) + class_reconstructed_image;
             end
         end
-
+        
     end
-
+    
     %plot single heatmap containing all localisations for all classes if requested by user
     if any(strcmp({classes_to_plot.Text}, 'All localisastions combined'))
         plotHeatmap(accumulated_heatmap, cell_len_um, cell_wid_um, source_description, width_fig, height_fig, bg_colour);
     end
-
+    
     %plot heatmaps for each class requested by user
     for kk = 1:N_classes
         if any(strcmp({classes_to_plot.Text}, app.movie_data.params.class_names{kk}))
@@ -225,11 +229,11 @@ function [X, Y, valid] = transformCoordinates(data, cell_len_um, cell_wid_um)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %None
-
+    
     %scale data to cell length and width
     X = data(:, 1) * cell_len_um;
     Y = data(:, 2) * cell_wid_um;
-
+    
     %boolean array to keep track of valid data points (those falling inside cell boundary)
     valid = true(size(X));
     
@@ -563,7 +567,7 @@ function colour_map = createColourMap(RGB, bg_colour)
             %default to black
             bg_code = 0;
     end
-
+    
     %generate colormap that transitions using a colour map from the background colour to the specified RGB colour
     colour_map = [linspace(bg_code, RGB(1), 256)', linspace(bg_code, RGB(2), 256)', linspace(bg_code, RGB(3), 256)'];
 end

@@ -47,6 +47,7 @@ function [] = trainRNN(app)
 %-----------------------------------------
 %computeMetricsPadded()
 %computeMetrics()
+%saveModel()
 %defineModelLayers()        - local to this .m file
 %storeMetadata()            - local to this .m file
 %computeClassWeights()      - local to this .m file
@@ -60,8 +61,13 @@ function [] = trainRNN(app)
     popup = getRNNSettings(app);
     uiwait(popup.genRNNSettingsFigure);
     
-    app.textout.Value = 'Preparing model';
-
+    %return if user has pressed cancel during model construction
+    if ~app.movie_data.state.training.continue
+        return;
+    else
+        app.textout.Value = 'Preparing model';
+    end
+    
     %obtain model_type string
     model_name = app.ModeltypeDropDown.Value;
     switch model_name
@@ -122,6 +128,9 @@ function [] = trainRNN(app)
         [accuracy, precision, recall, f1_score, ~] = computeMetrics(app.movie_data.models.(model_type).model, app.movie_data.results.test_data, app.movie_data.results.test_labels, true);
     end
     app.textout.Value = "Accuracy: " + num2str(accuracy) + newline + "Precision: " + num2str(precision) + newline + "Recall: " + num2str(recall) + newline + "F1 Score: " + num2str(f1_score);
+    
+    %automatically prompt user to save model
+    saveModel(app);
 end
 
 
@@ -234,6 +243,9 @@ function [layers] = defineModelLayers(app)
                 'Name', sprintf('dropout_following_RNN_layer_%d', ii))];
         end
     end
+    
+    %post-RNN layer normalisation
+    layers = [layers; layerNormalizationLayer('Name', 'post_RNN_normalisation')];
     
     %add attention layer if selected
     if app.movie_data.state.RNN.attn
@@ -710,7 +722,7 @@ function [loss] = changepointWeightedLoss(YPred, YTrue, class_weights)
     %reformat class weights to match dimensions
     class_weights_expanded = dlarray(reshape(class_weights, [C, 1, 1]));
     class_weights_expanded = repmat(class_weights_expanded, [1, B, T]);
-
+    
     %compute weights
     weights = (1 + cp_weight * changepoint_masks);
     weights = reshape(weights, [1, B, T]);

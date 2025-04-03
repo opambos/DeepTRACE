@@ -1,5 +1,6 @@
 function [] = plotClassDistributions(app)
-%Plot the class distributions for all features, Oliver Pambos, 23/11/2024.
+%Plot the class-conditional feature distributions, Oliver Pambos,
+%23/11/2024.
 %oliver.pambos@physics.ox.ac.uk
 %
 %
@@ -35,11 +36,18 @@ function [] = plotClassDistributions(app)
 %release.
 %
 %This function enables the plotting of the distribution of features using
-%kernel density estimators, and assembled for two classes as violin plots.
+%kernel density estimators, and mirrored violin plots for pairs of classes.
 %This enables the user to interpret the performance of features prior to
 %model training.
 %
-%Future update will involve removing feature-wise the first and last
+%This function also computes and displays the Kolmogorov–Smirnov statistic
+%for the two selected classes to quantify class separability. Wasserstein
+%distance and histogram non-overlap metrics have been disabled in the
+%current version to avoid user confusion arising from the adaptive binning
+%process. This will be later expanded in a future update to compute a
+%single metric across all classes.
+%
+%A future update will involve removing feature-wise the first and last
 %regions of tracks for features that do not generate meaningful values in
 %these ranges, e.g. step angle has two leading zeros at the start of every
 %track as it takes three localisations to obtain the relative step angle.
@@ -68,10 +76,10 @@ function [] = plotClassDistributions(app)
         class_A_ID = find(strcmp(app.FeatureAnalysisClassADropDown.Value, app.movie_data.params.class_names));
         class_B_ID = find(strcmp(app.FeatureAnalysisClassBDropDown.Value, app.movie_data.params.class_names));
     end
-
+    
     %get feature list and params from GUI
     feature_list    = app.MLfeatures.CheckedNodes;
-
+    
     %check user selected at least one feature
     if isempty(feature_list)
         app.textout.Value = "You have not selected any features! Please select the featuers you would like to produce plots for from the [Features] list in the [ML Classification tab]";
@@ -131,48 +139,48 @@ function [] = plotClassDistributions(app)
                     data_class_A = [data_class_A; feature_data(class_data == class_A_ID)];
                     data_class_B = [data_class_B; feature_data(class_data == class_B_ID)];
                     
-                case "Only transition regions"
+                case "Changepoint-proximal"
                     %identify all transitions
                     transition_A_to_B = find(class_data(1:end-1) == class_A_ID & class_data(2:end) == class_B_ID);
                     transition_B_to_A = find(class_data(1:end-1) == class_B_ID & class_data(2:end) == class_A_ID);
-
+                    
                     %handle transitions from Class A → Class B
                     for idx = transition_A_to_B'
                         %define bounds for the current transition region
                         start_idx   = max(1, idx - transition_range + 1); %lower bound
                         end_idx     = min(length(class_data), idx + transition_range); %upper bound
-
+                        
                         %append all data in this region to Class A histogram
                         data_class_A = [data_class_A; feature_data(start_idx:end_idx)];
                     end
-
+                    
                     %handle transitions from Class B → Class A
                     for idx = transition_B_to_A'
                         %define bounds for the current transition region
                         start_idx   = max(1, idx - transition_range + 1); %lower bound
                         end_idx     = min(length(class_data), idx + transition_range); %upper bound
-
+                        
                         %append all data in this region to Class B histogram
                         data_class_B = [data_class_B; feature_data(start_idx:end_idx)];
                     end
                     
-                case "Only non-transition regions"
+                case "Changepoint-distal"
                     %identify all transitions (any class change)
                     transition_indices = find(diff(class_data) ~= 0);
-
+                    
                     %initialize mask for non-transition regions
                     non_transition_mask = true(size(class_data)); %start with all true
-
+                    
                     %exclude rows in transition regions
                     for idx = transition_indices'
                         %define bounds for the current transition region
                         start_idx   = max(1, idx - transition_range + 1); %lower bound
                         end_idx     = min(length(class_data), idx + transition_range); %upper bound
-
+                        
                         %mark rows in transition regions as false
                         non_transition_mask(start_idx:end_idx) = false;
                     end
-
+                    
                     %append data for each class
                     data_class_A = [data_class_A; feature_data(non_transition_mask & class_data == class_A_ID)];
                     data_class_B = [data_class_B; feature_data(non_transition_mask & class_data == class_B_ID)];
@@ -181,10 +189,6 @@ function [] = plotClassDistributions(app)
                     error('Invalid option selected in FeatureAnalysisDatasubsetDropDown.');
             end
         end
-        
-        %check feature range for both classes to determine KDE support
-        min_val_class_A = min(data_class_A);
-        min_val_class_B = min(data_class_B);
         
         switch app.FeatureVisualisationMethodDropDown.Value
             case "Histogram"
@@ -217,12 +221,12 @@ function [] = plotClassDistributions(app)
                 
                 %set symmetric x-axis limits
                 max_val = max(max(abs([-counts_A counts_B])));
-                xlim([-max_val max_val]);
-
+                xlim([-max_val .* 1.05, max_val .* 1.05]);
+                
             case "Kernel density estimator"
                 %enforce a minimum bandwidth of 0.01 for KDE
                 smooth_param = min(smooth_param, 0.01);
-
+                
                 %create KDEs for each class
                 if min(data_class_A) >= 0 && min(data_class_B) >= 0
                     %non-negative feature: remove zeros to comply with 'Support', 'positive'
@@ -247,7 +251,7 @@ function [] = plotClassDistributions(app)
                 
                 %set symmetric x-axis limits such that plots are centred within figure
                 max_val = max(max(abs([-f1, f2])));
-                xlim([-max_val, max_val]);
+                xlim([-max_val .* 1.05, max_val .* 1.05]);
                 
             otherwise
                 warndlg("Unknown binning method", "Error: Unknown binning method!");
@@ -255,10 +259,21 @@ function [] = plotClassDistributions(app)
                 return;
         end
         
+        %compute class-separability metric(s)
+        switch app.ClassseparabilitymetricDropDown.Value
+            case "Kolmogorov-Smirnov"
+                %compute Kolmogorov-Smirnov statistic
+                [~, ~, ks_stat] = kstest2(data_class_A, data_class_B);
+                title_metric_str = "D_{KS} = " + num2str(ks_stat, '%.3f');
+                title(title_metric_str);
+            otherwise
+                
+        end
+        
         %formatting
         set(gca, 'Color', 'w', 'Box', 'on', 'FontSize', 20, 'LineWidth', 2, 'TickDir', 'in', 'TickLength', [0.02, 0.02]);
         ylabel(feature_name, 'FontSize', 24);
-        legend({'Slow', 'Fast'}, 'Location', 'best', 'FontSize', 20);
+        legend({'Slow', 'Fast'}, 'Location', 'best', 'FontSize', 20, 'Box', 'off');
         
         hold off;
     end

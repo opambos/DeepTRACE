@@ -47,7 +47,9 @@ function [step_sizes] = computeStepSizeProfile(movie_data, N_lim, h_axes)
     %pre-allocate step_sizes
     N_mol = 0;
     for ii = 1:size(movie_data.cellROI_data,1)
-        N_mol = N_mol + size(unique(movie_data.cellROI_data(ii).tracks(:,4)),1);
+        if ~isempty(movie_data.cellROI_data(ii).tracks)
+            N_mol = N_mol + size(unique(movie_data.cellROI_data(ii).tracks(:,4)),1);
+        end
     end
     step_sizes = zeros(N_mol,1);
     

@@ -166,6 +166,9 @@ function [] = addPartialVisualLabel(app)
                         mkdir(autosave_dir);
                     end
                     
+                    if ~isfield(app.movie_data.params, 'title') || isempty(app.movie_data.params.title)
+                        app.movie_data.params.title = "default";
+                    end
                     autosave_name = sprintf('%s_Autosave_%d_mols.mat', app.movie_data.params.title{1}, app.movie_data.state.event_labeller_current_ID);
                     autosave_path = fullfile(autosave_dir, autosave_name);
                     

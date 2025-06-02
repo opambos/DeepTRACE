@@ -179,8 +179,13 @@ disableDefaultInteractivity(app.UIAxes_event_labeller);
     text(app.UIAxes_labelling_progress, app.UIAxes_labelling_progress.XLim(2)/2, 0.5, text_pc, 'HorizontalAlignment', 'center');
     
     %pull video from the correct video file
-    app.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1);
-
+    if isfield(app.movie_data.params, 'flipped') && app.movie_data.params.flipped
+        flipped = true;
+    else
+        flipped = false;
+    end
+    app.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1, flipped);
+    
     %display the first video frame (or initialise the handle if this is the first run)
     app.updateVideoFrame(app.movie_data.state.labeller_frame_video);
     

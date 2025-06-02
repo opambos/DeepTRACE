@@ -154,9 +154,9 @@ function [] = compileMSDsAllLabelled(app)
     end
     
     %display D* values inside the GUI, and write to the results struct
-    string_out = "D* All trajectories: " + num2str(DStars(1), '%.3g') + " " + char(956) + "m" + char(178) + "s" + char(8315) + char(185);
+    string_out = "D* All trajectories: " + num2str(DStars(1), '%.4f') + " " + char(956) + "m" + char(178) + "s" + char(8315) + char(185);
     for ii = 2:size(DStars, 1)
-        string_out = string_out + newline + "D* " + app.movie_data.params.class_names{ii-1, 1} + ": " + num2str(DStars(ii), '%.3g') +...
+        string_out = string_out + newline + "D* " + app.movie_data.params.class_names{ii-1, 1} + ": " + num2str(DStars(ii), '%.4f') +...
             " " + char(956) + "m" + char(178) + "s" + char(8315) + char(185);       %I love unicode
     end
     app.textout.Value = string_out;

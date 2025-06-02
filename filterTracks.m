@@ -111,15 +111,18 @@ function [filter_status] = filterTracks(app)
             %identify clashing tracks, and short tracks
             %loop over all cells
             for ii = 1:size(app.movie_data.cellROI_data,1)
+                if isempty(app.movie_data.cellROI_data(ii).tracks)
+                    continue;
+                end
+
                 %identify all tracks that fall within 'buffer' frames of one another,
                 %and identify all overlapping frames
                 [~, overlaps] = identifyOverlaps(app.movie_data.cellROI_data(ii).tracks, app.TrackbufferframesSpinner.Value);
                 
                 %delete overlapping frames
-                for kk = 1:size(overlaps, 1)
-                    idx = find(app.movie_data.cellROI_data(ii).tracks(:,3) == overlaps(kk));
-                    app.movie_data.cellROI_data(ii).tracks(idx,:) = [];
-                end
+                    % idx = find(app.movie_data.cellROI_data(ii).tracks(:,3) == overlaps(kk));
+                    % app.movie_data.cellROI_data(ii).tracks(idx,:) = [];
+                    app.movie_data.cellROI_data(ii).tracks(ismember(app.movie_data.cellROI_data(ii).tracks(:,3), overlaps), :) = [];
                 %apply memory parameter, tracks not meeting this parameter are split
                 app.movie_data.cellROI_data(ii).tracks = applyMemoryParameter(app.movie_data.cellROI_data(ii).tracks, app.MemoryparameterSpinner.Value);
                 
@@ -131,9 +134,16 @@ function [filter_status] = filterTracks(app)
                         app.movie_data.cellROI_data(ii).tracks(idx,:) = [];
                     end
                 end
-                
+
                 waitbar(ii/size(app.movie_data.cellROI_data,1), f, strcat('Processing cell #', num2str(ii), {' '}, 'of', {' '}, num2str(size(app.movie_data.cellROI_data,1))));
             end
+            
+
+            %renumber tracks again with sequential numbers (handles rare track_ID ordering errors arising from split tracks, which causes a downstream issue with engineering the time from start of track feature)
+            if ~strcmp(app.movie_data.params.pipeline, "LoColi")
+                renumberTracksByCell(app);
+            end
+
             close(f);
             filter_status = "Successfully truncated by tracks";
             

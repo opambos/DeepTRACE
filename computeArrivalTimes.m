@@ -87,14 +87,19 @@ function [] = computeArrivalTimes(app)
     %initialize the new matrix to store results
     count = 0;
     for ii = 1:size(app.movie_data.cellROI_data,1)
-        count = count + size(unique(app.movie_data.cellROI_data(ii).tracks(:,mol_ID_col)), 1);
+        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+            count = count + size(unique(app.movie_data.cellROI_data(ii).tracks(:,mol_ID_col)), 1);
+        end
     end
     arrival_mat = zeros(count, 4);
     
     %loop over cells
     count = 0;
     for ii = 1:length(app.movie_data.cellROI_data)
-        
+        if isempty(app.movie_data.cellROI_data(ii).tracks)
+            continue;
+        end
+
         %find unique molecule IDs for current cell
         mol_IDs = unique(app.movie_data.cellROI_data(ii).tracks(:, mol_ID_col));
         

@@ -100,6 +100,11 @@ function loadAnalysis(app)
         return;
     end
     
+    %compile a list of items to ignore when updating the GUI from save file
+    ignore_list = {'HeatmapstyleDropDown', 'BackgroundcolourDropDown', 'DiffusionHistPlotlocationDropDown', 'ProcessaveragesDropDown', 'DcalculationmethodDropDown','TruncationDropDown','HistogramdatatoexportDropDown','Overlayerstyle',...
+        'EntriesorexitsDropDown','FeatureimportancemetricDropDown','FeatureVisualisationMethodDropDown','FeatureAnalysisDatasubsetDropDown','ShufflingmethodDropDown','TracksamplingDropDown','TrainingdataexportformatDropDown','TrainingmodeDropDown',...
+        'LossfunctionDropDown','ModelexportformatDropDown','PermutationImportanceDatasubsetDropDown','SHAPvaluedisplayDropDown','PostprocessingmethodDropDown'};
+    
     %check if the file contains the config data, if so load it
     if ~isfield(loaded_data, 'GUI_config')
         gui_config_missing = true;
@@ -112,6 +117,11 @@ function loadAnalysis(app)
                 component_name = fields{ii};
                 if isprop(app, component_name)
                     component = app.(component_name);
+                    
+                    %if component is on the ignore list, skip
+                    if ismember(component_name, ignore_list)
+                        continue;
+                    end
                     
                     %if it's a dropdown box, search for a saved items list in the loaded data and update the current values
                     if isa(component, 'matlab.ui.control.DropDown')

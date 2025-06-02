@@ -132,7 +132,10 @@ function [cp_errors, state_transitions, N_unpaired_cps] = computeCPErrorsSingleT
             state_transitions   = [state_transitions; gt_class_before, gt_class_after];
         else
             N_unpaired_cps = N_unpaired_cps + 1;
-            continue;
+            
+            %update to changepoint error definition to cap max distance
+            cp_errors = [cp_errors; max_cp_error];
+            state_transitions = [state_transitions; gt_class_before, gt_class_after];
         end
     end
 end

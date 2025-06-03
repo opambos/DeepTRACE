@@ -56,10 +56,10 @@ function [] = addPartialVisualLabel(app)
         app.textout.Value = 'You have already assigned that step. If you have made a mistake, you can repeat the labelling by clicking the (Undo label) button.';
         return
     else
-        col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, "Time from start of track (s)");
+        col_t = app.annotation_data.col_time;
 
         %write matrix to local variable for readability
-        curr_track = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol;
+        curr_track = app.annotation_data.current_track;
 
         %get state being requested
         app.movie_data.state.current_label_number = strcmp(app.movie_data.state.current_label, app.movie_data.params.class_names);
@@ -69,7 +69,7 @@ function [] = addPartialVisualLabel(app)
         
         %assign the label to results data
         curr_track(app.movie_data.state.labelled_so_far+1:pos,end) = app.movie_data.state.current_label_number;
-        app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol = curr_track;
+        app.annotation_data.current_track = curr_track;
         
         %update the status bar above plot to show selected diffusive state
         if app.movie_data.state.labelled_so_far == 0
@@ -121,13 +121,16 @@ function [] = addPartialVisualLabel(app)
         
         %keep track of new position
         app.movie_data.state.labelled_so_far = pos;
-        
+        ID = app.annotation_data.current_ID;
+        app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.Mol = app.annotation_data.current_track;
+
         %if it's the end of the trajectory
         if pos == size(curr_track, 1)
             %complete the classification: add a date, compute the condensed state sequence
-            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified  = datestr(now, 'dd/mm/yy-HH:MM:SS');
-            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.User            = app.UserEditField.Value;
-            app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.EventSequence   = condenseStateSequence(curr_track(:,end));
+            ID = app.annotation_data.current_ID;
+            app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.DateClassified = datestr(now, 'dd/mm/yy-HH:MM:SS');
+            app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.User           = app.UserEditField.Value;
+            app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.EventSequence  = condenseStateSequence(curr_track(:,end));
             
             %if user asked illustration to happen after labelling, then do this now
             if app.IllustrateafterlabellingCheckBox.Value == 1
@@ -144,8 +147,8 @@ function [] = addPartialVisualLabel(app)
             else
                 %give the user a projected time to finish
                 if app.movie_data.state.event_labeller_current_ID > 5
-                    time_per_mol = etime(datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID, 1}.DateClassified),   datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID-5, 1}.DateClassified))/5;
-                    
+                    time_per_mol = etime(datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{ID, 1}.DateClassified), datevec(app.movie_data.results.VisuallyLabelled.LabelledMols{ID-5, 1}.DateClassified));
+
                     if time_per_mol < 1000
                         pred_sec = (size(app.movie_data.results.VisuallyLabelled.LabelledMols, 1) - app.movie_data.state.event_labeller_current_ID) * time_per_mol;
                         pred_hr = floor(pred_sec / 3600);

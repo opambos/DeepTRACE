@@ -59,38 +59,47 @@ function [] = repopulateEventLabeller(app)
     app.CellIDTextArea.Value = '';
     app.MolIDTextArea.Value = '';
     
-%also disable interactive tools in secondary axis while this is convenient
-disableDefaultInteractivity(app.UIAxes_event_labeller);
+    %locally cache current track as property of main GUI class to avoid traversing deeply nested hierarcy, for faster access during drag operations and assignments
+    ID = app.movie_data.state.event_labeller_current_ID;
+    mol_struct = app.movie_data.results.VisuallyLabelled.LabelledMols{ID};
+    app.annotation_data.current_ID      = ID;
+    app.annotation_data.current_track   = mol_struct.Mol;
+    app.annotation_data.current_cell    = mol_struct.CellID;
+    app.annotation_data.current_mol     = mol_struct.MolID;
+    app.annotation_data.col_time        = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)');
+    app.annotation_data.col_frame       = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Frame number');
+    app.annotation_data.frame_rate      = app.movie_data.params.frame_rate;
+    
+    %also disable interactive tools in secondary axis while this is convenient
+    disableDefaultInteractivity(app.UIAxes_event_labeller);
 
     %update the state positions
     app.movie_data.state.labeller_track_pos     = 1;
     app.movie_data.state.labeller_frame_video   = 1;
     app.movie_data.state.labelled_so_far        = 0;
     
-    %find column indices
-    col_t = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)');
-    if col_t == 0
+    %find feature column indices
+    if isfield(app.annotation_data,'col_time')
+        col_t = app.annotation_data.col_time;
+    else
         error("repopulateEventLabeller:MissingTimeColumn", "The required time column ('Time from start of track (s)') is missing from the dataset.");
     end
     
-    col_primary     = findColumnIdx(app.movie_data.params.column_titles.tracks, app.PrimaryFeatureDropDown.Value);
-    app.movie_data.state.col_feature = col_primary;
+    col_primary = findColumnIdx(app.movie_data.params.column_titles.tracks, app.PrimaryFeatureDropDown.Value);
+    app.movie_data.state.col_feature = col_primary;                 %later to move to app.annotation_data above
     if col_primary == 0
         error("repopulateEventLabeller:MissingPrimaryFeature", "The primary feature column is missing in the column titles of the dataset.");
     end
     
-    col_secondary   = findColumnIdx(app.movie_data.params.column_titles.tracks, app.SecondaryFeatureDropDown.Value);
-    if col_secondary ~= 0
-        app.movie_data.state.col_feature_secondary = col_secondary;
-    end
+    col_secondary = findColumnIdx(app.movie_data.params.column_titles.tracks, app.SecondaryFeatureDropDown.Value);
+    app.movie_data.state.col_feature_secondary = col_secondary;     %later to move to app.annotation_data above
     if ~strcmp(app.SecondaryFeatureDropDown.Value, '<< None >>') && col_secondary == 0
         error("repopulateEventLabeller:MissingPrimaryFeature", "The secondary feature column is missing in the column titles of the dataset.");
     end
     
-    %simplifying code
-    cell_ID         = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.CellID;
-    mol_ID          = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
-    curr_mol        = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol;
+    cell_ID     = app.annotation_data.current_cell;
+    mol_ID      = app.annotation_data.current_mol;
+    curr_mol    = app.annotation_data.current_track;
     
     %plot time series for primary feature on left y-axis
     yyaxis(app.UIAxes_event_labeller, 'left');
@@ -142,7 +151,7 @@ disableDefaultInteractivity(app.UIAxes_event_labeller);
     setLabellerAxesRange(app)
     
     %place red circle to highlight next labelling point
-    scatter(app.UIAxes_event_labeller, app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1, col_t), app.movie_data.results.VisuallyLabelled.LabelledMols{1,1}.Mol(1,col_primary), 'ro', 'Tag', 'current_loc', 'SizeData', 100, 'LineWidth', 1.5);
+    scatter(app.UIAxes_event_labeller, curr_mol(1, col_t), curr_mol(1, col_primary), 'ro', 'Tag', 'current_loc', 'SizeData', 100, 'LineWidth', 1.5);
     box(app.UIAxes_event_labeller, 'on');
     
     %ensure secondary y-axis scale matches primary
@@ -170,12 +179,13 @@ disableDefaultInteractivity(app.UIAxes_event_labeller);
     app.UIAxes_event_labeller_status.InnerPosition = [inpos(1), outpos(2)+outpos(4), inpos(3), 20];
     
     %set up the progress bar
+    N_mols = size(app.movie_data.results.VisuallyLabelled.LabelledMols,1);
     axis(app.UIAxes_labelling_progress, 'off');
     app.UIAxes_labelling_progress.YLim = [0 1];
-    app.UIAxes_labelling_progress.XLim = [0 size(app.movie_data.results.VisuallyLabelled,1)];
+    app.UIAxes_labelling_progress.XLim = [0 N_mols];
     rectangle(app.UIAxes_labelling_progress, 'Position', [0, 0, 1, 1], 'EdgeColor','k', 'FaceColor', 'none');
-    rectangle(app.UIAxes_labelling_progress, 'Position', [0, 0, app.movie_data.state.event_labeller_current_ID/size(app.movie_data.results.VisuallyLabelled.LabelledMols,1), 1], 'EdgeColor','none', 'FaceColor', 'g');
-    text_pc = strcat(num2str(app.movie_data.state.event_labeller_current_ID), '/', num2str(size(app.movie_data.results.VisuallyLabelled.LabelledMols,1)), ' mols (', num2str(100*app.movie_data.state.event_labeller_current_ID/size(app.movie_data.results.VisuallyLabelled.LabelledMols,1), '%.1f'), '%)');
+    rectangle(app.UIAxes_labelling_progress, 'Position', [0, 0, app.movie_data.state.event_labeller_current_ID / N_mols, 1], 'EdgeColor','none', 'FaceColor', 'g');
+    text_pc = strcat(num2str(app.movie_data.state.event_labeller_current_ID), '/', num2str(N_mols), ' mols (', num2str(100*app.movie_data.state.event_labeller_current_ID / N_mols, '%.1f'), '%)');
     text(app.UIAxes_labelling_progress, app.UIAxes_labelling_progress.XLim(2)/2, 0.5, text_pc, 'HorizontalAlignment', 'center');
     
     %pull video from the correct video file

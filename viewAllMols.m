@@ -94,12 +94,13 @@ function [] = viewAllMols(app)
             %plot the trajectory
             plotColourTrack(ax1, 'Rainbow', 'Lines', [track(:,1) - app.movie_data.cellROI_data(cell_ID).overlay_offset(2), track(:,2) - app.movie_data.cellROI_data(cell_ID).overlay_offset(1)], 0);
         end
-
+        
+        drawnow;
         %save the page
-        set(gcf, 'WindowState', 'maximized');
-        filename = strcat('Dataset_overview',app.movie_data.params.title{1, 1},'_page_',num2str(ii),'.pdf');
-        exportgraphics(gcf,filename,'ContentType','vector');
-        app.textout.Value = (strcat('Progress: ', num2str(end_mol), '/', num2str(size(mol_list,1))));
+        % set(gcf, 'WindowState', 'maximized');
+        % filename = strcat('Dataset_overview',app.movie_data.params.title{1, 1},'_page_',num2str(ii),'.pdf');
+        % exportgraphics(gcf,filename,'ContentType','vector');
+        % app.textout.Value = (strcat('Progress: ', num2str(end_mol), '/', num2str(size(mol_list,1))));
     end
     
     app.textout.Value = "Completed gallery illustration of all molecules in dataset";

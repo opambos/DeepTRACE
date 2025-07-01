@@ -243,7 +243,7 @@ function [] = loadSeparateSegTracks(app)
         app.textout.Value = "No reference image was provided by user.";
         return;
     end
-
+    
     %load the image and average it
     [~, ~, ext] = fileparts(temp_file);
     if strcmpi(ext, '.fits')
@@ -264,7 +264,7 @@ function [] = loadSeparateSegTracks(app)
         app.textout.Value = "No segmentation file was provided by user.";
         return;
     end
-
+    
     %get file extension and read segmentation data
     [~, ~, ext] = fileparts(temp_file);
     try
@@ -290,7 +290,7 @@ function [] = loadSeparateSegTracks(app)
     if isstruct(seg_data) && isfield(seg_data, "cellList")
         app.movie_data.params.seg_type = "MicrobeTracker";
         N_cells = length(seg_data.cellList{1,1});
-
+        
     elseif isstruct(seg_data) && isfield(seg_data, "meshData")
         app.movie_data.params.seg_type = "Oufti";
         
@@ -340,15 +340,25 @@ function [] = loadSeparateSegTracks(app)
         return;
     end
     
-    %<< placeholder here to apply pixel offset GUI >>
+    %call pop-up GUI for human correction of drift between reference image and localisations
+    popup = DataImportViewerGUI(app, tracks_data);
+    uiwait(popup.DataImportViewerUIFigure);
     
+    %replace local tracks with drift-corrected versions
+    tracks_data = app.movie_data.state.temp_tracks;
     
     %assign all tracks in in dataset into appropriate cell
     assignTracksToCells(app, tracks_data);
     
     %renumber mol_IDs such that they are local to each cell as the combination [cell_ID molID] is unique
     renumberTracksByCell(app);
-
+    
+    %append a cell_ID feature
+    for ii = 1:size(app.movie_data.cellROI_data, 1)
+        app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, ii .* ones(size(app.movie_data.cellROI_data(ii).tracks, 1), 1)];
+    end
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, {'Cell ID'}];
+    
     if ~isempty(app.movie_data)
         app.textout.Value = "Data was loaded successfully. Please now proceed to data preparation via the [Prepare] tab.";
     end
@@ -732,18 +742,24 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
         {'x (px)',     'y (px)',     'Frame', 'MolID'});
     
     %replace relevant titles with those in the map
-    for i = 1:size(app.movie_data.params.column_titles.tracks,2)
-        current_title = app.movie_data.params.column_titles.tracks{i};
+    for ii = 1:size(app.movie_data.params.column_titles.tracks,2)
+        current_title = app.movie_data.params.column_titles.tracks{ii};
         if replacement_map.isKey(current_title)
-            app.movie_data.params.column_titles.tracks{i} = replacement_map(current_title);
+            app.movie_data.params.column_titles.tracks{ii} = replacement_map(current_title);
         end
     end
+    
+    %obtain pixel scale in order to display information
+    app.movie_data.params.px_scale = str2double(inputdlg('Enter pixel scale in nm:','Pixel Scale',[1 50]));
+    
+    %convert x and y coordinates from um to pixels for downstream compatibility
+    reformatted_tracks(:, 1:2) = reformatted_tracks(:, 1:2) .* 1000 ./ app.movie_data.params.px_scale;
     
     %adjust all frame numbers to start from 1 (TrackMate indexes from zero)
     reformatted_tracks(:,findColumnIdx(app.movie_data.params.column_titles.tracks, "Frame")) = reformatted_tracks(:,findColumnIdx(app.movie_data.params.column_titles.tracks, "Frame")) + 1;
     
     %flip coordinates of all y-positions vertically
-    reformatted_tracks = flipTracksInY(reformatted_tracks, size(app.movie_data.brightfield_image,1), findColumnIdx(app.movie_data.params.column_titles.tracks, "y (px)"));
+    %reformatted_tracks = flipTracksInY(reformatted_tracks, size(app.movie_data.brightfield_image,1), findColumnIdx(app.movie_data.params.column_titles.tracks, "y (px)"));
     
     app.movie_data.params.tracks_type = "TrackMate";
 end
@@ -807,38 +823,60 @@ function [] = assignTracksToCells(app, tracks_data)
 %-------------------
 %None
     
-    min_track_len = 5;
-    frac_in_mesh  = 0.5;
+    min_track_len   = 5;
+    frac_in_mesh    = 0.5;
+    FOV_height      = size(app.movie_data.brightfield_image, 1);
     
     %get the unique track IDs
-    track_IDs = unique(tracks_data(:,4));
-
+    track_IDs   = unique(tracks_data(:,4));
+    N_tracks    = size(track_IDs, 1);
+    
     %generate an array of poly objects to hold all segmented cell meshes
     %this should actually be done with expanded ROIs
     arr_polys = cell(size(app.movie_data.cellROI_data, 1), 1);
-    for ii = 1:size(app.movie_data.cellROI_data, 1)
-        arr_polys{ii, 1} = polyshape(app.movie_data.cellROI_data(ii,1).ROIVertices);
+    if app.movie_data.params.flipped
+        for ii = 1:numel(arr_polys)
+            vertices = app.movie_data.cellROI_data(ii).ROIVertices;
+            arr_polys{ii, 1} = polyshape([vertices(:,1), FOV_height - vertices(:,2) + 1]);
+        end
+    else
+        for ii = 1:size(app.movie_data.cellROI_data, 1)
+            arr_polys{ii, 1} = polyshape(app.movie_data.cellROI_data(ii,1).ROIVertices);
+        end        
     end
     
-    %construct a matrix of molecules vs ROIs indicating the ROIs in which they fall
-    assignment = [];
+    update_interval = max(1, floor(N_tracks / 100));
+    h_progress      = waitbar(0, 'Assigning tracks to cells...');
+    %loop over tracks, and assign to ROIs where appropriate
     for ii = 1:size(track_IDs, 1)
         curr_track = tracks_data(tracks_data(:, 4) == track_IDs(ii,1), :);
-
-        if size(curr_track,1) >= min_track_len
-
+        
+        %eliminate track if there any two locs have the same frame number (a known issue with TrackMate outputs)
+        frame_IDs = curr_track(:, 3);
+        if numel(frame_IDs) ~= numel(unique(frame_IDs))
+            continue;
+        end
+        
+        curr_track_len = size(curr_track,1);
+        
+        if curr_track_len >= min_track_len
             for jj = 1:size(arr_polys, 1)
                 %assign trajectories to current cell if the proportion of
                 %localisations falling within current ROI exceeds threshold
                 TFin = isinterior(arr_polys{jj,1}, curr_track(:,1:2));
-                if sum(TFin) > frac_in_mesh*size(curr_track,1)
+                if sum(TFin) > frac_in_mesh*curr_track_len
                     app.movie_data.cellROI_data(jj,1).tracks = [app.movie_data.cellROI_data(jj,1).tracks; curr_track];
+                    break;
                 end
             end
-            
         end
         
+        if mod(ii, update_interval) == 0
+            waitbar(ii / N_tracks, h_progress);
+        end
     end
+    
+    close(h_progress);
 end
 
 
@@ -971,74 +1009,5 @@ function [expanded_mesh] = expandMesh(mesh, expansion)
         
         %translate to original location
         expanded_mesh(ii,1:2) = temp + mesh(ii,1:2);
-    end
-end
-
-
-function [] = renumberTracksByCell(app)
-%Renumber tracks by cell, Oliver Pambos, 17/05/2024.
-%oliver.pambos@physics.ox.ac.uk
-%
-%
-%MATLAB FUNCTION: renumberTracksByCell
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
-%CONTACT: oliver.pambos@physics.ox.ac.uk
-%
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
-%
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
-%
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
-%
-%
-%Most pipelines define track IDs that are unique globally across the FOV,
-%and many are removed during various filtering processes resulting in track
-%IDs that appear to jump by hundred or thousands of tracks. This can be
-%confusing to the user. Given that [cell_ID mol_ID] are unique across the
-%set of all tracks, and are consistently used throughout the app, here we
-%reassign all track IDs with an ID local to each cell.
-%
-%Note that this function may be better called from or after filterTracks
-%during data preparation; in a later version this function may move locally
-%to that function, or be separated to make it accessible in both scopes.
-%
-%Inputs
-%------
-%app        (handle)    main GUI handle
-%
-%Output
-%------
-%None
-%
-%Dependent functions (excluding callbacks)
-%-----------------------------------------
-%findColumnIdx()
-    
-    %loop over all cells
-    for ii = 1:size(app.movie_data.cellROI_data, 1)
-        if ~isempty(app.movie_data.cellROI_data(ii,1).tracks)
-            %identify the track_id column
-            col = findColumnIdx(app.movie_data.params.column_titles.tracks, "MolID");
-            
-            %extract unique values and their original indices
-            [~, ~, ic] = unique(app.movie_data.cellROI_data(ii,1).tracks(:, col));
-            
-            %replace track IDs with their mapped consecutive integers
-            app.movie_data.cellROI_data(ii,1).tracks(:, col) = ic;
-        end
     end
 end

@@ -270,7 +270,7 @@ function [] = genDHistograms(app)
             
             bin_width   = app.DiffusionHistBinSizeSpinner.Value;
             all_data    = vertcat(state_diffusion_coeffs{:});
-            bin_edges   = min(all_data):bin_width:max(all_data);
+            bin_edges   = min(all_data):bin_width:(max(all_data) + bin_width);
             
             %compute hist counts for each state
             hist_counts = zeros(N_states, numel(bin_edges) - 1);

@@ -390,7 +390,7 @@ function [side] = hitTestCellSides(x, y, mesh, mesh_left, mesh_right)
 end
 
 
-function latitude = computeLatitude(t, C, D, E)
+function [latitude] = computeLatitude(t, C, D, E)
 %Compute the normalised lattitude by measuring the fractional distance
 %along a virtual line that connects the projection of the reference point
 %on the midline, through the reference point, to the point where this line
@@ -435,7 +435,7 @@ function latitude = computeLatitude(t, C, D, E)
 %D  (vec)   row vector of the first point in the cell mesh segment that
 %               corresponds to the midline segment within which the
 %               reference point C is projected (t)
-%D  (vec)   row vector of the second point in the cell mesh segment that
+%E  (vec)   row vector of the second point in the cell mesh segment that
 %               corresponds to the midline segment within which the
 %               reference point C is projected (t)
 %
@@ -450,6 +450,12 @@ function latitude = computeLatitude(t, C, D, E)
 %-----------------------------------------
 %None
     
+    %if C happens to fall exactly on midline, return zero latitude (edge case arising from large, low resolution simulations)
+    if C == t
+        latitude = 0;
+        return;
+    end
+
     %define vectors
     vTC = C - t; %t to C
     vDE = E - D; %D to E

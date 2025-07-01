@@ -703,10 +703,11 @@ function [] = plotMSDScatter(h_axes_scatter, all_means, all_SEMs, t, class_colou
 %None
     
     h_datasets = cell(1, size(all_means, 1));
-    h_datasets{1} = errorbar(h_axes_scatter, [0 t], [0 all_means(1,:)], [0 all_SEMs(1,:)], 'ko');
+    %h_datasets{1} = errorbar(h_axes_scatter, [0 t], [0 all_means(1,:)], [0 all_SEMs(1,:)], 'ko', 'MarkerSize', 10, 'LineWidth', 1);
+    h_datasets{1} = errorbar(h_axes_scatter, [0 t], [0 all_means(1,:)], [0 all_SEMs(1,:)], 'o-', 'Color', 'k', 'MarkerSize', 10, 'LineWidth', 1);
     hold on; box on;
     for ii = 2:size(all_means,1)
-        h_datasets{ii} = errorbar(h_axes_scatter, [0 t], [0 all_means(ii,:)], [0 all_SEMs(1,:)], 'Marker', 'o', 'LineStyle', 'none', 'Color', class_colours(ii-1,:));
+        h_datasets{ii} = errorbar(h_axes_scatter, [0 t], [0 all_means(ii,:)], [0 all_SEMs(1,:)], '-o', 'Color', class_colours(ii-1,:), 'MarkerSize', 10, 'LineWidth', 1);
     end
 
     %styling the plot

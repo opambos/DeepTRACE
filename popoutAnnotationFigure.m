@@ -121,11 +121,11 @@ function [] = popoutAnnotationFigure(app)
     yyaxis(app.AnnotationUIAxes, 'right');
     app.AnnotationUIAxes.YLabel.String = ylabel_right_text;
     
-    %copy over the legend
-    if ~isempty(app.AnnotationUIAxes.Legend)
-        legend_entries = app.AnnotationUIAxes.Legend.String;
-        legend(ax_new, legend_entries, 'Location', app.AnnotationUIAxes.Legend.Location);
-    end
+    % %copy over the legend - temporarily disabled due to issue with order of text entries desyncronising with order of line colours only in external plot
+    % if ~isempty(app.AnnotationUIAxes.Legend)
+    %     legend_entries = app.AnnotationUIAxes.Legend.String;
+    %     legend(ax_new, legend_entries, 'Location', app.AnnotationUIAxes.Legend.Location);
+    % end
     
     %adjust the figure window size to ensure axis titles fit
     set(ax_new, 'Units', 'Normalized', 'Position', [0.13, 0.15, 0.775, 0.775]);

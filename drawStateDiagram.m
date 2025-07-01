@@ -112,7 +112,7 @@ function [] = drawStateDiagram(state_names, state_occupancies, transition_matrix
     title("State transition diagram for all states");
     set(h_fig,'Color','w');
     axis off;
-    set(h_fig, 'Position', [200, 200, 1000, 800]);
+    set(h_fig, 'Position', [200, 200, 800, 800]);
     
     %angle between each circle
     angular_spacing = 2 * pi / N;
@@ -155,8 +155,25 @@ function [] = drawStateDiagram(state_names, state_occupancies, transition_matrix
                 mid_colour = (state_colours(ii,:) + state_colours(jj,:)) / 2;
                 fill(h_ax, tri(:, 1), tri(:, 2), mid_colour, 'EdgeColor', 'none');
 
-                %plot the label next to the arrow
-                text(midpoint(1) + 0.5, midpoint(2), num2str(transition_matrix(ii,jj)) + " Hz", 'FontSize', 16, 'Color', mid_colour);
+                %calculate label offset perpendicular to arrow (in left direction)
+                label_offset = 0.7;
+                offset_angle = theta + 90;
+                dx = cosd(offset_angle);
+                dy = sind(offset_angle);
+                label_pos = midpoint + label_offset * [dx, dy];
+                
+                %format label's string containing rate
+                curr_rate = transition_matrix(ii,jj);
+                if curr_rate < 0.01 || curr_rate >= 1000
+                    rate_str = sprintf('%.2e', curr_rate);
+                    rate_str = strrep(rate_str, 'e', '×10^{');
+                    rate_str = [rate_str, '} Hz'];
+                else
+                    rate_str = sprintf('%.2f Hz', curr_rate);
+                end
+                
+                %plot the label displaying transition rate
+                text(label_pos(1), label_pos(2), rate_str, 'FontSize', 14, 'Color', mid_colour, 'HorizontalAlignment', 'center', 'Interpreter', 'tex');
             end
         end
     end
@@ -297,7 +314,7 @@ function [tri] = positionTri(arr_len, arr_wid, midpoint, theta)
         tri(2, :) = [0          arr_len/2];
         tri(3, :) = [arr_wid/2  -arr_len/2];
         
-        tri = rotate2D(tri, theta + 90);
+        tri = rotate2D(tri, theta - 90);
         
         %move triangle to mid-point of line
         tri(:, 1) = tri(:, 1) + midpoint(1);

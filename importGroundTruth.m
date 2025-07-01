@@ -73,7 +73,17 @@ function [] = importGroundTruth(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %eliminateFalseLocsUsingGT()    - local to this .m file
-%shiftGroundTruth()             - local to this .m file
+    
+    if ~isprop(app, "movie_data") || ~isfield(app.movie_data, "params")
+        warndlg("There is currently no data loaded. Please either open an existing analysis file or load new data before continuing.", "Cannot import ground truth", "modal")
+        app.textout.Value = "There is currently no data loaded. Please either open an existing analysis file or load new data before continuing.";
+        return;
+    end
+    if ~isfield(app.movie_data.params, "data_prepared") || ~app.movie_data.params.data_prepared
+        warndlg("The currently loaded data has not been correctly prepared. If you have just loaded data, you must complete data preparation in the [Prepare] tab before importing ground truth data.", "Cannot import ground truth", "modal")
+        app.textout.Value = "The currently loaded data has not been correctly prepared. If you have just loaded data, you must complete data preparation in the [Prepare] tab before importing ground truth data.";
+        return;
+    end
     
     %obtain frame number column
     if isfield(app.movie_data.params, "column_titles") && isfield(app.movie_data.params.column_titles, "tracks")
@@ -245,16 +255,8 @@ function [] = importGroundTruth(app)
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.EventSequence  = condenseStateSequence(app.movie_data.results.GroundTruth.LabelledMols{ii,1}.Mol(:,end));
         app.movie_data.results.GroundTruth.LabelledMols{ii,1}.DateClassified = timestamp;
     end
-    
-    user_choice = questdlg('Would you like to shift ground truth annotations forward by one timepoint?', 'Shift Ground Truth Annotations', 'Yes', 'No', 'No');
-    switch user_choice
-        case 'Yes'
-            shiftGroundTruth(app);
-            app.textout.Value = ("Ground truth annotations have been imported, and shifted forward by one timepoint.");
-        case 'No'
-            app.textout.Value = ("Completed import of ground truth data.");
-    end
 
+    app.textout.Value = ("Completed import of ground truth data.");
 end
 
 

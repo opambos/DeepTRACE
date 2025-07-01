@@ -1,4 +1,4 @@
-function loadAnalysis(app)
+function [load_successful] = loadAnalysis(app)
 %Load an existing DeepTRACKS analysis file, and configure the GUI control
 %state to reflect the saved state, Oliver Pambos, 20/02/2024.
 %oliver.pambos@physics.ox.ac.uk
@@ -48,13 +48,14 @@ function loadAnalysis(app)
 %separately.
 %
 %This function additionally checks the validity of the path (ffPath) to the
-%fluorescence video files (ffFile); if this is invalid it prompts user to
-%provide an opportunity to update the path using the path selection GUI,
-%after which it checks the validity of the newly provided path. This
-%enables intuitive the moving of saved data files between different
-%machines and operating systems with the minimum of hassle to the user,
-%whilst also not making any assumptions about the location, or naming, of
-%files, which may differ from one user to another.
+%fluorescence video files (ffFile); if this is invalid it will then search
+%the path containing the loaded analysis file; if this too fails it falls
+%back to prompting the user to identify the correct path using the path
+%selection GUI, after which it checks the validity of the newly provided
+%path. This enables intuitive the moving of saved data files between
+%different machines and operating systems with the minimum of hassle to the
+%user; automatic file linking occurs in the vast majority of practical
+%cases.
 %
 %Input
 %-----
@@ -68,10 +69,15 @@ function loadAnalysis(app)
 %-----------------------------------------
 %checkFluorFilePaths()  - local to this .m file
     
-    %track GUI loading errors
+    load_successful = false;
+    
+    %track loading errors
     gui_load_error      = false;
     gui_config_missing  = false;
-
+    
+    %========================
+    %Part 1: load tracks data
+    %========================
     %user provides DeepTRACKS analysis file
     app.textout.Value = "Please select a DeepTRACKS analysis file,";
     [file, path] = uigetfile({'*.mat', 'DeepTRACKS analysis file (.mat)'}, 'Select a DeepTRACKS analysis file.');
@@ -95,11 +101,17 @@ function loadAnalysis(app)
     end
     
     %check fluorescence file paths, get new path from user if necessary
-    if ~checkFluorFilePaths(app)
+    if checkFluorFilePaths(app, path)
+        load_successful = true;
+    else
         %exit if user hasn't provided the valid file path to fluor files
+        load_successful = false;
         return;
     end
     
+    %===========================
+    %Part 1: update GUI controls
+    %===========================
     %compile a list of items to ignore when updating the GUI from save file
     ignore_list = {'HeatmapstyleDropDown', 'BackgroundcolourDropDown', 'DiffusionHistPlotlocationDropDown', 'ProcessaveragesDropDown', 'DcalculationmethodDropDown','TruncationDropDown','HistogramdatatoexportDropDown','Overlayerstyle',...
         'EntriesorexitsDropDown','FeatureimportancemetricDropDown','FeatureVisualisationMethodDropDown','FeatureAnalysisDatasubsetDropDown','ShufflingmethodDropDown','TracksamplingDropDown','TrainingdataexportformatDropDown','TrainingmodeDropDown',...
@@ -168,11 +180,10 @@ function loadAnalysis(app)
         app.textout.Value = "A previous analysis file has been loaded. " + ...
             "To continue labelling molecules press the [Begin] button in the [Human annotation tab].";
     end
-    
 end
 
 
-function fluorpath_OK = checkFluorFilePaths(app)
+function [fluorpath_OK] = checkFluorFilePaths(app, analysis_path)
 %Check if the file is correctly linked to the fluorescence video files, and
 %prompt user to reconnect file path if necessary, Oliver Pambos,
 %13/08/2024.
@@ -211,9 +222,15 @@ function fluorpath_OK = checkFluorFilePaths(app)
 %portability between machines, and inter-operability between different
 %operating systems.
 %
+%The order of fluorescence file linking is as follows,
+%   1. Exact path defined by ffPath
+%   2. Analysis file path
+%   3. If still missing, prompt user to identify location
+%
 %Input
 %-----
-%app            (handle)    main GUI handle
+%app    (handle)    main GUI handle
+%path   (str)       file path for the loaded .mat analysis file
 %
 %Output
 %------
@@ -223,45 +240,23 @@ function fluorpath_OK = checkFluorFilePaths(app)
 %-----------------------------------------
 %None
     
-    fluorpath_OK = true;
+    fluorpath_OK = false;
     
-    %check if the ffPath exists
-    if isfolder(app.movie_data.params.ffPath)
-        %check if the files in ffFile exist in the specified ffPath
-        files_exist = all(cellfun(@(file) isfile(fullfile(app.movie_data.params.ffPath, file)), app.movie_data.params.ffFile));
-        
-        if files_exist
-            %if all files exist, continue as normal
-            return;
-        else
-            %prompt user to provide new ffPath
-            new_path = uigetdir('', 'Select the directory containing the fluorescence video files');
-            
-            if new_path == 0
-                %if the user cancels the directory selection
-                warndlg('No directory selected. Please restart the loading process.', 'Missing Fluorescence Video Files');
-                ClearanalysisButtonPushed(app);
-                fluorpath_OK = false;
-                return;
-            else
-                %check if files exist in new path
-                new_files_exist = all(cellfun(@(file) isfile(fullfile(new_path, file)), app.movie_data.params.ffFile));
-                
-                %if files exist update ffPath with new path and continue, otherwise warn user and exit
-                if new_files_exist
-                    app.movie_data.params.ffPath = [new_path filesep];
-                    return;
-                else
-                    warndlg('The provided path does not contain the fluorescence video files. Please restart the loading process.', 'Missing Fluorescence Video Files');
-                    ClearanalysisButtonPushed(app);
-                    fluorpath_OK = false;
-                    return;
-                end
-            end
-        end
-        
+    %check if (i) the folder described in ffPath exists on this machine, and (ii) that the files held in ffFile are in that folder
+    if isfolder(app.movie_data.params.ffPath) && all(cellfun(@(file) isfile(fullfile(app.movie_data.params.ffPath, file)), app.movie_data.params.ffFile))
+        %all files exist, continue as normal
+        fluorpath_OK = true;
+        return;
+    
+    %elseif all files can be found in the same directory as the loaded analysis file
+    elseif all(cellfun(@(file) isfile(fullfile(analysis_path, file)), app.movie_data.params.ffFile))
+        app.movie_data.params.ffPath = analysis_path;
+        fluorpath_OK = true;
+        return;
+    
+    %if files cannot be found anywhere sensible, then prompt user to identify the folder themselves
     else
-        %prompt user to provide ffPath if original does not exist
+        %prompt user to provide new ffPath
         new_path = uigetdir('', 'Select the directory containing the fluorescence video files');
         
         if new_path == 0
@@ -271,12 +266,13 @@ function fluorpath_OK = checkFluorFilePaths(app)
             fluorpath_OK = false;
             return;
         else
-            %check if files exist in the new path
+            %check if files exist in new path
             new_files_exist = all(cellfun(@(file) isfile(fullfile(new_path, file)), app.movie_data.params.ffFile));
             
-            %if files exist in path provided update ffPath with new path and continue, otherwise warn user and exit
+            %if files exist update ffPath with new path and continue, otherwise warn user and exit
             if new_files_exist
                 app.movie_data.params.ffPath = [new_path filesep];
+                fluorpath_OK = true;
                 return;
             else
                 warndlg('The provided path does not contain the fluorescence video files. Please restart the loading process.', 'Missing Fluorescence Video Files');

@@ -106,8 +106,13 @@ function [] = displayTrackAnnotations(app)
     %find common tracks among all selected annotations
     annotation_fields = fieldnames(all_labels);
     if isscalar(annotation_fields)
-        common_tracks = cell2mat(cellfun(@(x) [x.CellID, x.MolID], all_labels.(annotation_fields{1}), 'UniformOutput', false));
+        %extract a matrix of annotated track IDs from a single annotation source
+        label_cells = all_labels.(annotation_fields{1});
+        is_fully_annotated = cellfun(@(x) ~any(x.Labels == -1), label_cells);
+        filtered = label_cells(is_fully_annotated);
+        common_tracks = cell2mat(cellfun(@(x) [x.CellID, x.MolID], filtered, 'UniformOutput', false));
     else
+        %extract a matrix of annotated track IDs common to multiple annotation sources
         common_tracks = findCommonAnnotatedTracks(all_labels, annotation_fields);
     end
     
@@ -174,7 +179,7 @@ function [] = displayTrackAnnotations(app)
     ylabel(ax, 'Annotations', 'FontSize', 24);
     xlabel(ax, 'Time (s)', 'FontSize', 24);
     legend_entries = cellfun(@(x) legend_map(x), fieldnames(track_data), 'UniformOutput', false);
-    legend(ax, [{'Step size'}; legend_entries], 'FontSize', 22, 'Box', 'on', 'LineWidth', 1.5);
+    legend(ax, [{'Step size'}; legend_entries], 'FontSize', 16, 'Box', 'on', 'LineWidth', 1.5);
     set(ax.YAxis(2), 'LineWidth', 2);   %line thickness of right axis bounding box
     hold(ax, 'off');
     

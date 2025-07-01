@@ -55,7 +55,13 @@ function [] = engineerCellCoords(app, h_progress)
     
     N_cells = size(app.movie_data.cellROI_data, 1);
     for ii = 1:N_cells
-        waitbar(ii/N_cells, h_progress, sprintf('Computing coordinates for cell %d of %d', ii, N_cells));
+        N_locs = size(app.movie_data.cellROI_data(ii).tracks, 1);
+        
+        if N_cells == 1
+            waitbar(ii/N_cells, h_progress, sprintf('Computing cell coordinates, as only one cell is present, progress will be in batches of 1,000 localisations: 0/%d', N_locs));
+        else
+            waitbar(ii/N_cells, h_progress, sprintf('Computing coordinates for cell %d of %d', ii, N_cells));
+        end
         
         if isempty(app.movie_data.cellROI_data(ii).tracks)
             continue;
@@ -82,10 +88,14 @@ function [] = engineerCellCoords(app, h_progress)
         mesh_right  = [curr_mesh(:, 3:4); flipud(midline(2:end-1,:))];
         
         %pre-allocate matrix to hold all coordinate data for current track [longitude, latitude, longitude_abs, latitude_abs]
-        track_coord_data = zeros(size(app.movie_data.cellROI_data(ii).tracks, 1), 4);
+        track_coord_data = zeros(N_locs, 4);
         
         %get cellular coordinates for entire track
-        for jj = 1:size(app.movie_data.cellROI_data(ii).tracks, 1)
+        for jj = 1:N_locs
+            %if there is only one cell (as is case of some simulation types) then update in batches of 1k locs; note the short-circuit logical AND operation here, there is no need to refactor with nested conditional statement
+            if N_cells == 1 && mod(jj, 1000) == 0
+                waitbar(jj/N_locs, h_progress, sprintf('Computing cell coords for localisation: %d/%d', jj, N_locs));
+            end
             [track_coord_data(jj,1), track_coord_data(jj,2), track_coord_data(jj,3), track_coord_data(jj,4), ~] = ...
                 convertToCellCoords(curr_tracks_x(jj), curr_tracks_y(jj), curr_mesh, mesh_left, mesh_right, midline, contour_len);
         end

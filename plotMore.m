@@ -71,7 +71,7 @@ function [] = plotMore(app)
     checked_nodes = app.PlotMoreFeatures.CheckedNodes;
     
     if isempty(checked_nodes)
-        app.textout.Value = "No features were selected. Please select features to plot using the `Plot settings` tab.";
+        app.textout.Value = "No features were selected. Please select features to plot using the [External plot] subtab.";
         return;
     end
     
@@ -109,7 +109,7 @@ function [] = plotMore(app)
     
     %top right plot
     trajectory_plot = nexttile(4, [(N_rows / 2), 1]);
-
+    
     %display the mesh over the overlay
     imagesc(app.movie_data.cellROI_data(cell_ID).overlay, 'parent', trajectory_plot);
     axis(trajectory_plot, 'equal');
@@ -135,25 +135,25 @@ function [] = plotMore(app)
     
     %step angle plot
     step_angle_plot = nexttile(4 + (N_rows/2)*4, [(N_rows / 2), 1]);
-
+    
     title(step_angle_plot, 'Relative step angles');
     feat_idx = strcmp(app.movie_data.params.column_titles.tracks, "Step angle relative to previous step (degrees, absolute)");
     step_angle_data = mol(3:end,feat_idx);
-
+    
     %convert degrees to radians and bin data
     [bin_count, bin_edges] = histcounts(deg2rad(step_angle_data), deg2rad(0:15:360));
-
+    
     %mirror the data
     mirror_data = deg2rad(360) - deg2rad(step_angle_data);
     [bins_mirrored, ~] = histcounts(mirror_data, deg2rad(0:15:360));
-
+    
     %combine real and mirrored data
     combined_data = bin_count + bins_mirrored;
     
     %calc mean angles
     x = combined_data .* cos((bin_edges(1:end-1) + bin_edges(2:end)) / 2);
     y = combined_data .* sin((bin_edges(1:end-1) + bin_edges(2:end)) / 2);
-
+    
     %compass plot
     h_compass = compass(step_angle_plot, x, y);
     set(h_compass, 'LineWidth', 2, 'Color', 'k');
@@ -176,7 +176,7 @@ function [] = plotMore(app)
         %print label
         text(x_text, y_text, label, 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'FontSize', 14);
     end
-
+    
     %adjust the axis limits to fit the labels
     axis_lim = 1.2 * max(combined_data);
     axis(step_angle_plot, [-axis_lim, axis_lim, -axis_lim, axis_lim]);

@@ -52,7 +52,7 @@ function [] = labelFromScratch(app)
 %regenerateLabelButtons()
     
     %prompt user for input list of class names
-    class_names_input = inputdlg('Enter a list of class names for each of the diffusive states, separated by commas');
+    class_names_input = inputdlg('Enter a list of class names for each of the states, separated by commas');
     
     %exit early if user either presses cancel, closes the dialogue box, or doesn't enter anything
     if isempty(class_names_input) || isempty(class_names_input{1})

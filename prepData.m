@@ -97,6 +97,8 @@ function [] = prepData(app)
         file_ext = ".tif";
     end
     
+    N_videos = size(app.movie_data.params.ffFile, 2);
+    
     %load video files
     switch lower(file_ext)
         case ".fits"
@@ -110,26 +112,32 @@ function [] = prepData(app)
             %build frame offset index for all FITS files
             app.movie_data.params.frame_offsets(1) = 0;
             if iscell(app.movie_data.params.ffFile)
-                for ii = 2:size(app.movie_data.params.ffFile, 2)
-                    app.movie_data.params.frame_offsets(ii) = str2num(getFITSMeta(string(app.movie_data.params.ffFile(ii-1)), app.movie_data.params.ffPath, 'NAXIS3'));
+                h_offset_waitbar = waitbar(0, "Computing temporal offsets for video files....");
+                set(h_offset_waitbar, 'WindowStyle', 'modal');
+                frames_per_file = zeros(1, N_videos);
+                for ii = 1:N_videos
+                    waitbar(ii/N_videos, h_offset_waitbar, sprintf('Computing temporal offsets for video file C %d/%d', ii, N_videos));
+                    frames_per_file(ii) = str2double(getFITSMeta(string(app.movie_data.params.ffFile(ii)), app.movie_data.params.ffPath, 'NAXIS3'));
                 end
-                app.movie_data.params.frame_offsets = cumsum(app.movie_data.params.frame_offsets);
-        
-                for ii = 1:size(app.movie_data.params.ffFile, 2)
-                    app.movie_data.params.frames_per_file(ii) = str2num(getFITSMeta(string(app.movie_data.params.ffFile(ii)), app.movie_data.params.ffPath, 'NAXIS3'));
-                end 
+                app.movie_data.params.frames_per_file = frames_per_file;
+                app.movie_data.params.frame_offsets = [0, cumsum(frames_per_file(1:end-1))];
+                
+                close(h_offset_waitbar)
             end
-
+            
         case ".tif"
             % << future handling of TIF metadata using imfinfo() >>
             
             %build frame offset index for all TIF files
             app.movie_data.params.frame_offsets(1) = 0;
-            app.movie_data.params.frames_per_file = zeros(size(app.movie_data.params.ffFile, 2), 1);
+            app.movie_data.params.frames_per_file = zeros(N_videos, 1);
             
             %if there are multiple files
             if iscell(app.movie_data.params.ffFile)
-                for ii = 1:size(app.movie_data.params.ffFile, 2)
+                h_offset_waitbar = waitbar(0, "Computing temporal offsets for video files....");
+                set(h_offset_waitbar, 'WindowStyle', 'modal');
+                for ii = 1:N_videos
+                    waitbar(ii/N_videos, h_offset_waitbar, sprintf('Computing temporal offsets for video file %d/%d', ii, N_videos));
                     info = imfinfo(fullfile(app.movie_data.params.ffPath, app.movie_data.params.ffFile{ii}));
                     app.movie_data.params.frames_per_file(ii) = size(info,1); %number of frames in the current TIF file
                     
@@ -139,11 +147,12 @@ function [] = prepData(app)
                         app.movie_data.params.frame_offsets(ii) = app.movie_data.params.frame_offsets(ii-1) + app.movie_data.params.frames_per_file(ii-1);
                     end
                 end
+                close(h_offset_waitbar);
             else
                 info = imfinfo(fullfile(app.movie_data.params.ffPath, app.movie_data.params.ffFile));
                 app.movie_data.params.frames_per_file = numel(info);
             end
-
+            
         otherwise
             app.textout.Value = "File type of fluorescence video is unknown; data has not been prepared for analysis.";
             return;
@@ -154,7 +163,7 @@ function [] = prepData(app)
     
     %filter tracks
     filter_status = filterTracks(app);
-
+    
     %notify user of filtering outcome; only proceed if successful
     if strcmp(filter_status, "Cancelled by user")
         app.textout.Value = "Track filtering was canceled by user, due to lack of localization data.";
@@ -193,11 +202,16 @@ function [] = prepData(app)
     
     %perform feature engineering, and add class label column
     engineerFeatures(app);
-
+    
+    %flag to record data preparation complete
+    app.movie_data.params.data_prepared = true;
+    
     app.textout.Value = "Data preparation is complete." + newline + ...
         "Please proceed to either the [Human annotation] tab to manual annotate data, " + ...
         "or the [ML classification] tab to annotate data using an appropriate pre-trained model, " + ...
         "or the [Load/Save] tab to import ground truth data.";
+    
+    focus(app.InVivoKineticsUIFigure);
 end
 
 

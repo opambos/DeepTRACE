@@ -43,6 +43,8 @@ function [] = regenerateTrackViewer(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %placeScaleBar()
+%getFeatureStats()
+%plotColourTrack()
     
     cell_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.CellID;
     mol_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
@@ -54,15 +56,20 @@ function [] = regenerateTrackViewer(app)
     hold(app.UIAxes_event_labeller_mesh, 'on');
     colormap(app.UIAxes_event_labeller_mesh, gray(256));
     
-    %obtain the trajectory
+    %obtain track
     track = app.movie_data.cellROI_data(cell_ID).tracks(app.movie_data.cellROI_data(cell_ID).tracks(:,4) == mol_ID, :);
     
     %correct offset between cropped image and track - note that the offset applied by LoColi's ROI_tracking function appears to have already been applied to the localisation data
     track(:,1) = track(:,1) - app.movie_data.cellROI_data(cell_ID).overlay_offset(2);
     track(:,2) = track(:,2) - app.movie_data.cellROI_data(cell_ID).overlay_offset(1);
     
-    %plot the trajectory
-    plotColourTrack(app.UIAxes_event_labeller_mesh, "Rainbow", "Lines", track, app.movie_data.params.event_label_colours);
+    %plot the track
+    %plotColourTrack(app.UIAxes_event_labeller_mesh, "Rainbow", "Lines", track, app.movie_data.params.event_label_colours);
+    
+    %get feature data and plot track
+    feat_idx = findColumnIdx(app.movie_data.params.column_titles.tracks, app.PrimaryFeatureDropDown.Value);
+    getFeatureStats(app, false);    %recalculate feature ranges if required
+    plotColourTrack(app.UIAxes_event_labeller_mesh, 'Colour', 'Feature', track(:, 1:2), 0, track(:, feat_idx), app.movie_data.params.feature_stats(:, feat_idx));
     
     %add a scalebar; set size, position, draw rectangle, add text label
     if app.ScalebarCheckBox.Value

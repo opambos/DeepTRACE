@@ -50,6 +50,12 @@ function [] = viewAllMols(app)
     N_rows = 4;
     N_cols = 8;
     
+    %ensure feature ranges exist for colouring by feature
+    getFeatureRanges(app, true);
+    
+    feat_idx = findColumnIdx(app.movie_data.params.column_titles.tracks, app.GalleryFeatureDropDown.Value);
+    plot_style = app.TrackcolouringDropDown.Value;
+    
     %generate a list of unique cell and molecule IDs
     mol_list = [];
     count = 1;
@@ -69,6 +75,11 @@ function [] = viewAllMols(app)
     
     %loop over individual pages to be generated
     for ii = 1:N_windows
+        %enable user to exit gallery production
+        if app.StopgalleryButton.Value
+            app.StopgalleryButton.Value = false;
+            return;
+        end
         figure;
         %generate a new page
         t = tiledlayout(N_rows,N_cols); t.TileSpacing = 'tight'; t.Padding = 'none';
@@ -91,8 +102,15 @@ function [] = viewAllMols(app)
             colormap(ax1, gray);
             imagesc(ax1, app.movie_data.cellROI_data(cell_ID).overlay);
             
-            %plot the trajectory
-            plotColourTrack(ax1, 'Rainbow', 'Lines', [track(:,1) - app.movie_data.cellROI_data(cell_ID).overlay_offset(2), track(:,2) - app.movie_data.cellROI_data(cell_ID).overlay_offset(1)], 0);
+            %plot track according to user style selection
+            switch plot_style
+                case "Feature"
+                    plotColourTrack(ax1, 'Colour', 'Feature', [track(:,1) - app.movie_data.cellROI_data(cell_ID).overlay_offset(2), track(:,2) - app.movie_data.cellROI_data(cell_ID).overlay_offset(1)], 0, track(:, feat_idx), app.movie_data.params.feature_stats(:, feat_idx));
+                case "Classified state"
+                    
+                otherwise
+                    
+            end
         end
         
         drawnow;

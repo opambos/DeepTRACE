@@ -1,4 +1,4 @@
-function [] = plotColourTrack(h_axes, method, style, track, colour_data)
+function [] = plotColourTrack(h_axes, method, style, track, colour_data, feature_data, feature_stats)
 %Plot a track onto an existing figure, using colours to illustrate track
 %information, Oliver Pambos, 09/05/2023.
 %oliver.pambos@physics.ox.ac.uk
@@ -45,6 +45,8 @@ function [] = plotColourTrack(h_axes, method, style, track, colour_data)
 %colour_data    (mat)       Nx3 matrix of RGB values containing rules for assigning colours to steps; not required for some methods
 %                               for some gradient methods these represent start and end points for interpolation
 %                               for statewise methods each row represents a unique state
+%feature_data   (vec)       column vector holding a single feature column
+%feature_stats  (mat)       4xN matrix holding [min, max, mean, stdev] for all features
 %
 %Output
 %------
@@ -58,6 +60,67 @@ function [] = plotColourTrack(h_axes, method, style, track, colour_data)
     hold(h_axes, "on");
     
     switch control_str
+        case 'Colour_Feature'
+            %colour track according to feature
+            
+            %error handling
+            if nargin < 7
+                error('ErrorInplotColourTrack:ColourFeature:MissingInputs', 'Missing args');
+            end
+            if numel(feature_data) ~= size(track,1)
+                error('ErrorInplotColourTrack:ColourFeature:BadLength', 'feature_data must have same number of rows as track.');
+            end
+            if size(feature_stats) ~= 4
+                error('ErrorInplotColourTrack:ColourFeature:BadStatsInput', 'feature_range must be a 1×4 vector [min, max, mean, stdev].');
+            end
+            
+            %=======================
+            %define some colour maps - will be replaced with switch statement
+            %=======================
+            %red-white-blue
+            half = 128;
+            cmap = [ones(half, 1), linspace(0, 1, half)', linspace(0, 1, half)';     %red to white
+                    linspace(1, 0, half)',  linspace(1, 0, half)', ones(half, 1)];   %white to blue
+            
+            N_colours = 256;    %256 colour levels
+            cmap  = [ linspace(1, 0, N_colours)',  zeros(N_colours, 1), linspace(0, 1,N_colours)' ];
+            
+            % %red-white
+            % cmap  = [ones(N_colours, 1), ...         %red stays 1
+            %          linspace(0, 1, N_colours)', ...  %green goes from 0 to 1
+            %          linspace(0, 1, N_colours)'];     %blue goes from 0 to 1
+            
+            %==================================
+            %scale the features to global range
+            %==================================
+            % %normalise values to min-max
+            % span  = diff(feature_stats(1:2, :));
+            % 
+            % %handle division by zero in strange arbitrary features
+            % if span == 0
+            %     span = eps;
+            % end
+            % t_norm = max(min((feature_data - feature_stats(1, 1)) ./ span, 1), 0);
+            
+            %scale by mean and one standard deviation of global
+            mu     = feature_stats(3, 1);
+            sigma  = feature_stats(4, 1);
+            
+            k      = 1; %how many standard deviations to saturate colours
+            low    = mu - k*sigma;
+            high   = mu + k*sigma;
+            
+            %normalise feature data by mean and standard deviation
+            t_norm = max(min((feature_data - low) ./ max(high-low, eps), 1), 0);
+            
+            %colour lookup for all steps in track for plotting
+            idx         = floor(t_norm * (size(cmap, 1)-1)) + 1;
+            seg_colours = cmap(idx(2:end), :);
+            
+            for ii = 1:size(track,1)-1
+                plot(h_axes, track(ii:ii+1, 1), track(ii:ii+1, 2), 'Color', seg_colours(ii, :), 'LineWidth', 1.5);
+            end
+            
         case 'Time_Lines'
             %colour trajectory according to row number using colours determined by linear interpolation of the colour_data input
             
@@ -145,14 +208,11 @@ function [] = plotColourTrack(h_axes, method, style, track, colour_data)
             end
 
         case 'Labelled_Statewise'
-            %colour trajectory using state labels (if these exist)
+
+            seg_colours = colour_data(feature_data(2:end), :);
             
-            if any(unique(track(:,end)) < 1) || any(unique(track(:,end)) > size(colour_data,1))
-                error("IVKplotColourTrack:MethodStatewise:NotEnoughColours", "The track contains more unique states labels than there are colours passed to the to the function.");
-            end
-            
-            for ii = 1:size(track,1) - 1
-                plot(h_axes, track(ii:ii+1,1), track(ii:ii+1,2), 'Color', colour_data(track(ii,end),:), 'LineWidth', 1.5);
+            for ii = 1:size(track,1)-1
+                plot(h_axes, track(ii:ii+1,1), track(ii:ii+1,2), 'Color', seg_colours(ii,:), 'LineWidth', 1.5);
             end
             
         case 'Rainbow_Lines'

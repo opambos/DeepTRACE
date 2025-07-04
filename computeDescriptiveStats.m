@@ -94,7 +94,7 @@ function [] = computeDescriptiveStats(app)
         table_data = [table_data; {name, value}];
     end
     
-    % display the statistics in the GUI
+    %display the statistics in the GUI
     app.DescriptivestatsTable.Data = table_data;
 end
 

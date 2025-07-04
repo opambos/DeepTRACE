@@ -44,6 +44,7 @@ function [] = viewAllMols(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %plotColourTrack()
+%getFeatureStats()
     
     %initialise some sensible values for display
     mol_per_page = 32;
@@ -51,7 +52,7 @@ function [] = viewAllMols(app)
     N_cols = 8;
     
     %ensure feature ranges exist for colouring by feature
-    getFeatureRanges(app, true);
+    getFeatureStats(app, true);
     
     feat_idx = findColumnIdx(app.movie_data.params.column_titles.tracks, app.GalleryFeatureDropDown.Value);
     plot_style = app.TrackcolouringDropDown.Value;

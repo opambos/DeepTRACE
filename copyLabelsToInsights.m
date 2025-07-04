@@ -122,6 +122,13 @@ function [success] = copyLabelsToInsights(app)
                 app.InsightsSourcedataDropDownOpening(app, []);
             end
             
+        case "Labels from ResAnDi2"
+            if isfield(app.movie_data.results, "ResAnDi")
+                app.movie_data.results.InsightData = app.movie_data.results.ResAnDi;
+            else
+                app.textout.Value = "The selected dataset is no longer available, please select again";
+                app.InsightsSourcedataDropDownOpening(app, []);
+            end
         otherwise
             app.textout.Value = "No data is available to compute insights";
     end

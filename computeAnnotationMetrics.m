@@ -77,15 +77,14 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
     
     %use a map between user selectable text and actual struct names
     annotation_map = containers.Map(...
-    {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
-    {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
+    {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations', 'ResAnDi2 annotations'}, ...
+    {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled',                 'ResAnDi'});
     
     %define number of frames to ignore from the stats at the start and end of each track
-    ignore_start_count = app.IgnoreframeatstartoftrackSpinner.Value;
-    ignore_end_count = app.IgnoreatendoftrackSpinner.Value;
-    
-    %max changepoint error
-    max_cp_error = 5;
+    ignore_start_count  = app.IgnoreframeatstartoftrackSpinner.Value;
+    ignore_end_count    = app.IgnoreatendoftrackSpinner.Value;
+    min_cp_sep          = app.MinimumchangepointseparationSpinner.Value;
+    max_cp_error        = app.MaxchangepointerrorSpinner.Value;
     
     %if f'n called from [Compute metrics] tab, work out which annotation sets to use from GUI checkbox tree; otherwise rely on structs_to_use input
     if nargin < 2
@@ -198,7 +197,7 @@ function [] = computeAnnotationMetrics(app, structs_to_use)
             end
             
             %compute cp errors, and append to the list
-            [cp_errors, state_transitions, N_unpaired_cps] = computeCPErrorsSingleTrack(gt_labels_cropped, pred_labels_cropped, max_cp_error, app.MinimumchangepointseparationSpinner.Value);
+            [cp_errors, state_transitions, N_unpaired_cps] = computeCPErrorsSingleTrack(gt_labels_cropped, pred_labels_cropped, max_cp_error, min_cp_sep);
             all_cp_errors = [all_cp_errors; cp_errors];
             all_cp_transitions = [all_cp_transitions; state_transitions];
             total_unpaired_cps = total_unpaired_cps + N_unpaired_cps;

@@ -57,8 +57,8 @@ function [] = plotAnnotatedTrack(app)
     %========================================================
     %use a map between user selectable text and actual struct names
     annotation_map = containers.Map(...
-    {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations'}, ...
-    {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled'});
+    {'Ground truth annotations', 'Human annotations', 'LSTM annotations', 'Bidirectional LSTM annotations', 'Random forest annotations', 'GRU annotations', 'Bidirectional GRU annotations', 'ResAnDi2 annotations'}, ...
+    {'GroundTruth',              'VisuallyLabelled',  'LSTMLabelled',     'BiLSTMLabelled',                 'RFLabelled',                'GRULabelled',     'BiGRULabelled',                 'ResAnDi'});
     
     %get selected annotations from GUI checkbox tree
     selected_nodes = app.CompareAnnotationsTree.CheckedNodes;
@@ -224,7 +224,12 @@ function [] = plotTrackByColor(ax, track_data, event_label_colours, overlay_offs
         start_idx = max(1, start_idx - 1);
 
         %lookup color of current segment
-        color = event_label_colours(states(end_idx), :);
+        if states(end_idx) == -1
+            %if the state is unassigned (e.g. due to ResAnDi2 output limit, use 60% grey)
+            color = [0.4, 0.4, 0.4];
+        else
+            color = event_label_colours(states(end_idx), :);
+        end
         
         %plot the segment
         plot(ax, x(start_idx:end_idx), y(start_idx:end_idx), 'Color', color, 'LineWidth', 1.5);

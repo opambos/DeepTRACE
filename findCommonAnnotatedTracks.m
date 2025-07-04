@@ -74,7 +74,7 @@ function [common] = findCommonAnnotatedTracks(all_labels, annotation_fields)
             
             %if any Labels vector contains a -1, mark it for removal
             if ~isempty(idx) && any(cell_array{idx, 1}.Labels == -1)
-                to_remove(jj) = true;
+                %to_remove(jj) = true;  %suppress this line to include partially-annotated tracks (e.g. from import of data processed by external models such as ResAnDi2 with finite input sequence length)
             end
         end
         

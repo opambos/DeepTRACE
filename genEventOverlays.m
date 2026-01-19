@@ -2,34 +2,43 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
     display_range, autoscale_y, min_val, max_val, default_path, save_data, state_name)
 %Generate event overlays for all labelled molecules, Oliver Pambos,
 %25/05/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: genEventOverlays
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function compiles all of the entries into, and exits out of, a
 %specific state, aligning them in a matrix according to the moment of
 %transition. The result is plotted either as individual lines (with an
@@ -45,22 +54,36 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
 %
 %Input
 %-----
-%h_axes         (handle) axis handle for plotting, currently unused as figure is currently set as external
-%mols           (cell)   cell array of the labelled mols, some of which may not yet be labelled
-%                            for example this could be the contents of app.movie_data.results.VisuallyLabelled
-%                            this has been left generalised in case I later want to classify algorithmically
+%h_axes         (handle) axis handle for plotting, currently unused as
+%                           figure is currently set as external
+%mols           (cell)   cell array of the labelled mols, some of which may
+%                           not yet be labelled for example this could be
+%                           the contents of
+%                           app.movie_data.results.VisuallyLabelled this
+%                           has been left generalised in case I later want
+%                           to classify algorithmically
 %state          (int)    state being studied
 %width          (int)    width of the matrix to store the events
-%centre         (int)    column number where the first localisation of the new event should be placed
-%feature_col    (int)    column number to extract from molecule data (i.e. each column represents a different feature; step size (nm), or step angle, etc.)
+%centre         (int)    column number where the first localisation of the
+%                           new event should be placed
+%feature_col    (int)    column number to extract from molecule data (i.e.
+%                           each column represents a different feature;
+%                           step size (nm), or step angle, etc.)
 %feature_name   (str)    name of the feature being plotted
 %style          (str)    plot style, options are
-%                            'lines': all trajectories in grey, with median overlayed
-%display_range  (vec)    row vector of the time range to display in the plots
-%                            [t_before t_after]
-%autoscale_y    (bool)   boolean taken from checkbox input which determines whether to use y-axis auto scaling of plot or overriding with min_val and max_val
-%min_val        (float)  minimum value to display; this sets the upper limit in y-axis in static plots and x-axis in the histogram video (not currently implemented)
-%max_val        (float)  maximum value to display; this sets the upper limit in y-axis in static plots and x-axis in the histogram video
+%                            'lines': all trajectories in grey, with median
+%                            overlayed
+%display_range  (vec)    row vector of the time range to display in the
+%                           plots [t_before t_after]
+%autoscale_y    (bool)   boolean taken from checkbox input which determines
+%                           whether to use y-axis auto scaling of plot or
+%                           overriding with min_val and max_val
+%min_val        (float)  minimum value to display; this sets the upper
+%                           limit in y-axis in static plots and x-axis in
+%                           the histogram video (not currently implemented)
+%max_val        (float)  maximum value to display; this sets the upper
+%                           limit in y-axis in static plots and x-axis in
+%                           the histogram video
 %save_data      (bool)   determines whether to save data to CSV file
 %state_name     (str)    name of the state being analysed
 %
@@ -73,9 +96,9 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %condenseStateSequence()
-%reformatMolWithGaps()  - required only by local .m function findLongestMol()
 %getStateExits()
 %getStateEntrances()
+%reformatMolWithGaps()  - local to this .m file
 %plotMedianStd()        - local to this .m file
 %findLongestMol()       - local to this .m file
 %saveLinesPlot()        - local to this .m file
@@ -125,7 +148,7 @@ function [data_in, data_out, t] = genEventOverlays(h_axes, mols, state, frame_ra
     end
     
     %currently only plots into an external figure
-    fig_handle = figure('Position', [100, 100, 1200, 800]);
+    fig_handle = figure('Position', [100, 100, 1200, 800], 'MenuBar', 'none');
     
     %plot entrances and exits from state into an external figure
     switch style
@@ -241,34 +264,43 @@ end
 function [len_max] = findLongestMol(mols, state)
 %Find longest lasting molecule in the dataset to pre-allocate the data,
 %Oliver Pambos, 26/05/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: findLongestMol
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %The output is used to pre-allocate a matrix to store aligned data which
 %enables the calling function to pre-allocate the smallest dimension empty
 %matrix that can store all possible alignments of molecules. In practice
@@ -286,7 +318,8 @@ function [len_max] = findLongestMol(mols, state)
 %
 %Outputs
 %-------
-%len_max    (int)   length of the longest lasting molecule, in frames (including empty frames)
+%len_max    (int)   length of the longest lasting molecule, in frames
+%                       (including empty frames)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
@@ -312,33 +345,43 @@ end
 function [N_in, N_out] = countStateTransitions(mols, state)
 %Counts the number of transitions into and out of the requested state,
 %Oliver Pambos, 26/05/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: countStateTransitions
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -381,33 +424,43 @@ end
 function [median_std_plot] = plotMedianStd(data, t)
 %Obtain plotting data for the median and standard deviation of a matrix of
 %events, which can contain zeros, Oliver Pambos, 26/05/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: plotMedianStd
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Input
 %-----
@@ -450,33 +503,43 @@ end
 function [] = savePointPlot(data_entry, data_exit, feature_name, default_path, state_name)
 %Save data associated with the errorbar style plot of algined events,
 %Oliver Pambos, 06/11/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: savePointPlot
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %Saves a CSV file for each of the averaged event data (entries and exits)
 %and time base, the columns represent,
 %   Col 1: time relative to event (s)
@@ -556,34 +619,43 @@ end
 function [] = saveLinesPlot(median_std_plot, data_in, data_out, feature_name, default_path)
 %Save data associated with the 'Lines' style plot of algined events, Oliver
 %Pambos, 06/11/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: saveLinesPlot
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Saves three CSV files, one containing a the averaged data, and one each
 %containing the aligned data from every entry and exit event. In the
 %averaged file the columns represent,

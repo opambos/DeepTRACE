@@ -1,41 +1,62 @@
-function [] = loadDataset(app)
-%Load new dataset, Oliver Pambos, 02/05/2024.
-%oliver.pambos@physics.ox.ac.uk
+function [] = loadDataset(app, tracking_pipeline)
+%Load and prepare a new dataset, Oliver Pambos, 02/05/2024.
 %
-%
-%MATLAB FUNCTION: loadDataset
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
+%This function integrates into the main GUI existing heatmapping functions
+%that previously operated on saved analysis files, as well as my earlier
+%SMLM image reconstruction code developed for SuperCell and tat-transport
+%projects from 2019 - 2021. This code is integrated into the GUI here prior
+%to public release to enable users to better explore spatial information in
+%their data.
+%
+%There is some performance overhead in that heatmap data is processed for
+%all heatmaps including those not requested by the user. As there is no lag
+%in figure generation using typical datasets on a basic desktop machine,
+%this has been retained in favour of code readability by eliminating
+%multiple switch statements.
 %This function generalises the data input formats to non-native pipelines
 %beyond the StormTracker (localisation) - LoColi (tracking) pipeline for
-%which DeepTRACKS was originally designed.
+%which DeepTRACE was originally designed.
 %
 %Prompts the user to load new data, which can be in the format of either a
 %composite datafile from common pipelines, or as separate segmentation or
 %tracking files. This code performs the bulk of restructuring of the
-%various types of input data to make it compatible with the DeepTRACKS
+%various types of input data to make it compatible with the DeepTRACE
 %pipeline.
 %
 %Current implementation enables input of StormTracker or TrackMate for
@@ -44,7 +65,11 @@ function [] = loadDataset(app)
 %
 %Inputs
 %------
-%app    (handle)    main GUI handle
+%app                (handle)    main GUI handle
+%tracking_pipeline  (str)       type of tracking file,
+%                                   "TrackMate"
+%                                   "LoColi"
+%                                   "TrackPy"
 %
 %Output
 %------
@@ -63,16 +88,14 @@ function [] = loadDataset(app)
 %flipTracksInY()            - local to this .m file
 %expandMesh()               - local to this .m file
 %renumberTracksByCell()     - local to this .m file
+%DataImportViewerGUI        - external pop-up GUI
     
-    %prompt user for source data type
-    options = {'LoColi', 'Separate segmentation and tracking files'};
-    [index, value] = listdlg('PromptString', 'Choose your data file handling method. (If you have a data type not listed here please contact us via the Help tab to the right.)',...
-        'SelectionMode', 'single', 'ListString', options, 'ListSize', [600 100]);   %'ListSize' effectively defines the width of the dialog window
-    
-    %check user makes selection; otherwise exit
-    if value == 0
-        app.textout.Value = 'No option selected. Please try again.';
-        return;
+     data_loaded = false;
+
+    if isprop(app, "movie_data") && isfield(app.movie_data, "params") && isfield(app.movie_data.params, "user")
+        user_name = app.movie_data.params.user;
+    else
+        user_name = "Default user";
     end
     
     %clear any existing data
@@ -80,50 +103,89 @@ function [] = loadDataset(app)
     
     %pipeline is initially unknown
     app.movie_data.params.pipeline = "Unknown";
-
+    
     %load data according to user selection
-    switch options{index}
+    switch tracking_pipeline
         case 'LoColi'
             app.textout.Value = 'Loading LoColi data...';
             loadLoColiData(app);
-
-        case 'Separate segmentation and tracking files'
-            app.textout.Value = 'Please select a valid segmentation file (.dat, .csv, .mat)';
-            loadSeparateSegTracks(app);
+            
+        case {'TrackMate', 'TrackPy'}
+            app.textout.Value = "You have selected to load tracking data from the " + tracking_pipeline + " tracking pipeline. Please provide the corresponding tracking, cell segmentation, and reference images for your dataset using the pop-up.";
+            app.movie_data.params.pipeline = tracking_pipeline;
+            data_loaded = loadSeparateSegTracks(app);
+            if ~data_loaded
+                app.textout.Value = 'Data was not loaded successfully. Please try again.';
+                return;
+            end
     end
+    
+    if isprop(app, "movie_data") && isfield(app.movie_data, "params")
+        app.movie_data.params.user = user_name;
+        data_loaded = true;
+    end
+    
+    if data_loaded == false
+        app.textout.Value = "Data loading cancelled by the user. Please try again.";
+        return;
+    end
+    
+    %user confirms track filtering options
+    popup = PrepareDataPopUp(app);
+    waitfor(popup.PrepareDataUIFigure);
+    if ~isfield(app.movie_data, 'state') || ~isfield(app.movie_data.state, 'cancel') || app.movie_data.state.cancel == true     %treat closing with X as cancel
+        ClearanalysisMenuSelected(app, struct());
+        app.textout.Value = "Data preparation was cancelled by the user. The loaded raw data has also been cleared.";
+        return;
+    end
+    
+    %prepare into the DeepTRACE format
+    prepData(app);
+    
+    %apply missing defaults here
+    fillMissingDefaults(app);
 end
 
 
 function [] = loadLoColiData(app)
 %Load a LoColi file, populating the cell struct, Oliver Pambos, 02/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: loadLoColiData
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Loads data from the LoColi SMLM analysis pipeline native to the Gene
 %Machines group at Oxford. This code was moved from the main GUI file to
 %modularise the code, enabling generalisation prior to public release.
@@ -161,14 +223,13 @@ function [] = loadLoColiData(app)
         else
             %if file is valid, load into app handles
             app.movie_data  = temp_struct.movie_data;
-            focus(app.InVivoKineticsUIFigure);
+            focus(app.DeepTRACEUIFigure);
             app.textout.Value = "Please choose a sensible name for the dataset";
             app.movie_data.params.title = inputdlg({'Please choose a sensible name for the dataset'}, 'Name this dataset', [1 80], {temp_file});
             app.movie_data.params.pipeline = "LoColi";
-            app.CurrentlyloadeddatasetTextArea.Value = app.movie_data.params.title;
             
-            focus(app.InVivoKineticsUIFigure);
-            app.textout.Value = "A data file from the LoColi analysis pipeline has been loaded successfully. Please now proceed to data preparation via the [Prepare] tab.";
+            focus(app.DeepTRACEUIFigure);
+            app.textout.Value = "A data file from the LoColi analysis pipeline has been loaded successfully. Please follow the instructions that will appear in the pop-up windows.";
         end
     catch ME
         warning(ME.identifier, 'Error loading LoColi file: %s', ME.message);
@@ -177,36 +238,45 @@ function [] = loadLoColiData(app)
 end
 
 
-function [] = loadSeparateSegTracks(app)
+function [data_loaded] = loadSeparateSegTracks(app)
 %Load separate segmentation and tracking files, Oliver Pambos, 02/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: loadSeparateSegTracks
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function covers scenarios where the dataset was processed with
 %segmentation and tracking performed with different tools. It attempts to
 %create a mapping between the two. It is also the stage at which reference
@@ -222,11 +292,11 @@ function [] = loadSeparateSegTracks(app)
 %
 %Inputs
 %------
-%app    (handle)    main GUI handle
+%app            (handle)    main GUI handle
 %
 %Output
 %------
-%None
+%data_loaded    (bool)      flag tracking successful data loading
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
@@ -234,22 +304,46 @@ function [] = loadSeparateSegTracks(app)
 %loadTrackMateData()        - local to this .m file
 %assignTracksToCells()      - local to this .m file
 %renumberTracksByCell()     - local to this .m file
+%DataImportViewerGUI        - external pop-up GUI
     
-    %user provides reference image
-    app.textout.Value = "Please provide a reference image for the full field of view. Typically this is a phase contrast or brightfield image. " + ...
-        "If you do not have one, please provide a single frame image from the fluorescence movie";
-    [temp_file, temp_path] = uigetfile({'*.tif;*.tiff;*.fits', 'Select a reference image (*.tif, *.tiff, *.fits)'},  'Select a reference image for the field of view');
-    if isequal(temp_file, 0) || isequal(temp_path, 0)
-        app.textout.Value = "No reference image was provided by user.";
+    data_loaded = false;
+    
+    popup = RequestSourceFiles;
+    uiwait(popup.SelectfilesUIFigure);
+    
+    %exit if user kills window
+    if ~isvalid(popup)
+        data_loaded = false;
         return;
     end
     
+    %exit if file gathering was unsuccessful
+    if ~isprop(popup, "success") || ~popup.success
+        data_loaded = false;
+        delete(popup);
+        return;
+    end
+    
+    %store filepaths
+    ref_file        = char(popup.reference_path);
+    seg_file        = char(popup.segmentation_path);
+    tracking_data   = popup.tracking_pathnames;
+    fluor_data      = popup.fluor_path;
+    app.movie_data.params.frame_rate        = popup.frame_rate;
+    app.movie_data.params.frames_per_file   = popup.frames_per_file;
+    app.movie_data.params.frame_offsets     = popup.frame_offsets;
+    app.movie_data.params.ffPath            = popup.fluor_path;
+    app.movie_data.params.ffFile            = popup.fluor_file;
+    
+    %popup no longer req'd
+    delete(popup);
+    
     %load the image and average it
-    [~, ~, ext] = fileparts(temp_file);
+    [~, ~, ext] = fileparts(ref_file);
     if strcmpi(ext, '.fits')
-        app.movie_data.brightfield_image = fitsread(fullfile(temp_path, temp_file));
+        app.movie_data.brightfield_image = fitsread(ref_file);
     else
-        app.movie_data.brightfield_image = imread(fullfile(temp_path, temp_file));
+        app.movie_data.brightfield_image = imread(ref_file);
     end
     
     %average the image if it has multiple channels/timepoints
@@ -257,22 +351,14 @@ function [] = loadSeparateSegTracks(app)
         app.movie_data.brightfield_image = mean(app.movie_data.brightfield_image, 3);
     end
     
-    %user provides segmentation file
-    app.textout.Value = "Please provide a file containing segmented cell boundaries.";
-    [temp_file, temp_path] = uigetfile({'*.dat;*.csv;*.mat', 'Segmented cell boundaries (*.dat, *.csv, *.mat)'},  'Select a segmentation file');
-    if isequal(temp_file, 0) || isequal(temp_path, 0)
-        app.textout.Value = "No segmentation file was provided by user.";
-        return;
-    end
-    
     %get file extension and read segmentation data
-    [~, ~, ext] = fileparts(temp_file);
+    [~, ~, ext] = fileparts(seg_file);
     try
         switch lower(ext)
             case '.mat'
-                seg_data = load(fullfile(temp_path, temp_file));
+                seg_data = load(seg_file);
             case {'.dat', '.csv'}
-                seg_data = readtable(fullfile(temp_path, temp_file));
+                seg_data = readtable(seg_file);
             otherwise
                 error('Unsupported file format.');
         end
@@ -285,8 +371,6 @@ function [] = loadSeparateSegTracks(app)
     
     %keep track of segmentation type
     app.movie_data.params.seg_type = "Unknown";
-    
-    %check whether file is a MicrobeTracker file, Oufti file, or pixel mask
     if isstruct(seg_data) && isfield(seg_data, "cellList")
         app.movie_data.params.seg_type = "MicrobeTracker";
         N_cells = length(seg_data.cellList{1,1});
@@ -313,26 +397,15 @@ function [] = loadSeparateSegTracks(app)
     %construct main data struct
     genStructFromSegFile(app, seg_data);
     
-    %prompt user to input tracking data
-    app.textout.Value = "Please select a valid tracks file (e.g. *.csv)";
-    [temp_file, temp_path] = uigetfile({'*.tracks;*.csv;*.mat', 'Tracking data (*.tracks, *.csv, *.mat)'},  'Select a tracking file');
-    if isequal(temp_file, 0) || isequal(temp_path, 0)
-        app.textout.Value = "No tracking file was provided by user.";
-        return;
-    end
-    
-    %load the data
-    tracks_pathname = fullfile(temp_path, temp_file);    
-    
-    %keep track of segmentation type
+    %keep track of tracking file type
     app.movie_data.params.tracks_type = "Unknown";
     
-    % << placeholder for track filetype decision code >>
+    %load the data
+    % << placeholder for inference of tracking file type >>
     
-    
-    %currnetly hardcoded to TrackMate
+    %currently hardcoded to TrackMate
     try
-        tracks_data = loadTrackMateData(app, tracks_pathname);
+        tracks_data = loadTrackMateData(app, tracking_data);
     catch ME
         app.textout.Value = "There was a error loading the selected tracking file. Please check the file carefully and try again.";
         warning(ME.identifier, 'Error loading tracking data: %s', ME.message);
@@ -360,42 +433,57 @@ function [] = loadSeparateSegTracks(app)
     app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks, {'Cell ID'}];
     
     if ~isempty(app.movie_data)
-        app.textout.Value = "Data was loaded successfully. Please now proceed to data preparation via the [Prepare] tab.";
+        data_loaded       = true;
+        app.textout.Value = "Data was loaded successfully. Please now follow the data preparation instructions.";
     end
+    
+    [~, suggested_name, ~] = fileparts(app.movie_data.params.ffFile(1));
+    suggested_name = suggested_name + " DeepTRACE analysis";
+    app.textout.Value = "Please choose a sensible name for the dataset";
+    app.movie_data.params.title = inputdlg({'Please choose a sensible name for the dataset'}, 'Name this dataset', [1 80], suggested_name);
 end
 
 
 function [] = genStructFromSegFile(app, seg_data)
 %Generate the main struct from the loaded segmentation file, Oliver Pambos,
 %02/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: genStructFromSegFile
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %The loaded segmentation data (seg_data) is used to generate the main data
 %structure on which all downstream data processing is performed.
 %
@@ -466,34 +554,43 @@ end
 function [] = genROIVertices(app)
 %Generates ROIVertices for each cell by manipulating segmented meshes,
 %Oliver Pambos, 16/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: genROIVertices
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Note that this expands the segmented mesh by the absolute distance listed,
 %not by a percentage. Scaling is performed by movement of the mesh a
 %distance along the surface normal to the mesh.
@@ -531,34 +628,43 @@ end
 
 function [mesh] = removeCollinearVertices(mesh, threshold_angle)
 %Remove colinear points from mesh, Oliver Pambos, 17/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: removeCollinearVertices
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Segmented cell meshes often contain multiple points in an almost perfect
 %straight line (collinear). These points reduce performance of the
 %algorithm during both feature engineering and assigning localisations and
@@ -620,34 +726,43 @@ end
 
 function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
 %Load tracking data from a TrackMate CSV file, Oliver Pambos, 16/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: loadTrackMateData
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function loads a TrackMate tracks file and performs various
 %manipulations on the imported data to make it consistent with downstreap
 %data preparation code originally designed for the incoming data from the
@@ -662,16 +777,49 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
 %Outputs
 %-------
 %reformatted_tracks (mat)       tracks formatted for consistency with
-%                                   DeepTRACKS downstream pipeline
+%                                   DeepTRACE downstream pipeline
 %
 %Dependent functions
 %-------------------
 %findColumnIdx()
 %flipTracksInY()    - local to this .m file
     
-    %read in tracks_data
+    %read in tracks_data; loop over tracks pathnames concatenating tables
     try
-        tracks_data = readtable(tracks_pathname);
+        if numel(tracks_pathname) > 1
+            tracks_data = readtable(string(tracks_pathname(1)));
+            
+            %load each successive chunk, correct for frame offsets, concat
+            for ii = 2:numel(tracks_pathname)
+                 curr_tracks = readtable(string(tracks_pathname(ii)));
+                
+                %find the start of the numeric frame number data
+                frame_num       = str2double(string(curr_tracks.FRAME));
+                first_numeric   = find(~isnan(frame_num), 1, 'first');
+                if isempty(first_numeric)
+                    error("No numeric FRAME data found.");
+                end
+                
+                %add the offsets
+                frame_num(first_numeric:end) = frame_num(first_numeric:end) + app.movie_data.params.frame_offsets(ii);
+                curr_tracks.FRAME = frame_num;
+
+                %increase the track ID numbers to start at the range of numbers above those in previous file(s)
+                track_IDs = str2double(string(curr_tracks.TRACK_ID));
+                track_IDs(first_numeric:end) = track_IDs(first_numeric:end) + max(tracks_data.TRACK_ID) + 1;
+                curr_tracks.TRACK_ID = track_IDs;
+                
+                %check the column titles are identical (I do not trust TrackMate's lack of native batch processing, which introduces potential risks here)
+                if ~isequal(tracks_data.Properties.VariableNames, curr_tracks.Properties.VariableNames)
+                    error("TrackMate tables have mismatched columns; cannot concatenate safely.");
+                end
+
+                %concat
+                tracks_data = vertcat(tracks_data, curr_tracks(first_numeric:end, :));
+            end
+        else
+            tracks_data = readtable(string(tracks_pathname));
+        end
     catch ME
         warning(ME.identifier, 'Error loading TrackMate data: %s', ME.message);
         errordlg('There was a problem loading the selected tracks file. Please start again with loading the file(s).', 'File Load Error');
@@ -690,6 +838,10 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
     
     %anonymous function to check if each cell contains valid numeric data
     isValidNumeric = @(x) isnumeric(x) && ~isempty(x) && ~isnan(x);
+    
+    %drop any cols that are entirely non-numeric
+    isNumVar  = varfun(@isnumeric, tracks_data, 'OutputFormat','uniform');
+    tracks_data = tracks_data(:, isNumVar);
     
     %extract first row as cell array
     first_row = table2cell(tracks_data(1, :));
@@ -718,8 +870,8 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
         tracks_data.POSITION_Z = [];
     end
     
-    %reorder first four columns
-    first_cols      = {'POSITION_X', 'POSITION_Y', 'FRAME', 'TRACK_ID'};
+    %reorder core data columns; position core feat at start (no core columns should be left within arb feature range without code update to engineerArbitraryFeatures())
+    first_cols      = {'POSITION_X', 'POSITION_Y', 'FRAME', 'TRACK_ID', 'MAX_INTENSITY_CH1', 'TOTAL_INTENSITY_CH1'};
     remaining_cols  = setdiff(tracks_data.Properties.VariableNames, first_cols, 'stable');
     new_order       = [first_cols, remaining_cols];
     tracks_data     = tracks_data(:, new_order);
@@ -738,8 +890,8 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
     
     %rename columns for consistency between tracking file types using a map
     replacement_map = containers.Map( ...
-        {'Position_x', 'Position_y', 'Frame', 'Track_id'}, ...
-        {'x (px)',     'y (px)',     'Frame', 'MolID'});
+        {'Position_x', 'Position_y', 'Frame', 'Track_id', 'Total_intensity_ch1', 'Max_intensity_ch1'}, ...
+        {'x (px)',     'y (px)',     'Frame', 'MolID', 'Brightness from TrackMate', 'Peak intensity'});
     
     %replace relevant titles with those in the map
     for ii = 1:size(app.movie_data.params.column_titles.tracks,2)
@@ -749,8 +901,16 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
         end
     end
     
+    %generate registry of arbitrary and core feature names
+    titles   = app.movie_data.params.column_titles.tracks;
+    core     = {'x (px)', 'y (px)', 'Frame', 'MolID', 'Cell ID', 'Peak intensity', 'Brightness from TrackMate'};       %note: Cell ID doesn't yet exist, but this is in place so that when it is appended later, this is present
+    isCore   = ismember(titles, core);
+    app.movie_data.params.column_titles.tracks   = titles(isCore);
+    app.movie_data.params.arbitrary_features     = titles(~isCore);
+    app.movie_data.params.arbitrary_feature_cols = find(~isCore);
+    
     %obtain pixel scale in order to display information
-    app.movie_data.params.px_scale = str2double(inputdlg('Enter pixel scale in nm:','Pixel Scale',[1 50]));
+    app.movie_data.params.px_scale = str2double(inputdlg('Enter pixel scale in nm:', 'Pixel Scale', [1 50]));
     
     %convert x and y coordinates from um to pixels for downstream compatibility
     reformatted_tracks(:, 1:2) = reformatted_tracks(:, 1:2) .* 1000 ./ app.movie_data.params.px_scale;
@@ -768,34 +928,43 @@ end
 function [] = assignTracksToCells(app, tracks_data)
 %Assign tracks to their corresponding cell ROIs read from segmentation
 %data, Oliver Pambos, 16/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: assignTracksToCells
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This rough preliminary first version of this function simply checks
 %whether more than a fixed number of localisations of each trajectory
 %falling within each exceeds a threshold (frac_in_mesh); typically set to
@@ -809,11 +978,14 @@ function [] = assignTracksToCells(app, tracks_data)
 %
 %This also requires a waitbar for large datasets.
 %
+%Performance here for larger datasets will be improved by pre-selecting
+%candidate meshes using bounding boxes before running isinterior.
+%
 %Inputs
 %------
 %app                (handle)    main GUI handle
 %tracks_data        (mat)       tracks formatted for consistency with
-%                                   DeepTRACKS downstream pipeline
+%                                   DeepTRACE downstream pipeline
 %
 %Outputs
 %-------
@@ -846,9 +1018,12 @@ function [] = assignTracksToCells(app, tracks_data)
     end
     
     update_interval = max(1, floor(N_tracks / 100));
-    h_progress      = waitbar(0, 'Assigning tracks to cells...');
+    h_progress      = waitbar(0, "Assigning " + num2str(N_tracks) + " tracks to cells...", 'Name', "Assigning tracks to cells");
     %loop over tracks, and assign to ROIs where appropriate
     for ii = 1:size(track_IDs, 1)
+        if mod(ii, update_interval) == 0 || ii == N_tracks
+            waitbar(ii/N_tracks, h_progress, "Assigning track " + num2str(ii) + "/" + num2str(N_tracks) + " to the most appropriate cell");
+        end
         curr_track = tracks_data(tracks_data(:, 4) == track_IDs(ii,1), :);
         
         %eliminate track if there any two locs have the same frame number (a known issue with TrackMate outputs)
@@ -870,10 +1045,6 @@ function [] = assignTracksToCells(app, tracks_data)
                 end
             end
         end
-        
-        if mod(ii, update_interval) == 0
-            waitbar(ii / N_tracks, h_progress);
-        end
     end
     
     close(h_progress);
@@ -883,34 +1054,43 @@ end
 function [tracks_data] = flipTracksInY(tracks_data, im_height, col)
 %Flip the y-axis of tracks about the midline of the FOV, Oliver Pambos,
 %16/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: flipTracksInY
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Different SMLM pipelines index the y-coorindates of images and therefore
 %localisations in different directions; for instance MATLAB interprets
 %image coordinates as starting from the top left, while imageJ starts from
@@ -941,34 +1121,43 @@ end
 
 function [expanded_mesh] = expandMesh(mesh, expansion)
 %Expand a mesh by a fixed distance, Oliver Pambos, 19/11/2020.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: expandMesh
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This code was taken from my previous genetic algorithm-based analytics
 %tool SuperCell written in 2020. It appears surface normals are defined
 %inwards, so expansion factor must be -ve to expand mesh to ROIVertices.

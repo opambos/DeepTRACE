@@ -1,33 +1,42 @@
 function [] = genHeatmap(app)
 %Generate heatmaps of all states, Oliver pambos, 23/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: genHeatmap
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function integrates into the main GUI existing heatmapping functions
 %that previously operated on saved analysis files, as well as my earlier
 %SMLM image reconstruction code developed for SuperCell and tat-transport
@@ -112,16 +121,16 @@ function [] = genHeatmap(app)
         [X, Y, valid] = transformCoordinates(curr_cell_locs, cell_len_um, cell_wid_um);
         
         %plot either regular 2D heatmap or reconstructed image
-        if strcmp(heatmap_style, '2D binned heatmap')
+        if strcmp(heatmap_style, '2D binned heatmap') || strcmp(heatmap_style, 'Cell axes projections')
             %add all locs in current cell to general heatmap
             all_heatmap_data    = generate2DHeatmap(X, Y, valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um);
             accumulated_heatmap = accumulated_heatmap + all_heatmap_data;
             
             %accumulate class heatmaps with segmented data in curr cell
             for kk = 1:N_classes
-                class_valid = valid & (classes == kk);
-                class_heatmap_data = generate2DHeatmap(X, Y, class_valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um);
-                class_heatmaps(:, :, kk) = class_heatmaps(:, :, kk) + class_heatmap_data;
+                class_valid                 = valid & (classes == kk);
+                class_heatmap_data          = generate2DHeatmap(X, Y, class_valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um);
+                class_heatmaps(:, :, kk)    = class_heatmaps(:, :, kk) + class_heatmap_data;
             end
             
         elseif strcmp(heatmap_style, 'Normalised image reconstruction')
@@ -131,59 +140,100 @@ function [] = genHeatmap(app)
             
             %accumulate reconstructed images for each class with segmented data in curr cell
             for kk = 1:N_classes
-                class_valid = valid & (classes == kk);
-                class_reconstructed_image = reconstructImage(X, Y, class_valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um, PSF);
-                class_heatmaps(:, :, kk) = class_heatmaps(:, :, kk) + class_reconstructed_image;
+                class_valid                 = valid & (classes == kk);
+                class_reconstructed_image   = reconstructImage(X, Y, class_valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um, PSF);
+                class_heatmaps(:, :, kk)    = class_heatmaps(:, :, kk) + class_reconstructed_image;
+            end
+        end
+    end
+    
+    if strcmp(heatmap_style, '2D binned heatmap') || strcmp(heatmap_style, 'Normalised image reconstruction')
+        %if 2D plot requested
+
+        %plot single heatmap containing all localisations for all classes if requested by user
+        if any(strcmp({classes_to_plot.Text}, 'All localisastions combined'))
+            plotHeatmap(accumulated_heatmap, cell_len_um, cell_wid_um, source_description, width_fig, height_fig, bg_colour);
+        end
+        
+        %plot heatmaps for each class requested by user
+        for kk = 1:N_classes
+            if any(strcmp({classes_to_plot.Text}, app.movie_data.params.class_names{kk}))
+                colour_map = createColourMap(app.movie_data.params.event_label_colours(kk, :), bg_colour);
+                plotClassHeatmap(class_heatmaps(:, :, kk), cell_len_um, cell_wid_um, colour_map, app.movie_data.params.class_names{kk}, source_description, width_fig, height_fig, bg_colour);
             end
         end
         
-    end
-    
-    %plot single heatmap containing all localisations for all classes if requested by user
-    if any(strcmp({classes_to_plot.Text}, 'All localisastions combined'))
-        plotHeatmap(accumulated_heatmap, cell_len_um, cell_wid_um, source_description, width_fig, height_fig, bg_colour);
-    end
-    
-    %plot heatmaps for each class requested by user
-    for kk = 1:N_classes
-        if any(strcmp({classes_to_plot.Text}, app.movie_data.params.class_names{kk}))
-            colour_map = createColourMap(app.movie_data.params.event_label_colours(kk, :), bg_colour);
-            plotClassHeatmap(class_heatmaps(:, :, kk), cell_len_um, cell_wid_um, colour_map, app.movie_data.params.class_names{kk}, source_description, width_fig, height_fig, bg_colour);
+    elseif strcmp(heatmap_style, 'Cell axes projections')
+        %if projections requested
+        
+        %compute major and minor axis projections
+        major_proj          = sum(accumulated_heatmap, 1);
+        minor_proj          = sum(accumulated_heatmap, 2);
+        class_major_projs   = squeeze(sum(class_heatmaps, 1));
+        class_minor_projs   = squeeze(sum(class_heatmaps, 2));
+        
+        %normalize projections
+        major_proj = major_proj / sum(major_proj(:));
+        minor_proj = minor_proj / sum(minor_proj(:));
+        for kk = 1:size(class_major_projs, 2)
+            class_major_projs(:, kk) = class_major_projs(:, kk) / sum(class_major_projs(:, kk));
+            class_minor_projs(:, kk) = class_minor_projs(:, kk) / sum(class_minor_projs(:, kk));
         end
+        
+        %apply mirroring, if requested
+        if app.SpatialMappingMirrorplotCheckBox.Value
+            major_proj = (major_proj + flip(major_proj)) / 2;
+            minor_proj = (minor_proj + flip(minor_proj)) / 2;
+        
+            class_major_projs = (class_major_projs + flip(class_major_projs, 1)) / 2;
+            class_minor_projs = (class_minor_projs + flip(class_minor_projs, 1)) / 2;
+        end
+        
+        %plot projections
+        plotProjections(major_proj, minor_proj, class_major_projs, class_minor_projs, cell_len_um, cell_wid_um, app.movie_data.params.class_names, classes_to_plot, width_fig, height_fig, app.movie_data.params.event_label_colours);
     end
 end
 
 
 function [X, Y, valid] = transformCoordinates(data, cell_len_um, cell_wid_um)
 %Perform coordinate transform onto heatmap, Oliver Pambos, 23/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: transformCoordinates
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function takes the position of each localisation and transforms it to
 %its true position within the model cell. Note that this is necessary due
 %to the definition of latitude when cell coordinates are engineered. The
@@ -264,33 +314,43 @@ end
 function [heatmap_data] = generate2DHeatmap(X, Y, valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um)
 %Generate binned 2D heatmap data of localisations in a model cell, Oliver
 %Pambos, 04/09/2021.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: generate2DHeatmap
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %This function generates a 2D heatmap of localisations by binning the valid
 %longitude and latitude coordinates of the localisations into a specified
 %along the major and minor model cell axes.
@@ -330,33 +390,43 @@ end
 
 function plotHeatmap(heatmap_data, cell_len, cell_wid, source_description, width_fig, height_fig, bg_colour)
 %Plot a heatmap for all localisations, Oliver Pambos, 23/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: plotHeatmap
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -395,7 +465,7 @@ function plotHeatmap(heatmap_data, cell_len, cell_wid, source_description, width
             mesh_style_str  = 'w--';
     end
     
-    figure('Position', [100, 100, width_fig, height_fig]);
+    figure('Position', [100, 100, width_fig, height_fig], 'ToolBar', 'none', 'MenuBar', 'none');
     
     %plotting
     imagesc([-cell_len / 2, cell_len / 2], [-cell_wid / 2, cell_wid / 2], heatmap_data);
@@ -418,33 +488,43 @@ end
 function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, class_name, source_description, width_fig, height_fig, bg_colour)
 %Plot the heatmap for a single class for all segmented localisations in the
 %dataset, Oliver Pambos, 23/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: plotClassHeatmap
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -485,7 +565,7 @@ function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, cla
             mesh_style_str  = 'w--';
     end
     
-    figure('Position', [100, 100, width_fig, height_fig]);
+    figure('Position', [100, 100, width_fig, height_fig], 'MenuBar', 'none');
     
     %min-max normalize heatmap (0 to 1)
     scaled_heatmap_data = (heatmap_data - min(heatmap_data(:))) / (max(heatmap_data(:)) - min(heatmap_data(:)));
@@ -510,36 +590,46 @@ function [] = plotClassHeatmap(heatmap_data, cell_len, cell_wid, colour_map, cla
 end
 
 
-function colour_map = createColourMap(RGB, bg_colour)
+function [colour_map] = createColourMap(RGB, bg_colour)
 %Construct custom colour map for the class running from black to its
 %defined colour, Oliver Pambos, 23/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: createColorMap
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -575,34 +665,43 @@ end
 
 function [] = drawCellOutline(cell_len, cell_wid, mesh_style_str)
 %Annotate onto a heatmap a cell boundary, Oliver Pambos, 23/05/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: drawCellOutline
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function draws onto an already open, currently focused plot, the
 %outline of the model cell. Plotting is fast enough that user refocusing of
 %figures is not relevant here, but could in future pass axes handles from
@@ -644,34 +743,43 @@ end
 function [reconstructed_image] = reconstructImage(X, Y, valid, N_bins_x, N_bins_y, cell_len_um, cell_wid_um, PSF)
 %Generate a STORM-like reconstructed super-resolution image from
 %localisation coordinate data, Oliver Pambos, 04/09/2021.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: reconstructImage
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This is a heavily simplified, edited version of my super-res image
 %reconstruction code developed for the tat-export project 2019 - 2021. Here
 %I have removed the sub-pixel computations to improve performance and to
@@ -737,34 +845,43 @@ end
 
 function [PSF] = gaussianPSF(FWHM, bin_wid_um)
 %Construct the model PSF, Oliver Pambos, 04/09/2021.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: gaussianPSF
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Standard deviation now used, via FWHM = 2*sqrt(2*ln(2))*sigma.
 %
 %Inputs
@@ -795,33 +912,43 @@ end
 function [substruct_name] = getSubstructName(value)
 %Helper function for mapping annotation source to a text description for
 %plotting, Oliver Pambos, 08/07/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: getSubstructName
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -858,36 +985,46 @@ function [substruct_name] = getSubstructName(value)
 end
 
 
-function source_description = getSourceDescription(value)
+function [source_description] = getSourceDescription(value)
 %Helper function to generate the suitable text description of annotation
 %source for heatmap plotting, Oliver Pambos, 08/07/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: getSourceDescription
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -921,4 +1058,98 @@ function source_description = getSourceDescription(value)
         otherwise
             error('Unknown annotation type selected.');
     end
+end
+
+
+function [] = plotProjections(major_proj, minor_proj, class_major_projs, class_minor_projs, cell_len, cell_wid, class_names, classes_to_plot, fig_wid, fig_hei, class_colours)
+%Plot projections along major and minor cell axes, Oliver Pambos,
+%08/03/2025.
+%
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
+%
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
+%
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
+%
+%Input
+%-----
+%major_proj         (vec)   projection along the major axis
+%minor_proj         (vec)   projection along the minor axis
+%class_major_projs  (mat)   projections along the major axis for each class
+%                               [N_bins_x, N_classes]
+%class_minor_projs  (mat)   projections along the minor axis for each class
+%                               [N_bins_y, N_classes]
+%cell_len           (float) length of output model cell (um)
+%cell_wid           (float) width of output model cell (um)
+%class_names        (cell)  cell array of class names
+%classes_to_plot    (cell)  classes selected by the user to plot
+%fig_wid            (int)   figure width (in pixels)
+%fig_hei            (int)   figure height (in pixels)
+%class_colours      (vec)   Nx3 normalised RGB values for each colour's
+%                               class
+%
+%Output
+%------
+%None
+    
+    figure('Position', [100, 100, fig_wid, fig_hei], 'ToolBar', 'none', 'MenuBar', 'none');
+    
+    %major axis projection
+    subplot(2,1,1); hold on; box on;
+    plot(linspace(-cell_len/2, cell_len/2, length(major_proj)), major_proj, 'w', 'LineWidth', 2);
+    
+    %plot each class separately
+    for kk = 1:length(class_names)
+        if any(strcmp({classes_to_plot.Text}, class_names{kk}))
+            plot(linspace(-cell_len/2, cell_len/2, size(class_major_projs, 1)), class_major_projs(:, kk), 'Color', class_colours(kk, :), 'LineWidth', 1.5, 'DisplayName', class_names{kk});
+        end
+    end
+    ylabel('Normalised localisation density');
+    legend('show');
+    
+    %minor axis projection
+    subplot(2,1,2); hold on; box on;
+    plot(linspace(-cell_wid/2, cell_wid/2, length(minor_proj)), minor_proj, 'w', 'LineWidth', 2);
+    
+    %plot each class separately
+    for kk = 1:length(class_names)
+        if any(strcmp({classes_to_plot.Text}, class_names{kk}))
+            plot(linspace(-cell_wid/2, cell_wid/2, size(class_minor_projs, 1)), class_minor_projs(:, kk), 'Color', class_colours(kk, :), 'LineWidth', 1.5, 'DisplayName', class_names{kk});
+        end
+    end
+    ylabel('Normalised localisation density');
+    legend('show');
+    
+    hold off;
 end

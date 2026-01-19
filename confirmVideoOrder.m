@@ -1,34 +1,43 @@
-function file_list = confirmVideoOrder(file_list)
+function [file_list] = confirmVideoOrder(file_list)
 %Present the user with the video file list, and rearrange if required,
 %Oliver Pambos, 13/11/2020.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: confirmVideoOrder
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function replaces parts of the earlier text-based command line entry
 %method identifyFITSFiles(). This function displays a listbox in an
 %external figure window containing the list of source video files to be
@@ -74,40 +83,58 @@ function file_list = confirmVideoOrder(file_list)
 end
 
 
-function moveFileUp(h_lb)
+function [] = moveFileUp(h_lb)
 %Callback to swap currently selected item with item above, Oliver Pambos,
 %13/11/2020.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: moveFileUp
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Input
 %-----
 %h_lb   (handle)    handle to the listbox UI
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
     
     curr_item = h_lb.Value;
     all_items = h_lb.Items;
@@ -120,40 +147,59 @@ function moveFileUp(h_lb)
     end
 end
 
-function moveFileDown(h_lb)
+
+function [] = moveFileDown(h_lb)
 %Callback to swap currently selected item with item below, Oliver Pambos,
 %13/11/2020.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: moveFileDown
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Input
 %-----
 %h_lb   (handle)    handle to the listbox UI
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
     
     curr_item = h_lb.Value;
     all_items = h_lb.Items;
@@ -166,36 +212,46 @@ function moveFileDown(h_lb)
     end
 end
 
-function finishReordering(h_fig, carry_on)
+
+function [] = finishReordering(h_fig, carry_on)
 %Callback for OK and Cancel buttons, Oliver Pambos, 13/11/2020.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: finishReordering
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This callback is necessary to avoid accessing property .Items of the
 %possibly deleted object defined by the handle h_fig.
 %
@@ -205,6 +261,14 @@ function finishReordering(h_fig, carry_on)
 %h_fig      (handle)    handle to the figure window
 %carry_on   (bool)      if user has pressed OK button this will invoke uiresume to break out of uiwait() f'n
 %                           if user has pressed cancel button this will delete figure handle h_fig
+%
+%Output
+%------
+%None
+%
+%Dependent functions (excluding callbacks)
+%-----------------------------------------
+%None
     
     if carry_on
         uiresume(h_fig);

@@ -1,34 +1,43 @@
 function [] = repopulateEventLabeller(app)
 %Repopulate the human annotation system with a new molecule, Oliver Pambos,
 %28/10/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: repopulateEventLabeller
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function clears the relevant components of the human annotation
 %system, and repopulates them with new data associated with the next
 %molecule ready for the next manual labelling.
@@ -49,8 +58,6 @@ function [] = repopulateEventLabeller(app)
 %regenerateTrackViewer()
 %setupDraggableLine()
     
-    %load next mol, which is a callback to the next mol button
-
     %clear the axes and cell_ID and mol_ID display boxes
     cla(app.UIAxes_event_labeller, 'reset');
     cla(app.UIAxes_event_labeller_status);
@@ -88,13 +95,16 @@ function [] = repopulateEventLabeller(app)
     col_primary = findColumnIdx(app.movie_data.params.column_titles.tracks, app.PrimaryFeatureDropDown.Value);
     app.movie_data.state.col_feature = col_primary;                 %later to move to app.annotation_data above
     if col_primary == 0
-        error("repopulateEventLabeller:MissingPrimaryFeature", "The primary feature column is missing in the column titles of the dataset.");
+        %handles rare cases in which primary feature dropdown does not exist due to a previous initialisation of primary feature dropdown menu when user switches
+        %between files processed with different features/tracking sources; ideally this should auto-set to step size as this core feature is always available
+        error("repopulateEventLabeller:MissingPrimaryFeature", "The primary feature column is missing in the column titles of the dataset. Please select a new primary feature from the [Human annotation]>[Plot settings] subtab to continue.");
     end
     
     col_secondary = findColumnIdx(app.movie_data.params.column_titles.tracks, app.SecondaryFeatureDropDown.Value);
     app.movie_data.state.col_feature_secondary = col_secondary;     %later to move to app.annotation_data above
     if ~strcmp(app.SecondaryFeatureDropDown.Value, '<< None >>') && col_secondary == 0
-        error("repopulateEventLabeller:MissingPrimaryFeature", "The secondary feature column is missing in the column titles of the dataset.");
+        %see note above for col_primary
+        error("repopulateEventLabeller:MissingPrimaryFeature", "The secondary feature column is missing in the column titles of the dataset. Please select a new secondary feature from the [Human annotation]>[Plot settings] subtab to continue.");
     end
     
     cell_ID     = app.annotation_data.current_cell;
@@ -179,12 +189,12 @@ function [] = repopulateEventLabeller(app)
     app.UIAxes_event_labeller_status.InnerPosition = [inpos(1), outpos(2)+outpos(4), inpos(3), 20];
     
     %set up the progress bar
-    N_mols = size(app.movie_data.results.VisuallyLabelled.LabelledMols,1);
+    N_mols = numel(app.movie_data.results.VisuallyLabelled.LabelledMols);
     axis(app.UIAxes_labelling_progress, 'off');
-    app.UIAxes_labelling_progress.YLim = [0 1];
-    app.UIAxes_labelling_progress.XLim = [0 N_mols];
-    rectangle(app.UIAxes_labelling_progress, 'Position', [0, 0, 1, 1], 'EdgeColor','k', 'FaceColor', 'none');
-    rectangle(app.UIAxes_labelling_progress, 'Position', [0, 0, app.movie_data.state.event_labeller_current_ID / N_mols, 1], 'EdgeColor','none', 'FaceColor', 'g');
+    app.UIAxes_labelling_progress.YLim = [0 1];         %should be hardcoded in GUI component's initialisation
+    app.UIAxes_labelling_progress.XLim = [0 N_mols];    %should ideally be updated only when new dataset loaded and recalc when mol deleted
+    rectangle(app.UIAxes_labelling_progress, 'Position', [0, 0, 1, 1], 'EdgeColor','k', 'FaceColor', 'none');   %inefficient, shouldn't require redrawing
+    rectangle(app.UIAxes_labelling_progress, 'Position', [0, 0, app.movie_data.state.event_labeller_current_ID, 1], 'EdgeColor','none', 'FaceColor', 'g');
     text_pc = strcat(num2str(app.movie_data.state.event_labeller_current_ID), '/', num2str(N_mols), ' mols (', num2str(100*app.movie_data.state.event_labeller_current_ID / N_mols, '%.1f'), '%)');
     text(app.UIAxes_labelling_progress, app.UIAxes_labelling_progress.XLim(2)/2, 0.5, text_pc, 'HorizontalAlignment', 'center');
     
@@ -194,7 +204,7 @@ function [] = repopulateEventLabeller(app)
     else
         flipped = false;
     end
-    app.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, app.SaveeveryviewedmoleculeCheckBox.Value, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1, flipped);
+    app.current_video = illustrateMol(app.movie_data, cell_ID, mol_ID, 0, false, strcat('Cell', num2str(cell_ID), '_Mol', num2str(mol_ID)), 1, flipped);
     
     %display the first video frame (or initialise the handle if this is the first run)
     app.updateVideoFrame(app.movie_data.state.labeller_frame_video);
@@ -202,10 +212,17 @@ function [] = repopulateEventLabeller(app)
     %populate the track viewer component
     regenerateTrackViewer(app);
     
+    %cache data which is static for current molecule for faster draggable line and human annotator key press updates
+    app.annotation_data.cached_ylim = ylim(app.UIAxes_event_labeller);
+    app.annotation_data.cached_xlim = xlim(app.UIAxes_event_labeller);
+    app.annotation_data.col_t       = findColumnIdx(app.movie_data.params.column_titles.tracks, 'Time from start of track (s)');
+    app.annotation_data.frame_rate  = app.movie_data.params.frame_rate;
+    app.annotation_data.mol_data    = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.Mol;
+    
     %regenerate the draggable line
     setupDraggableLine(app);
     
-    % if ~strcmp(app.InVivoKineticsUIFigure.CurrentObject, app.InVivoKineticsUIFigure)
-    %     focus(app.InVivoKineticsUIFigure);
+    % if ~strcmp(app.DeepTRACEUIFigure.CurrentObject, app.DeepTRACEUIFigure)
+    %     focus(app.DeepTRACEUIFigure);
     % end
 end

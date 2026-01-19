@@ -1,34 +1,43 @@
 function [] = compileMSDsAllLabelled(app)
 %Compile MSDs and apparent diffusion coefficients for all states and
 %molecules in a labelled dataset, Oliver Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: compileMSDsAllLabelled
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This code cycles through all labelled molecules in the dataset, compiling
 %large matrices to hold all MSD data for all molecules as well as for each
 %diffusive state. This includes both partial and pure (doubly-truncated)
@@ -131,7 +140,7 @@ function [] = compileMSDsAllLabelled(app)
             t = (1 / app.movie_data.params.frame_rate) : (1 / app.movie_data.params.frame_rate) : (size(all_means, 2) / app.movie_data.params.frame_rate);
             
             %produce scatterplot of MSDs for all molecules, and for all classes
-            figure; h_axes_scatter = gca;
+            figure('MenuBar', 'none'); h_axes_scatter = gca;
             plotMSDScatter(h_axes_scatter, all_means, all_SEMs, t, app.movie_data.params.event_label_colours, app.movie_data.params.class_names, plot_lim);
             
             %compute D*
@@ -141,7 +150,7 @@ function [] = compileMSDsAllLabelled(app)
 
         case 'All localisations'
             %plot the MSD lines plot
-            figure; h_axes_lines = gca;
+            figure('MenuBar', 'none'); h_axes_lines = gca;
             [all_means, t] = plotMSDLines(h_axes_lines, MSD_global, app.movie_data.params.event_label_colours, app.movie_data.params.class_names, plot_lim);
             
             %compute D*
@@ -164,37 +173,46 @@ function [] = compileMSDsAllLabelled(app)
 end
 
 
-
 function [labelled_mols] = convertLabelLocsToUm(labelled_mols, px_scale_nm)
 %Convert labelled molecule localisations from pixels to micrometers, Oliver
 %Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: convertLabelLocsToUm
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Input
 %-----
@@ -221,34 +239,43 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
 %Compiles matrices of MSD lag time data from labelled molecules used for
 %computation of mean and SEM values for plotting and D* calculation,
 %Oliver Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: compileMSDMatrices
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function mines the labelled dataset labelled_mols, computing MSDs for
 %every molecule, and every span of classified sections of molecules, to
 %produce two matrices that can be used to plot MSD-lag time plots as well
@@ -279,35 +306,53 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
 %
 %Inputs
 %------
-%labelled_mols  (struct)    labelled molecule substruct, with units of micrometers
+%labelled_mols  (struct)    labelled molecule substruct, with units of
+%                               micrometers
 %N_classes      (int)       number of classes/states in the labelled data
-%min_locs_MSD   (int)       minimum number of localisations required in any span for inclusion in the dataset
+%min_locs_MSD   (int)       minimum number of localisations required in any
+%                               span for inclusion in the dataset
 %frame_rate     (float)     frame rate of fluorescence video recording
-%fast_mode      (bool)      in fast mode, lag times are only computed over the range required for D* calculation
-%N_steps        (int)       maximum lag time to be used for the D* calculation; in fast mode this determines the size of the range of lag times to compute
+%fast_mode      (bool)      in fast mode, lag times are only computed over
+%                               the range required for D* calculation
+%N_steps        (int)       maximum lag time to be used for the D*
+%                               calculation; in fast mode this determines
+%                               the size of the range of lag times to
+%                               compute
 %
 %Outputs
 %-------
-%MSD_global (mat)   3D matrix with dimensions of lag time, columns (see below), and classes (first class is all trajectories)
-%                       columns are as follows,
-%                           1. sum of squared Euclidean distances from all steps of given lag time, units are input units for (x,y) squared
+%MSD_global (mat)   3D matrix with dimensions of lag time, columns (see
+%                       below), and classes (first class is all
+%                       trajectories) columns are as follows,
+%                           1. sum of squared Euclidean distances from all
+%                               steps of given lag time, units are input
+%                               units for (x,y) squared
 %                           2. number of entries collected
 %                           3. lag time in seconds
-%                           4. mean squared Euclidean distance for given lag time across this trajectory, units are input units for (x,y) squared
+%                           4. mean squared Euclidean distance for given
+%                               lag time across this trajectory, units are
+%                               input units for (x,y) squared
 %                       3rd dimension
-%                           (:,:,1)     MSD for all molecules ignoring states
+%                           (:,:,1)     MSD for all molecules ignoring
+%                                           states
 %                           (:,:,N)     MSD for state N-1
-%MSD_all    (cell)  cell array of MSD data from every molecule in the dataset,
-%                       each cell {ii,1} is a different class/state, with {1,1} being all trajectories
-%                       dimension of matrices inside each cell are XxYxZ where,
-%                           X (rows) are individual lag times for the given molecule
-%                           Y are columns (see below)
-%                           Z are sections or molecules
+%MSD_all    (cell)  cell array of MSD data from every molecule in the
+%                       dataset,
+%                           each cell {ii,1} is a different class/state,
+%                           with {1,1} being all trajectories dimension of
+%                           matrices inside each cell are XxYxZ where,
+%                               X (rows) are individual lag times for the
+%                                   given molecule
+%                               Y are columns (see below)
+%                               Z are sections or molecules
 %                       columns are,
-%                           1. sum of squared Euclidean distances from all steps of given lag time in the molecule
-%                           2. number of entries from the molecule used to obtain the sum of step sizes in column 1
+%                           1. sum of squared Euclidean distances from all
+%                               steps of given lag time in the molecule
+%                           2. number of entries from the molecule used to
+%                               obtain the sum of step sizes in column 1
 %                           3. lag time, in seconds
-%                           4. MSD (mean squared Euclidean distance) for given lag time across the trajectory
+%                           4. MSD (mean squared Euclidean distance) for
+%                               given lag time across the trajectory
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
@@ -380,11 +425,9 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
                     class_pos(class_label) = class_pos(class_label) + 1;
                 end
             end
-            
         end
         
         waitbar(ii/size(labelled_mols, 1), f, "Computed " + num2str(ii) + "/" + num2str(size(labelled_mols, 1)) + " trajectories");
-
     end
     
     close(f);
@@ -396,41 +439,48 @@ function [MSD_global, MSD_all] = compileMSDMatrices(labelled_mols, N_classes, mi
         MSD_global(valid_rows, 3, ii) = find(valid_rows) .* frame_rate;
         MSD_global(valid_rows, 4, ii) = MSD_global(valid_rows, 1, ii) ./ MSD_global(valid_rows, 2, ii);
     end
-    
 end
-
 
 
 function [global_range] = findMSDLims(labelled_mols)
 %Finds the upper limit for MSD lag times, Oliver Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: findMSDLims
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function finds the largest frame separation between localisations in
 %any molecule. This is subsequently used by the calling function to
 %pre-allocate the matrix MSD_global.
@@ -478,37 +528,46 @@ function [global_range] = findMSDLims(labelled_mols)
 end
 
 
-
 function [total_spans] = findNSections(labelled_mols, N_classes)
 %Finds the number of individual sections (or whole trajectories) for each
 %class across all labelled molecules, Oliver Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: findNSections
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -549,37 +608,46 @@ function [total_spans] = findNSections(labelled_mols, N_classes)
 end
 
 
-
 function [mean_MSDs, t] = plotMSDLines(h_axes_lines, MSD_global, class_colours, class_names, plot_lim)
 %Plot MSD of all labelled molecules and sections as line plots, Oliver
 %Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: plotMSDLines
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -649,49 +717,69 @@ function [mean_MSDs, t] = plotMSDLines(h_axes_lines, MSD_global, class_colours, 
 end
 
 
-
 function [] = plotMSDScatter(h_axes_scatter, all_means, all_SEMs, t, class_colours, class_names, plot_lim)
 %Plot a scatter with error bars for all labelled molecules and sections,
 %Oliver Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: plotMSDScatter
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
 %h_axes         (handle)    axes handle
-%all_means      (mat)       matrix of mean MSD for all classes; rows are class, columns are lag times
-%                               1: MSD data for all molecules (ignoring classes and sections)
-%                               2 - N: MSD data for individual classes; N = class number + 1 as first row is all molecules
-%all_SEMs       (mat)       matrix of SEMs of MSD for all classes; rows are class, columns are lag times
-%                               1: MSD data for all molecules (ignoring classes and sections)
-%                               2 - N: MSD data for individual classes; N = class number + 1 as first row is all molecules
-%t              (vec)       row vector of lag times for respective columns in all_means and all_SEMs
-%class_colours  (mat)       Nx3 matrix of colours as 8-bit RGB triplets, each row represents a different diffusive state/class
+%all_means      (mat)       matrix of mean MSD for all classes; rows are
+%                               class, columns are lag times
+%                                   1: MSD data for all molecules (ignoring
+%                                       classes and sections)
+%                                   2 - N: MSD data for individual classes;
+%                                       N = class number + 1 as first row
+%                                       is all molecules
+%all_SEMs       (mat)       matrix of SEMs of MSD for all classes; rows are
+%                               class, columns are lag times
+%                                   1: MSD data for all molecules (ignoring
+%                                       classes and sections)
+%                                   2 - N: MSD data for individual classes;
+%                                       N = class number + 1 as first row
+%                                       is all molecules
+%t              (vec)       row vector of lag times for respective columns
+%                               in all_means and all_SEMs
+%class_colours  (mat)       Nx3 matrix of colours as 8-bit RGB triplets,
+%                               each row represents a different diffusive
+%                               state/class
 %plot_lim       (float)     stores the upper limit of the x-axis for plotting
 %
 %Output
@@ -722,37 +810,45 @@ function [] = plotMSDScatter(h_axes_scatter, all_means, all_SEMs, t, class_colou
 end
 
 
-
 function [DStars, fits] = computeDStars(MSDs, t, mode, loc_prec, t_interframe)
 %Compute D* for all diffusive states, Oliver Pambos, 14/11/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: computeDStars
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Apparent diffusion coefficient is computed as a linear fit to the MSD vs
 %lag time data. This function computes D* for all (lag time, MSD) pairs
 %passed to it; to reduce the range of fitting pass only a subset of
@@ -761,7 +857,8 @@ function [DStars, fits] = computeDStars(MSDs, t, mode, loc_prec, t_interframe)
 %D* calculation is performed using three methods,
 %       D* = MSD/4t without factoring in localisation precision
 %       D* = MSD/4t - (sigma^2)/t
-%       D* = MSD/t without factoring in dimensionality or localisation precision
+%       D* = MSD/t without factoring in dimensionality or localisation
+%           precision
 %
 %While the time t can be passed into this function as a single row vector
 %for many classes, t can also be passed as a matrix with the same number of
@@ -776,20 +873,35 @@ function [DStars, fits] = computeDStars(MSDs, t, mode, loc_prec, t_interframe)
 %
 %Inputs
 %------
-%MSDs           (mat)   NxM matrix containing M MSD values for N+1 states, in units of micrometers squared
-%t              (vec)   row vector of lag times associated with with the respective columns of the matrix MSDs, in seconds
-%mode           (str)   string containg the mode for calculating D*; this is passed from the text contents of the GUI mode dropdown app.DcalculationmethodDropDown.Value, options are,
-%                           'MSD/4t': D* = MSD/4t without factoring in localisation precision
-%                           'Correct for localisation error': D* = MSD/4t - (sigma^2)/t
-%                           '4D*': D* = MSD/t without factoring in dimensionality or localisation precision
+%MSDs           (mat)   NxM matrix containing M MSD values for N+1 states,
+%                           in units of micrometers squared
+%t              (vec)   row vector of lag times associated with with the
+%                           respective columns of the matrix MSDs, in
+%                           seconds
+%mode           (str)   string containg the mode for calculating D*; this
+%                           is passed from the text contents of the GUI
+%                           mode dropdown
+%                           app.DcalculationmethodDropDown.Value, options
+%                           are,
+%                               'MSD/4t': D* = MSD/4t without factoring in
+%                                   localisation precision
+%                               'Correct for localisation error':
+%                                   D* = MSD/4t - (sigma^2)/t 
+%                               '4D*': D* = MSD/t without factoring in
+%                                   dimensionality or localisation precision
 %loc_prec       (float) localisation precision/error
-%t_interframe   (float) time between frames; this contant is required in addition to t for robustness to handle rare cases where a sparse dataset may result in missed lag times
+%t_interframe   (float) time between frames; this contant is required in
+%                           addition to t for robustness to handle rare
+%                           cases where a sparse dataset may result in
+%                           missed lag times
 %
 %Output
 %------
-%DStars (vec)   N+1 column vector of the apparent diffusion coefficients of N diffusive states, in units of micrometers squared per second
-%                   element 1 is D* for all molecules, ignoring classifications
-%                   elements >= 2 are D* for each individual labelled state/class
+%DStars (vec)   N+1 column vector of the apparent diffusion coefficients of
+%                   N diffusive states, in units of micrometers squared per
+%                   second element 1 is D* for all molecules, ignoring
+%                   classifications elements >= 2 are D* for each
+%                   individual labelled state/class
 %fits   (mat)   linear fits to the MSD data,
 %                   col 1: gradient of MSD/t
 %                   col 2: y-axis offset

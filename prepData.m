@@ -1,48 +1,56 @@
 function [] = prepData(app)
-%Load and modify the LoColi data struct, Oliver Pambos, 16/11/2020.
-%oliver.pambos@physics.ox.ac.uk
+%Prepare DeepTRACE data struct from loaded data, Oliver Pambos, 16/11/2020.
 %
-%
-%MATLAB FUNCTION: prepData
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
-%This function performs a number of actions,
-%   1. loads the LoColi data
-%   2. sets up a new parameter sub-struct
-%   3. launches all of the automatic pre-processing functions that can run
-%       including,
-%           identifies, orders, and indexes the video files
-%           generates overlays and ROIs for all cells
-%           filtering of valid trajectories
-%           launches the feature engineering process
-%           generates the reference column titles
-%           initialises all class labels to -1 in preparation for labelling
-%           extracts all available information from meta data (e.g. frame rate)
-%
-%Note that a future version will handle cases where FITS meta data is not
-%available.
+%DESIGN AND CONTEXT
+%This function performs a number of data preparation tasks through calls to
+%other functions within the DeepTRACE codebase,
+%   Identifies, orders, and indexes video files
+%   Computes frame offsets in multi-video experiments
+%   Sets up the parameter substruct
+%   Extracts information from metadata
+%   Obtains frame rates from user if it cannot be extracted from meta data
+%   Loads and formats LoColi data, if this is input pipeline
+%   Generates overlays and ROIs for all cells
+%   Track filtering of valid trajectories based on user requirements
+%   Launches the feature engineering process
+%   Generates the reference column titles
+%   Initialises all class labels to -1 in preparation for labelling
+%   Prompts user for any missing data not obtained automatically
 %
 %Inputs
 %------
@@ -55,107 +63,56 @@ function [] = prepData(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %confirmVideoOrder()
-%getFITSMeta()
 %genAllOverlays()
-%computeLocMemDists()
 %convertLoColiToKinetics()
-%computeStepAngles()
-%computeStepAnglesRelToCell()
-%getFileExtension()             - local to this .m file
+%engineerFeatures()
+%filterTracks()
 %promptUserForMissingParams()   - local to this .m file
     
-    %obtain fluorescence videos and ask user to confirm chronological order
-    app.textout.Value = "Please provide fluorescence video files.";
-    [file, path, filterIndex] = uigetfile({'*.fits;*.FITS;*.tif;*.TIF;*.tiff;*.TIFF', 'Fluorescence video files (*.fits, *.FITS, *.tif, *.TIF, *.tiff, *.TIFF)'}, 'Select raw video files:', 'MultiSelect', 'on');
-    if filterIndex == 0
-        disp('User did not select a file.');
-        return;
-    end
-    
-    app.textout.Value = "please re-order the fluorescence video files into chronological order.";
-    
-    %confirm chronological order of videos
-    if iscell(file)
-        app.movie_data.params.ffFile = confirmVideoOrder(file);
-    else
-        app.movie_data.params.ffFile = file;
-    end
-    app.movie_data.params.ffPath = path;    %intentionally not assigning this to app handles at call to uigetfile in case user presses cancel
-    
-    %check the file extensions are consistent; if so get the extension
-    [file_ext, consistent] = getFileExtension(app.movie_data.params.ffFile);
-    
-    %return if filenames are inconsistent
-    if ~consistent
-        errordlg('File extension of selected fluorescence videos are inconsistent. Exiting data preparation. Please try again.', 'Inconsistent file extensions');
-        app.textout.Value = "File extensions of the selected fluorescence video files are inconsistent; data has not been prepared for analysis.";
-        return;
-    end
-    
-    %handle the other tiff extension
-    if lower(file_ext) == ".tiff"
-        file_ext = ".tif";
-    end
-    
-    N_videos = size(app.movie_data.params.ffFile, 2);
-    
-    %load video files
-    switch lower(file_ext)
-        case ".fits"
-            %obtain frame rate from KCT value in FITS file header
-            if iscell(app.movie_data.params.ffFile)
-                app.movie_data.params.frame_rate = 1/str2num(getFITSMeta(string(app.movie_data.params.ffFile(1)), app.movie_data.params.ffPath, 'KCT'));
-            else
-                app.movie_data.params.frame_rate = 1/str2num(getFITSMeta(string(app.movie_data.params.ffFile), app.movie_data.params.ffPath, 'KCT'));
-            end
-            
-            %build frame offset index for all FITS files
-            app.movie_data.params.frame_offsets(1) = 0;
-            if iscell(app.movie_data.params.ffFile)
-                h_offset_waitbar = waitbar(0, "Computing temporal offsets for video files....");
-                set(h_offset_waitbar, 'WindowStyle', 'modal');
-                frames_per_file = zeros(1, N_videos);
-                for ii = 1:N_videos
-                    waitbar(ii/N_videos, h_offset_waitbar, sprintf('Computing temporal offsets for video file C %d/%d', ii, N_videos));
-                    frames_per_file(ii) = str2double(getFITSMeta(string(app.movie_data.params.ffFile(ii)), app.movie_data.params.ffPath, 'NAXIS3'));
-                end
-                app.movie_data.params.frames_per_file = frames_per_file;
-                app.movie_data.params.frame_offsets = [0, cumsum(frames_per_file(1:end-1))];
-                
-                close(h_offset_waitbar)
-            end
-            
-        case ".tif"
-            % << future handling of TIF metadata using imfinfo() >>
-            
-            %build frame offset index for all TIF files
-            app.movie_data.params.frame_offsets(1) = 0;
-            app.movie_data.params.frames_per_file = zeros(N_videos, 1);
-            
-            %if there are multiple files
-            if iscell(app.movie_data.params.ffFile)
-                h_offset_waitbar = waitbar(0, "Computing temporal offsets for video files....");
-                set(h_offset_waitbar, 'WindowStyle', 'modal');
-                for ii = 1:N_videos
-                    waitbar(ii/N_videos, h_offset_waitbar, sprintf('Computing temporal offsets for video file %d/%d', ii, N_videos));
-                    info = imfinfo(fullfile(app.movie_data.params.ffPath, app.movie_data.params.ffFile{ii}));
-                    app.movie_data.params.frames_per_file(ii) = size(info,1); %number of frames in the current TIF file
-                    
-                    %for the first file, the offset is already set to 0
-                    if ii > 1
-                        %update frame offsets for subsequent files
-                        app.movie_data.params.frame_offsets(ii) = app.movie_data.params.frame_offsets(ii-1) + app.movie_data.params.frames_per_file(ii-1);
-                    end
-                end
-                close(h_offset_waitbar);
-            else
-                info = imfinfo(fullfile(app.movie_data.params.ffPath, app.movie_data.params.ffFile));
-                app.movie_data.params.frames_per_file = numel(info);
-            end
-            
-        otherwise
-            app.textout.Value = "File type of fluorescence video is unknown; data has not been prepared for analysis.";
+    %obtain video files, frame rate, and frame offsets if not already present
+    if ~isfield(app.movie_data.params, "ffFile") || isempty(app.movie_data.params.ffFile)
+        %obtain fluorescence videos and ask user to confirm chronological order
+        app.textout.Value = "Please provide fluorescence video files.";
+        [file, path, filterIndex] = uigetfile({'*.fits;*.FITS;*.tif;*.TIF;*.tiff;*.TIFF', 'Fluorescence video files (*.fits, *.FITS, *.tif, *.TIF, *.tiff, *.TIFF)'}, 'Select raw video files:', 'MultiSelect', 'on');
+        if filterIndex == 0
+            disp('User did not select a file.');
             return;
+        end
+        
+        app.textout.Value = "Please re-order the fluorescence video files into chronological order.";
+        
+        %confirm chronological order of videos
+        if iscell(file)
+            app.movie_data.params.ffFile = confirmVideoOrder(file);
+        else
+            app.movie_data.params.ffFile = file;
+        end
+        app.movie_data.params.ffPath = path;    %intentionally not assigning this to app handles at call to uigetfile in case user presses cancel
+        
+        %compute frame offsets for fluorescence videos
+        [frame_rate, frames_per_file, frame_offsets, success] = computeFrameOffsets(app.movie_data.params.ffPath, app.movie_data.params.ffFile);
+        
+        %if frame rate was not obtained from metadata, prompt user directly
+        if isempty(frame_rate) || isnan(frame_rate)
+            frame_rate = str2double(inputdlg('Enter frame rate in Hz:', 'Frame rate (Hz)', [1 50]));
+        end
+        if isnan(frame_rate)
+            errordlg("Frame rate was not obtained from metadata or user. Please try again.", "Error: unknown frame rate");
+            app.textout.Value = "Frame rate was not obtained from metadata or user. Please try again.";
+            return;
+        end
+        
+        %check it worked
+        if ~success
+            errordlg('Frame offsets could not be obtained for the provided video files. Exiting data preparation. Please try again.', 'Video loading error');
+            app.textout.Value = "Frame offsets could not be obtained for the provided video files. Data has not been prepared for analysis. Please try again.";
+            return;
+        end
+        
+        %store outputs in params (required by downstream code)
+        app.movie_data.params.frame_rate      = frame_rate;
+        app.movie_data.params.frames_per_file = frames_per_file;
+        app.movie_data.params.frame_offsets   = frame_offsets;
     end
     
     %prompt for any missing parameters
@@ -166,7 +123,7 @@ function [] = prepData(app)
     
     %notify user of filtering outcome; only proceed if successful
     if strcmp(filter_status, "Cancelled by user")
-        app.textout.Value = "Track filtering was canceled by user, due to lack of localization data.";
+        app.textout.Value = "Track filtering was canceled by user, due to lack of localisation data.";
         return;
     elseif strcmp(filter_status, "Filtered by localisations")
         app.textout.Value = "Tracks were filtered against all localisations associated with their parent cell.";
@@ -190,141 +147,80 @@ function [] = prepData(app)
         end
     end
     
-    %generate all inverted brightfield overlays
+    %generate all reference image (typically inverted brightfield) overlays
     waitbar(2/2, file_ext, 'Generating overlays');
     app.movie_data = genAllOverlays(app.movie_data, app.movie_data.params.ill_border, 8);
     close(file_ext);
     
     if strcmp(app.movie_data.params.pipeline, "LoColi")
-        %add all StormTracker data to the tracks matrix
+        %add all LoColi-embedded StormTracker data to the tracks matrix
         app.movie_data = convertLoColiToKinetics(app.movie_data);
     end
     
     %perform feature engineering, and add class label column
     engineerFeatures(app);
     
-    %flag to record data preparation complete
+    %flag recording data preparation complete
     app.movie_data.params.data_prepared = true;
     
     app.textout.Value = "Data preparation is complete." + newline + ...
         "Please proceed to either the [Human annotation] tab to manual annotate data, " + ...
         "or the [ML classification] tab to annotate data using an appropriate pre-trained model, " + ...
-        "or the [Load/Save] tab to import ground truth data.";
+        "or [File] > [Load ground truth] to import ground truth data.";
     
-    focus(app.InVivoKineticsUIFigure);
+    focus(app.DeepTRACEUIFigure);
 end
 
 
-function [file_ext, consistent] = getFileExtension(ffFile)
-%Extracts video file extension, and identifies inconsistency when multiple
-%are present, Oliver Pambos 28/02/2024
-%oliver.pambos@physics.ox.ac.uk
-%
-%
-%MATLAB FUNCTION: getFileExtension
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
-%CONTACT: oliver.pambos@physics.ox.ac.uk
-%
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
-%
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
-%
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
-%
-%
-%
-%Inputs
-%------
-%file_ext   (str)   file extension including `.` char
-%consistent (bool)  true if all file extensions are identical; else false
-%
-%Output
-%------
-%None
-%
-%Dependent functions (excluding callbacks)
-%-----------------------------------------
-%None
-    
-    consistent  = true;
-    
-    %if multiple files are present
-    if iscell(ffFile)
-        [~, ~, file_ext] = fileparts(ffFile{1});
-        
-        %check remaining filenames for consistency
-        for ii = 2:numel(ffFile)
-            [~, ~, current_ext] = fileparts(ffFile{ii});
-            if ~strcmpi(file_ext, current_ext)
-                consistent = false;
-                break;
-            end
-        end
-    else
-        [~, ~, file_ext] = fileparts(ffFile);
-    end
-end
-
-
-function params = promptUserForMissingParams(params)
+function [params] = promptUserForMissingParams(params)
 %Prompts the user to manually enter all necessary parameters that could not
 %be read from metadata or tracking file, Oliver Pambos, 28/02/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: promptUserForMissingParams
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
-%This implementation is tailored for numeric data input. Parameters holding
-%string literals are accommodated by first testing conversion on a dummy
-%copy using MATLAB's str2double() function. The result of this conversion
-%determines whether to perform conversion. This approach eliminates the
-%need for a lookup table of possible parameters
-%string inputs in future, input parsing will be necessary to
-%identifyoverovo
-%non-numeric characters in the input. This allows for flexible handling of
-%various input types without relying on hardcoded values or a lookup table
-%of formats for all possible parameters. This eliminates hardcoding, more
-%elegantly handles user input of unknown parameters, and ensures ease of
-%modification and inclusion of new parameters without hardcoded rules.
-%However it does rely on the user entering numeric or string values when
-%prompted.
+%DESIGN AND CONTEXT
+%This function handles parameters that cannot be reliably read from
+%metadata or tracking output, by prompting the user for manual input. It is
+%designed to work with a small number of simple parameters whose types may
+%not be known in advance.
+%
+%The function assumes that user provides either numeric or intended string
+%values when prompted, and does not attempt input validation or format
+%checking beyond basic conversion. This keeps the interface flexible, and
+%avoids hardcoding parameter-specific rules.
 %
 %Inputs
 %------
@@ -345,9 +241,9 @@ function params = promptUserForMissingParams(params)
     field_descriptions  = {'Frame rate (Hz)', 'Pixel scale (nm / pixel)', 'Class names, separated by `;`'};
     default_vals        = {'5', '0.096'};
     
-    missing_fields = {};
-    missing_descriptions = {};
-    missing_defaults = {};
+    missing_fields          = {};
+    missing_descriptions    = {};
+    missing_defaults        = {};
     
     %check each parameter to determine what's missing
     for ii = 1:length(required_fields)
@@ -360,9 +256,7 @@ function params = promptUserForMissingParams(params)
     
     %prompt for all/any missing parameters
     if ~isempty(missing_fields)
-        dlgtitle = "Input Required Parameters";
-        dims = [1 35];
-        answers = inputdlg(missing_descriptions, dlgtitle, dims, missing_defaults);
+        answers = inputdlg(missing_descriptions, "Input Required Parameters", [1 35], missing_defaults);
         
         %save new params to struct
         for ii = 1:length(missing_fields)
@@ -381,7 +275,4 @@ function params = promptUserForMissingParams(params)
             end
         end
     end
-
 end
-
-

@@ -1,33 +1,42 @@
 function [] = addPartialVisualLabel(app)
 %Apply manual label to part of a trajectory, Oliver Pambos, 27/10/2022.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: addPartialVisualLabel
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %When user interacts with togglebutton panel to add a label to some data,
 %this subroutine checks it is valid, and assigns associated numerical
 %label. Each time this runs it populates the human annotations in the
@@ -129,11 +138,15 @@ function [] = addPartialVisualLabel(app)
             %complete the classification: add a date, compute the condensed state sequence
             ID = app.annotation_data.current_ID;
             app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.DateClassified = datestr(now, 'dd/mm/yy-HH:MM:SS');
-            app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.User           = app.UserEditField.Value;
             app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.EventSequence  = condenseStateSequence(curr_track(:,end));
+            if isfield(app.movie_data.params, "user") && ~isempty(app.movie_data.params.user)
+                app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.User = app.movie_data.params.user;
+            else
+                app.movie_data.results.VisuallyLabelled.LabelledMols{ID}.User = "Default user";
+            end
             
             %if user asked illustration to happen after labelling, then do this now
-            if app.IllustrateafterlabellingCheckBox.Value == 1
+            if isfield(app.movie_data.params, "illustrate_after_labelling") && app.IllustrateafterlabellingCheckBox.Value == 1
                 SaveillustrationButtonPushed(app);
             end
             
@@ -161,8 +174,17 @@ function [] = addPartialVisualLabel(app)
 
                 %autosave
                 if app.AutosavefrequencytrajectoriesSpinner.Value ~= 0 && mod(app.movie_data.state.event_labeller_current_ID, app.AutosavefrequencytrajectoriesSpinner.Value) == 0
-                    app.textout.Value = ("Autosaving...");
-
+                    app.textout.Value = ("Autosaving, please wait...");
+                    drawnow;
+                    
+                    main_pos = app.DeepTRACEUIFigure.Position;
+                    popup_width = 420;
+                    popup_height = 100;
+                    autosave_popup = uifigure('Name', 'Autosave', 'Position', [main_pos(1) + (main_pos(3)-popup_width)/2, main_pos(2) + (main_pos(4)-popup_height)/2, popup_width, popup_height], 'Resize', 'off', 'CloseRequestFcn', []);
+                    uilabel(autosave_popup, 'Text', ['Autosave in progress, please wait. This may be slow when operating on external drives and when working with large data. You can change the autosave frequency in the [Autosave] subtab.'],...
+                        'FontSize', 12, 'HorizontalAlignment', 'center', 'Position', [20 20 popup_width-40 60], 'WordWrap', 'on');
+                    drawnow;
+                    
                     %define the autosave folder; create if it doesn't already exist
                     autosave_dir = fullfile(app.movie_data.params.ffPath, 'Autosave');
                     if ~exist(autosave_dir, 'dir')
@@ -172,13 +194,16 @@ function [] = addPartialVisualLabel(app)
                     if ~isfield(app.movie_data.params, 'title') || isempty(app.movie_data.params.title)
                         app.movie_data.params.title = "default";
                     end
-                    autosave_name = sprintf('%s_Autosave_%d_mols.mat', app.movie_data.params.title{1}, app.movie_data.state.event_labeller_current_ID);
+                    autosave_name = sprintf('%s_Autosave_%d_mols.mat', char(app.movie_data.params.title), app.movie_data.state.event_labeller_current_ID);
                     autosave_path = fullfile(autosave_dir, autosave_name);
                     
                     %save to disk
                     movie_data  = app.movie_data;
                     save(autosave_path, 'movie_data');
+                    
+                    delete(autosave_popup);
                     app.textout.Value = ("Autosave complete!");
+                    drawnow;
                     
                     %delete non-recent autosave files
                     files = dir(fullfile(autosave_dir, '*.mat'));
@@ -208,34 +233,43 @@ end
 function drawStateRectangle(app, left, width, colour, state_str)
 %Illustrate a state in the human annoation system with a coloured rectangle
 %and name label, Oliver Pambos, 03/06/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: drawStateRectangle
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Much of this code was moved from an earlier version inside
 %addPartialVisualLabel(). This function generates a rectangle, text, and
 %colour associated with a human annotated state. It also assigns a

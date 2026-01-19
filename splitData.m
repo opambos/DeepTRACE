@@ -1,34 +1,43 @@
 function [] = splitData(app)
 %Shuffles and splits labelled data into training, validation, and test
 %datasets with user-defined ratios, Oliver Pambos, 19/04/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: splitData
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function takes user-definite splitting of training, validation, and
 %test dataset, and splits accordingly the human-labelled data currently
 %loaded. Note that this processes is performed differently depending upon
@@ -53,7 +62,7 @@ function [] = splitData(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%invertScalingTransform()
+%invertScalingTransform() - local to this .m file
     
     ratio_train = app.movie_data.models.temp_params.data_split(1);
     ratio_val   = app.movie_data.models.temp_params.data_split(2);
@@ -96,7 +105,7 @@ function [] = splitData(app)
             app.movie_data.results.train_data   = app.movie_data.results.FeatureScaledData.LabelledMols(1:N_train, 1);
             app.movie_data.results.val_data     = app.movie_data.results.FeatureScaledData.LabelledMols(N_train+1:N_train+N_val, 1);
             app.movie_data.results.test_data    = app.movie_data.results.FeatureScaledData.LabelledMols(N_train+N_val+1:end, 1);
-
+            
             %keep a copy of all cell_ID and mol_IDs of molecules in the test set
             app.movie_data.models.temp_params.test_mols = zeros(size(app.movie_data.results.test_data, 1), 2);
             for ii = 1:size(app.movie_data.results.test_data, 1)
@@ -123,7 +132,7 @@ function [] = splitData(app)
             for ii = 1:size(app.movie_data.results.test_data,1)
                 app.movie_data.results.ref_test_data = vertcat(app.movie_data.results.ref_test_data, app.movie_data.results.test_data{ii}.Mol);
             end
-
+            
             %rescale the reference data to produce original features (apply inverse transform of feature scaling)
             invertScalingTransform(app);
             
@@ -188,7 +197,7 @@ function [] = splitData(app)
             app.movie_data.results.train_labels = arrayfun(@(n) app.movie_data.results.train_labels(:,n)', 1:size(app.movie_data.results.train_labels, 2), 'UniformOutput', false);
             app.movie_data.results.val_labels   = arrayfun(@(n) app.movie_data.results.val_labels(:,n)', 1:size(app.movie_data.results.val_labels, 2), 'UniformOutput', false);
             app.movie_data.results.test_labels  = arrayfun(@(n) app.movie_data.results.test_labels(:,n)', 1:size(app.movie_data.results.test_labels, 2), 'UniformOutput', false);
-    
+            
             %reformat each dataset to be a cell array of sequences
             app.movie_data.results.train_data   = squeeze(num2cell(app.movie_data.results.train_data, [1 2]));
             app.movie_data.results.val_data     = squeeze(num2cell(app.movie_data.results.val_data, [1 2]));
@@ -200,36 +209,46 @@ function [] = splitData(app)
 end
 
 
-function invertScalingTransform(app)
+function [] = invertScalingTransform(app)
 %Reverse the scaling transform for feature columns to obtain the original
 %data in the reference dataset Oliver Pambos, 28/04/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%MATLAB FUNCTION: invertScalingTransform
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Reversing the scaling transform of the scaled feature columns is necessary
 %to enable efficient plotting of the data inside the GUI.
 %
@@ -243,7 +262,7 @@ function invertScalingTransform(app)
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
-%invertScalingTransform()
+%None
     
     %extract scaling method and feature columns
     method          = app.movie_data.models.temp_params.feature_scaling;
@@ -270,7 +289,7 @@ function invertScalingTransform(app)
             %reverse min-max normalisation
             min_values = app.movie_data.models.temp_params.feature_mins;
             max_values = app.movie_data.models.temp_params.feature_maxs;
-
+            
             for ii = 1:size(app.movie_data.results.ref_train_data, 2) - 1
                 app.movie_data.results.ref_train_data(:, ii)      = (app.movie_data.results.ref_train_data(:, ii) * (max_values(ii) - min_values(ii))) + min_values(ii);
                 if ~isempty(app.movie_data.results.ref_val_data)
@@ -284,5 +303,3 @@ function invertScalingTransform(app)
             error("Unknown scaling method");
     end
 end
-
-

@@ -1,34 +1,43 @@
 function [movie_data] = convertLoColiToKinetics(movie_data)
 %Processes LoColi struct to incorporate the StormTracker data discarded by
 %LoColi into the tracks matrices, Oliver Pambos, 25/04/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: convertLoColiToKinetics
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Modifies the data struct to re-incorporate data from the StormTracker
 %localisation data into the tracks matrix for each cell. LoColi is a
 %non-public data pipeline local to the Kapanidis lab, Oxford. This software
@@ -44,16 +53,19 @@ function [movie_data] = convertLoColiToKinetics(movie_data)
 %
 %Output
 %------
-%movie_data (struct)    main struct from LoColi with modifications for use in kinetics software
+%movie_data (struct)    main struct from LoColi with modifications for use
+%                           in kinetics software
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %appendLocsToTracks() - local to this .m file
     
     h_convert_waitbar = waitbar(0, "Preparing to translate data from LoColi to DeepTRACE format....");
-    set(h_convert_waitbar, 'WindowStyle', 'modal');
+    %set(h_convert_waitbar, 'WindowStyle', 'modal');
     
     N_cells = size(movie_data.cellROI_data, 1);
+    N_extra_cols = max(0, size(movie_data.cellROI_data(1).localizationData, 2) - 11);
+
     single_cell = false;
     if N_cells == 1
         single_cell = true;
@@ -63,12 +75,31 @@ function [movie_data] = convertLoColiToKinetics(movie_data)
         waitbar(ii/N_cells, h_convert_waitbar, sprintf('Translating data from LoColi to DeepTRACE format for cell %d/%d', ii, N_cells));
         %check track data exists, then append the relevant data to each row in tracks file
         if ~isempty(movie_data.cellROI_data(ii).tracks)
-            movie_data.cellROI_data(ii).tracks = appendLocsToTracks(movie_data.cellROI_data(ii).tracks, movie_data.cellROI_data(ii).localizationData, single_cell, h_convert_waitbar);
+            movie_data.cellROI_data(ii).tracks = appendLocsToTracks(movie_data.cellROI_data(ii).tracks, movie_data.cellROI_data(ii).localizationData, single_cell, h_convert_waitbar, N_extra_cols);
         end
     end
     
     close(h_convert_waitbar);
     
+    %get names for the additional columns outside of LoColi/stormtracker Gaussian fit standard
+    arbitrary_features = {};
+    if N_extra_cols > 0
+        prompt = sprintf("Enter %d comma-separated name(s) for the additional features in localizationData:", N_extra_cols);
+        user_input = inputdlg(prompt, 'Additional Feature Names', [1 60]);
+    
+        if isempty(user_input) || isempty(user_input{1})
+            error("convertLoColiToKinetics:MissingFeatureNames", "User cancelled or did not enter any names.");
+        end
+    
+        arbitrary_features = strtrim(split(user_input{1}, ','));
+    
+        if numel(arbitrary_features) ~= N_extra_cols
+            error("convertLoColiToKinetics:MismatchedFeatureNames", ...
+                  "You entered %d name(s), but %d additional columns were detected.", ...
+                  numel(arbitrary_features), N_extra_cols);
+        end
+    end
+
     %generate the standard LoColi column titles
     movie_data.params.column_titles.tracks = { 'x (px)',...
                                                'y (px)',...
@@ -82,39 +113,57 @@ function [movie_data] = convertLoColiToKinetics(movie_data)
                                                'Theta (angle of elliptical Gauss fit relative to image)',...
                                                'Eccentricity of elliptical Gauss fit',...
                                                'Cell ID'};
+    
+    if N_extra_cols >= 1
+        movie_data.params.arbitrary_feature_cols = 13 : 12+N_extra_cols;
+        movie_data.params.arbitrary_features = arbitrary_features';
+    else
+        movie_data.params.arbitrary_feature_cols    = [];
+        movie_data.params.arbitrary_features        = [];
+    end
 end
 
 
-function [new_tracks] = appendLocsToTracks(tracks, locs, single_cell, h_convert_waitbar)
+function [new_tracks] = appendLocsToTracks(tracks, locs, single_cell, h_convert_waitbar, N_extra_cols)
 %Identifies and concatenates removed localisation data to the corresponding
 %track, Oliver pambos, 25/04/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: appendLocsToTracks
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Input
 %-----
@@ -125,10 +174,13 @@ function [new_tracks] = appendLocsToTracks(tracks, locs, single_cell, h_convert_
 %                                   finer updates
 %h_convert_waitbar  (handle)    waitbar handle - used here if there is only
 %                                   a single cell to provide finer updates
+%N_extra_cols       (int)       number of additional arbitrary feature
+%                                   columns beyond default number
 %
 %Output
 %------
-%new_tracks (mat)   individual track data concatenated with missing localisation data
+%new_tracks (mat)   individual track data concatenated with missing
+%                       localisation data
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
@@ -136,9 +188,10 @@ function [new_tracks] = appendLocsToTracks(tracks, locs, single_cell, h_convert_
     
     %new matrix to store the appended data
     new_tracks = tracks;
-    
+
     N_rows = size(tracks, 1);
-    
+    N_cols = size(locs, 2);
+
     %duplicate code here is intentional: single_cell bool test outside loops ensures granular mod()
     %tests are not applied to typical datasets in which progress is displayed per-cell
     if single_cell
@@ -150,21 +203,21 @@ function [new_tracks] = appendLocsToTracks(tracks, locs, single_cell, h_convert_
             if mod(ii, 1000) == 0
                 waitbar(ii/N_rows, h_convert_waitbar, sprintf('Integrating localisation fitting data (%d/%d)', ii, N_rows));
             end
-            
+
             %create a logical index for the rows in locs that match the current row in tracks
             locs_rows = (locs(:, 2) == tracks(ii, 1)) & (locs(:, 3) == tracks(ii, 2)) & (locs(:, 1) == tracks(ii, 3));
-            
-            %append the contents of columns 4 to 10 of locs to the current row in new_tracks
-            new_tracks(ii, 5:12) = locs(locs_rows, 4:11);
+
+            %append the contents of columns 4 to end of locs to the current row in new_tracks
+            new_tracks(ii, 5:(N_cols + 1)) = locs(locs_rows, 4:end);        %check with no arb, and 1 arb
         end
     else
         %loop over rows in tracks
         for ii = 1:N_rows
             %create a logical index for the rows in locs that match the current row in tracks
             locs_rows = (locs(:, 2) == tracks(ii, 1)) & (locs(:, 3) == tracks(ii, 2)) & (locs(:, 1) == tracks(ii, 3));
-            
+
             %append the contents of columns 4 to 10 of locs to the current row in new_tracks
-            new_tracks(ii, 5:12) = locs(locs_rows, 4:11);
+            new_tracks(ii, 5:(12 + N_extra_cols)) = locs(locs_rows, 4:end);
         end
     end
 end

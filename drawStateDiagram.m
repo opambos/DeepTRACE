@@ -1,33 +1,42 @@
 function [] = drawStateDiagram(state_names, state_occupancies, transition_matrix, state_colours)
 %Draw a state transition diagram, Oliver Pambos, 14/11/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: drawStateDiagram
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Matlab's state diagrams are ugly, and I can find no obvious open source
 %alternative. This solves that problem.
 %
@@ -65,20 +74,32 @@ function [] = drawStateDiagram(state_names, state_occupancies, transition_matrix
 %Inputs
 %------
 %state_names        (cell)  the names of each state in the system
-%                               example for five state: state_names = {'Bound'; 'Mobile'; 'Fast'; 'Free'; 'Unknown'};
-%state_occupancies  (vec)   column vector of floats containing the total time spent in each state; these determine the areas of the state circles in the diagram
-%                               example for five states: state_occupancies = [4810; 3150; 8102; 6923; 5123];
-%transition_matrix  (mat)   NxN matrix of the transition rates to and from each state;
-%                               these are used for labels next to each line; the leading diagonal is zeros;
-%                               all missing transitions should be set to zero
-%                               example for five state: transition_matrix = [0,0.1,0.3,0.2,0.5; 0.3,0,0.2,0.5,0.8; 0.5,0.2,0,0.7,0.1; 0.2,0.4,0.1,0,0.4; 0.1,0.5,0.3,0.4,0];
-%state_colours      (mat)   Nx3 matrix of RGB values that represent the colours of each of N states
-%                               example for five states: state_colours = [1,0,0; 0,0,1; 0,1,0; 0.5,0.5,0.5; 0,0,0];
-%                               for a non-coloured diagram set the input of state_colours to be zeros(N,3), where N is the number of states
+%                               example for five state: state_names =
+%                               {'Bound'; 'Mobile'; 'Fast'; 'Free';
+%                               'Unknown'};
+%state_occupancies  (vec)   column vector of floats containing the total
+%                               time spent in each state; these determine
+%                               the areas of the state circles in the
+%                               diagram example for five states:
+%                               state_occupancies = [4810; 3150; 8102; 6923; 5123];
+%transition_matrix  (mat)   NxN matrix of the transition rates to and from
+%                               each state; these are used for labels next
+%                               to each line; the leading diagonal is
+%                               zeros; all missing transitions should be
+%                               set to zero example for five state:
+%                                   transition_matrix = [0,0.1,0.3,0.2,0.5; 0.3,0,0.2,0.5,0.8; 0.5,0.2,0,0.7,0.1; 0.2,0.4,0.1,0,0.4; 0.1,0.5,0.3,0.4,0];
+%state_colours      (mat)   Nx3 matrix of RGB values that represent the
+%                                   colours of each of N states example for
+%                                   five states:
+%                                       state_colours = [1,0,0; 0,0,1; 0,1,0; 0.5,0.5,0.5; 0,0,0];
+%                                   for a non-coloured diagram set the
+%                                   input of state_colours to be
+%                                   zeros(N,3), where N is the number of
+%                                   states
 %
 %Output
 %------
-%   ---- there is no current output to this function aside from a graphical figure ----
+%None
 %
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
@@ -103,16 +124,18 @@ function [] = drawStateDiagram(state_names, state_occupancies, transition_matrix
     R = 5 * max(radii);             %radius of larger invisible template circle
     
     %set up figure
-    h_fig = figure;
+    h_fig = figure('MenuBar', 'none');
     h_ax = gca;
     hold on;
     axis equal;
+    axis off;
+    h_ax.Position = [0.05 0.05 0.9 0.9];  %shrink whitespace around plotting area
     xlim(h_ax, [-R-max(radii)*1.1, R+max(radii)]*1.1);
     ylim(h_ax, [-R-max(radii)*1.1, R+max(radii)]*1.1);
     title("State transition diagram for all states");
     set(h_fig,'Color','w');
     axis off;
-    set(h_fig, 'Position', [200, 200, 800, 800]);
+    set(h_fig, 'Position', [100, 100, 700, 600]);
     
     %angle between each circle
     angular_spacing = 2 * pi / N;
@@ -189,34 +212,43 @@ end
 function [line_points, midpoint, theta] = genTransitionLine(coords, midpoint_offset)
 %Generate the points of a curved line between two state circles, 
 %Oliver Pambos, 14/11/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: genTransitionLine
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This takes the coordinates of two points, rotates them to horizontal,
 %generates a midpoint, which is offset, applies a polyfit of order 2
 %(quadratic) to generate 100 points on a curved line, and then rotates
@@ -226,16 +258,21 @@ function [line_points, midpoint, theta] = genTransitionLine(coords, midpoint_off
 %
 %Input
 %-----
-%coords             (mat)       2x2 matrix of (x,y) coordinates, which are the centres of two state circles
-%midpoint_offset    (float)     offset of midpoint relative to the distance between circle centres, larger here is higher curvature,
-%                                   0:  no curvature
-%                                   1:  a semi circle
-%                                   >1: higher than circular curvature
-%                                   0.1 - 0.2: optimum
+%coords             (mat)       2x2 matrix of (x,y) coordinates, which are
+%                                   the centres of two state circles
+%midpoint_offset    (float)     offset of midpoint relative to the distance
+%                                   between circle centres, larger here is
+%                                   higher curvature,
+%                                       0:  no curvature
+%                                       1:  a semi circle
+%                                       >1: higher than circular curvature
+%                                       0.1 - 0.2: optimum
 %
 %Output
 %------
-%line               (mat)       100x2 matrix containing (x,y) coordinates for 100 points defining the curved line between two points
+%line               (mat)       100x2 matrix containing (x,y) coordinates
+%                                   for 100 points defining the curved line
+%                                   between two points
 %midpoint           (vec)       row vector containing the coordinates of the midpoint
 %theta              (float)     angle between line connecting the original two points
 %
@@ -264,35 +301,46 @@ function [line_points, midpoint, theta] = genTransitionLine(coords, midpoint_off
     midpoint    = rotate2D(midpoint, theta);    
 end
 
+
 function [tri] = positionTri(arr_len, arr_wid, midpoint, theta)
 %Position triangle at midpoint of curved line, Oliver Pambos 14/11/2023.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: positionTri
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
 %
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------

@@ -1,34 +1,43 @@
 function [] = genDHistograms(app)
 %Generates a diffusion histograms for annotated data, Oliver Pambos
 %27/11/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: genDHistograms
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Generates diffusion histograms for every segmented class/state present in
 %the dataset. This function provides options for plotting diffusion
 %histograms for all unique tracks in the currently selected results data
@@ -85,17 +94,17 @@ function [] = genDHistograms(app)
 %compileMSDMatrixFast()
 %fitGammas()
     
-    %check valid data available
-    if ~isprop(app, "movie_data")
-        warndlg("You must load a data file before performing downstream analysis", "No data loaded!");
-        app.textout.Value = "You must load a data file before performing downstream analysis!";
-        return;
-    end
-    if ~isfield(app.movie_data, "results") && isfield(app.movie_data.results, "Insight data")
-        warndlg("You must select a valid segmentation source before performing diffusion analysis. In the [Insights] tab, select the [Dataset overview] sub-tab, and select a dataset from the [Source data] dropdown menu.", "No segmented data available yet!");
-        app.textout.Value = "You must select a valid segmentation source before performing diffusion analysis. In the [Insights] tab, select the [Dataset overview] sub-tab, and select a dataset from the [Source data] dropdown menu.";
-        return;
-    end
+    %check valid data available - checks have been superseded by catchInvalidComponentActions()
+    % if ~isprop(app, "movie_data")
+    %     warndlg("You must load a data file before performing downstream analysis", "No data loaded!");
+    %     app.textout.Value = "You must load a data file before performing downstream analysis!";
+    %     return;
+    % end
+    % if ~isfield(app.movie_data, "results") && isfield(app.movie_data.results, "Insight data")
+    %     warndlg("You must select a valid segmentation source before performing diffusion analysis. In the [Insights] tab, select the [Dataset overview] sub-tab, and select a dataset from the [Source data] dropdown menu.", "No segmented data available yet!");
+    %     app.textout.Value = "You must select a valid segmentation source before performing diffusion analysis. In the [Insights] tab, select the [Dataset overview] sub-tab, and select a dataset from the [Source data] dropdown menu.";
+    %     return;
+    % end
 
     if strcmp(app.DiffusionHistStateDropDown.Value, "<< Select state >>")
         warndlg("You must select a valid state from the from the [State] dropdown menu.", "No state selected!");
@@ -165,7 +174,7 @@ function [] = genDHistograms(app)
                 xlabel(app.UIAxes_compiled_events, 'Diffusion coefficient (\mum^2/s)');
                 ylabel(app.UIAxes_compiled_events, 'Number of tracks');
             else
-                h_fig = figure;
+                h_fig = figure('MenuBar', 'none');
                 ax = axes(h_fig);
                 h = histogram(diffusion_coeffs, 'BinWidth', app.DiffusionHistBinSizeSpinner.Value);
                 ylim(ax, [0, ceil(max(h.Values) * 1.05)]);  %rescale y-axis to provide 5% headroom
@@ -306,7 +315,7 @@ function [] = genDHistograms(app)
                 legend(app.UIAxes_compiled_events, legend_labels, 'Location', 'Best');
             else
                 %in new figure
-                h_fig = figure;
+                h_fig = figure('MenuBar', 'none');
                 ax = axes(h_fig);
                 b = bar(ax, bin_edges(1:end-1) + bin_width / 2, hist_counts', 'stacked', 'BarWidth', 0.9);
                 ylim(ax, [0, ceil(max(sum(hist_counts, 1)) * 1.05)]);
@@ -430,7 +439,7 @@ function [] = genDHistograms(app)
                 title(app.UIAxes_compiled_events, sprintf('Diffusion coefficient histogram for %d subtracks in state %s', N_subtracks, selected_class));
             else
                 %plot in external figure
-                h_fig = figure;
+                h_fig = figure('MenuBar', 'none');
                 ax = axes(h_fig);
                 h = histogram(ax, diffusion_coeffs, 'BinWidth', app.DiffusionHistBinSizeSpinner.Value);
                 ylim(ax, [0, ceil(max(h.Values) * 1.05)]);  %add extra 5% headroom

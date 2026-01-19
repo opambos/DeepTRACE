@@ -1,42 +1,51 @@
 function [load_successful] = loadAnalysis(app)
-%Load an existing DeepTRACKS analysis file, and configure the GUI control
+%Load an existing DeepTRACE analysis file, and configure the GUI control
 %state to reflect the saved state, Oliver Pambos, 20/02/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: loadAnalysis
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function modularizes the file loading functionality for the GUI. It
-%loads a saved DeepTRACKS analysis file, updates the GUI controls to
+%loads a saved DeepTRACE analysis file, updates the GUI controls to
 %reflect the saved state, and ensures that the core analysis data is loaded
 %correctly.
 %
 %This function distinguishes between different file types using the
 %'filtered_track_IDs' field, which is always present after data preparation
-%in DeepTRACKS, and absent in files output from input pipelines such as
+%in DeepTRACE, and absent in files output from input pipelines such as
 %LoColi. While a versioning field could be introduced, it would necessitate
 %updating all older saved files, which may not be practical.
 %
@@ -70,6 +79,13 @@ function [load_successful] = loadAnalysis(app)
 %checkFluorFilePaths()  - local to this .m file
     
     load_successful = false;
+
+    %record username to prevent overwrite on file load
+    if isprop(app, "movie_data") && isfield(app.movie_data, "params") && isfield(app.movie_data.params, "user")
+        username = app.movie_data.params.user;
+    else
+        username = "Default user";
+    end
     
     %track loading errors
     gui_load_error      = false;
@@ -78,9 +94,9 @@ function [load_successful] = loadAnalysis(app)
     %========================
     %Part 1: load tracks data
     %========================
-    %user provides DeepTRACKS analysis file
-    app.textout.Value = "Please select a DeepTRACKS analysis file,";
-    [file, path] = uigetfile({'*.mat', 'DeepTRACKS analysis file (.mat)'}, 'Select a DeepTRACKS analysis file.');
+    %user provides DeepTRACE analysis file
+    app.textout.Value = "Please select a DeepTRACE analysis file,";
+    [file, path] = uigetfile({'*.mat', 'DeepTRACE analysis file (.mat)'}, 'Select a DeepTRACE analysis file.');
     %check user didn't cancel
     if isequal(file, 0) || isequal(path, 0)
         return;
@@ -163,6 +179,9 @@ function [load_successful] = loadAnalysis(app)
     
     %clear the existing event labelling buttons
     delete(app.Event_label_buttons.Children);
+
+    %write the current user's name back to params struct
+    app.movie_data.params.user = username;
     
     %notify user regarding loaded data state
     if gui_load_error
@@ -187,40 +206,53 @@ function [fluorpath_OK] = checkFluorFilePaths(app, analysis_path)
 %Check if the file is correctly linked to the fluorescence video files, and
 %prompt user to reconnect file path if necessary, Oliver Pambos,
 %13/08/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: checkFluorFilePaths
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %This function performs a check to ensure the fluorescence video files are
 %correctly linked within within the app.movie_data.params struct. If
 %linking is incorrect it provides the user with the opportunity to identify
 %the correct path using the path selection GUI tool. This improves
 %portability between machines, and inter-operability between different
 %operating systems.
+%
+%The app.movie_data.params.ffFile cell/char issue is inherited from
+%integration of LoColi pipeline during early development, this will be
+%addressed more robustly in a future update.
 %
 %The order of fluorescence file linking is as follows,
 %   1. Exact path defined by ffPath
@@ -242,14 +274,20 @@ function [fluorpath_OK] = checkFluorFilePaths(app, analysis_path)
     
     fluorpath_OK = false;
     
+    %if app.movie_data.params.ffFile is a char arr (i.e. if only one fluor file then convert to cell, see header notes)
+    ff_files = app.movie_data.params.ffFile;
+    if ischar(ff_files) || isstring(ff_files)
+        ff_files = cellstr(ff_files);
+    end
+
     %check if (i) the folder described in ffPath exists on this machine, and (ii) that the files held in ffFile are in that folder
-    if isfolder(app.movie_data.params.ffPath) && all(cellfun(@(file) isfile(fullfile(app.movie_data.params.ffPath, file)), app.movie_data.params.ffFile))
+    if isfolder(app.movie_data.params.ffPath) && all(cellfun(@(file) isfile(fullfile(app.movie_data.params.ffPath, file)), ff_files))
         %all files exist, continue as normal
         fluorpath_OK = true;
         return;
     
     %elseif all files can be found in the same directory as the loaded analysis file
-    elseif all(cellfun(@(file) isfile(fullfile(analysis_path, file)), app.movie_data.params.ffFile))
+    elseif all(cellfun(@(file) isfile(fullfile(analysis_path, file)), ff_files))
         app.movie_data.params.ffPath = analysis_path;
         fluorpath_OK = true;
         return;
@@ -267,7 +305,7 @@ function [fluorpath_OK] = checkFluorFilePaths(app, analysis_path)
             return;
         else
             %check if files exist in new path
-            new_files_exist = all(cellfun(@(file) isfile(fullfile(new_path, file)), app.movie_data.params.ffFile));
+            new_files_exist = all(cellfun(@(file) isfile(fullfile(new_path, file)), ff_files));
             
             %if files exist update ffPath with new path and continue, otherwise warn user and exit
             if new_files_exist

@@ -1,32 +1,43 @@
 function [] = genAnnotationVideo(app)
 %Generate an animated GIF visualizing the annotated tracks synchronised
 %with the fluorescence video, Oliver Pambos, 03/08/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: genAnnotationVideo
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
 %
 %Inputs
 %------
@@ -39,6 +50,7 @@ function [] = genAnnotationVideo(app)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %plotVideoTrackByColor() - local to this .m file
+%extractVideo()
     
     cell_ID = str2double(app.InspectCellID.Text);
     mol_ID  = str2double(app.InspectMolID.Text);
@@ -137,7 +149,7 @@ function [] = genAnnotationVideo(app)
     end
     % average_min_intensity = min(video(:, :, 1:10), [], 'all');
     % average_max_intensity = max(video(:, :, 1:10), [], 'all');
-
+    
     if app.FlipvideoverticallyCheckBox.Value
         video = flipud(video);
     end
@@ -151,16 +163,24 @@ function [] = genAnnotationVideo(app)
     
     %generate tiled layout
     num_tiles = numel(structs_to_use) + 1;
-    fig = figure('Color', 'white', 'Position', [100, 100, 1200, 800]);
+    fig = figure('Color', 'white', 'Position', [100, 100, 1200, 800], 'Visible', 'off');    %render off-screen
+    %fig.WindowState = 'minimized';
     t = tiledlayout(1, num_tiles, 'Padding', 'compact', 'TileSpacing', 'compact');
     
     %first tile is fluorescence video
     ax_fluorescence = nexttile(t);
     %title(ax_fluorescence, 'Fluorescence Video');
-
-    requested_annotations{1} = 'Ground truth';
-    requested_annotations{end} = 'Model annotations';
-
+    
+    title_map = containers.Map({'GroundTruth', 'VisuallyLabelled','LSTMLabelled','BiLSTMLabelled', 'RFLabelled',   'GRULabelled','BiGRULabelled','ResAnDi'}, ...
+                               {'Ground truth','Human',           'LSTM model',  'BiLSTM model',   'Random forest','GRU model',  'BiGRU model',  'ResAnDi2'});
+    
+    %replace requested_annotations entries using the map
+    for ii = 1:numel(structs_to_use)
+        if isKey(title_map, structs_to_use{ii})
+            requested_annotations{ii} = title_map(structs_to_use{ii});
+        end
+    end
+    
     %subsequent tiles are annotation sources
     ax = gobjects(num_tiles - 1, 1);
     for ii = 1:numel(structs_to_use)
@@ -182,6 +202,8 @@ function [] = genAnnotationVideo(app)
         title(ax(ii), requested_annotations{ii}, 'FontSize', 18, 'Units', 'normalized', 'Position', [0.5, 1.01, 0]);
     end
     
+    h_waitbar = waitbar(0,'Generating annotation video...');
+    N_frames  = frame_hi - frame_lo + 1;
     %iterate over each frame
     for frame_idx = frame_lo:frame_hi
         %display fluorescence video frame
@@ -204,6 +226,7 @@ function [] = genAnnotationVideo(app)
         end
         
         %capture the frame and write to GIF
+        drawnow;
         frame = getframe(fig);
         im = frame2im(frame);
         [imind, cm] = rgb2ind(im, 256);
@@ -212,43 +235,73 @@ function [] = genAnnotationVideo(app)
         else
             imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', delay_time);
         end
+
+        if ishandle(h_waitbar)
+            waitbar((frame_idx - frame_lo + 1) / N_frames, h_waitbar);
+        end
     end
     
+    if ishandle(h_waitbar)
+        close(h_waitbar);
+    end
     close(fig);
+    
+    drawnow;
+    
+    gif_full = fullfile(pwd, gif_filename);
+    
+    if ismac
+        system(sprintf('open -a "Safari" "%s" &', gif_full));
+    elseif ispc
+        system(sprintf('start "" "%s"', gif_full));
+    else
+        system(sprintf('xdg-open "%s" &', gif_full));
+    end
+
+    app.textout.Value = "A video illustration has been generated, drag and drop into your browser the animated gif (" + gif_full + ") into a web browser to watch the rendered annotation sequence.";
 end
 
 
 function [] = plotVideoTrackByColor(ax, track_data, event_label_colours, overlay_offset)
 %plots a track into an existing figure axes with steps coloured by
 %annotated state, Oliver Pambos, 03/08/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: plotVideoTrackByColor
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Note that this is an (almost) identical copy of plotTrackByColor() in
 %plotAnnotatedTrack.m. The difference is in the number of columns passed
 %into track_data. This function could be generalised by assigning,
@@ -309,7 +362,12 @@ function [] = plotVideoTrackByColor(ax, track_data, event_label_colours, overlay
         start_idx = max(1, start_idx - 1);
         
         %lookup color of current segment
-        color = event_label_colours(states(end_idx), :);
+        curr_state = states(end_idx);
+        if curr_state > 0
+            color = event_label_colours(states(end_idx), :);
+        else
+            color = [0.6, 0.6, 0.6];
+        end
         
         %plot segment
         plot(ax, x(start_idx:end_idx), y(start_idx:end_idx), 'Color', color, 'LineWidth', 1.5);

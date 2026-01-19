@@ -1,34 +1,43 @@
 function [] = labelWithSlidingWindow(app, model_type)
 %Label the entire loaded dataset with a pre-trained model in sections
 %using a sliding window, Oliver Pambos, 02/02/2024.
-%oliver.pambos@physics.ox.ac.uk
 %
-%
-%MATLAB FUNCTION: labelWithSlidingWindow
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD, UK
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
 %CONTACT: oliver.pambos@physics.ox.ac.uk
 %
-%LEGAL DISCLAIMER
-%THIS CODE IS INTENDED FOR USE ONLY BY INDIVIDUALS WHO HAVE RECEIVED
-%EXPLICIT AUTHORIZATION FROM THE AUTHOR, OLIVER JAMES PAMBOS. ANY FORM OF
-%COPYING, REDISTRIBUTION, OR UNAUTHORIZED USE OF THIS CODE, IN WHOLE OR IN
-%PART, IS PROHIBITED. BY USING THIS CODE, USERS SIGNIFY THAT THEY HAVE
-%READ, UNDERSTOOD, AND AGREED TO BE BOUND BY THE TERMS OF SERVICE PRESENTED
-%UPON SOFTWARE LAUNCH, INCLUDING THE REQUIREMENT FOR CO-AUTHORSHIP ON ANY
-%RELATED PUBLICATIONS. THIS APPLIES TO ALL LEVELS OF USE, INCLUDING PARTIAL
-%USE OR MODIFICATION OF THE CODE OR ANY OF ITS EXTERNAL FUNCTIONS.
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
 %
-%USERS ARE RESPONSIBLE FOR ENSURING FULL UNDERSTANDING AND COMPLIANCE WITH
-%THESE TERMS, INCLUDING OBTAINING AGREEMENT FROM THE APPROPRIATE
-%PUBLICATION DECISION-MAKERS WITHIN THEIR ORGANIZATION OR INSTITUTION.
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
 %
-%NOTE: UPON PUBLIC RELEASE OF THIS SOFTWARE, THESE TERMS MAY BE SUBJECT TO
-%CHANGE. HOWEVER, USERS OF THIS PRE-RELEASE VERSION ARE STILL BOUND BY THE
-%CO-AUTHORSHIP AGREEMENT FOR ANY USE MADE PRIOR TO THE PUBLIC RELEASE. THE
-%RELEASED VERSION WILL BE AVAILABLE FROM A DESIGNATED ONLINE REPOSITORY
-%WITH POTENTIALLY DIFFERENT USAGE CONDITIONS.
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
 %
 %
+%DESIGN AND CONTEXT
 %Moves a sliding window through a trajectory predicting classes for the
 %entire trajectory. As the sliding window passes each frame we obtain the
 %confidence per class for every localisation in every window. As each
@@ -57,6 +66,11 @@ function [] = labelWithSlidingWindow(app, model_type)
 %which the data is stored for downstream processing. Any future performance
 %improvements should focus on this part of the process.
 %
+%To handle memory more robustly on specific hardware configurations, a
+%temporary change has been made to evaluation which involves two additional
+%matrix/dlarray conversions and evaluation in chunks, which substantially
+%slows evaluation.
+%
 %
 %Input
 %-----
@@ -70,14 +84,18 @@ function [] = labelWithSlidingWindow(app, model_type)
 %Dependent functions (excluding callbacks)
 %-----------------------------------------
 %cropTrajectories()
-%computeConsensus()     - local to this .m file
-%reformatToDLArray()    - local to this .m file
+%computeConsensus()
+%reformatToDLArray()
     
     %construct a dynamic field name, enabling this code to work with any model type
     model_label_field = [model_type 'Labelled'];
 
     %clear any pre-existing labelled data for the given model type
     app.movie_data.results.(model_label_field) = [];
+    
+    %single access of timestamp and frame rate
+    timestamp_str   = datestr(now, 'dd/mm/yy-HH:MM:SS');
+    frame_rate      = app.movie_data.params.frame_rate;
     
     %copy over every track to the empty struct
     count = 1;
@@ -90,8 +108,8 @@ function [] = labelWithSlidingWindow(app, model_type)
             app.movie_data.results.(model_label_field).LabelledMols{count,1}.CellID = ii;
             app.movie_data.results.(model_label_field).LabelledMols{count,1}.MolID = app.movie_data.cellROI_data(ii).filtered_track_IDs(jj);
             app.movie_data.results.(model_label_field).LabelledMols{count,1}.EventSequence = 'pending';
-            app.movie_data.results.(model_label_field).LabelledMols{count,1}.MoleculeDuration = size(app.movie_data.results.(model_label_field).LabelledMols{count,1}.Mol,1) / app.movie_data.params.frame_rate;      %in seconds; note that this current implementation does not factor in memory param; to be later replaced with calculation based on start-finish frame numbers as these are required for input file regardless of source data
-            app.movie_data.results.(model_label_field).LabelledMols{count,1}.DateClassified = datestr(now, 'dd/mm/yy-HH:MM:SS');
+            app.movie_data.results.(model_label_field).LabelledMols{count,1}.MoleculeDuration = size(app.movie_data.results.(model_label_field).LabelledMols{count,1}.Mol,1) / frame_rate;      %in seconds; note that this current implementation does not factor in memory param; to be later replaced with calculation based on start-finish frame numbers as these are required for input file regardless of source data
+            app.movie_data.results.(model_label_field).LabelledMols{count,1}.DateClassified = timestamp_str;
             
             count = count + 1;
         end
@@ -148,10 +166,47 @@ function [] = labelWithSlidingWindow(app, model_type)
             error('Unknown feature scaling method.');
     end
     
+    %=================================================================
+    %Temporary implementation of classification: dlarray to matrix
+    %conversion and evaluation in small chunks introduces significant
+    %overhead but handles memory allocation issues on certain hardware
+    %configurations - increases runtime from ~900 ms to ~20 s
+    %=================================================================
     tic
     %classify all tracks
-    raw_scores = predict(app.movie_data.models.(model_type).model, scaled_data_dlarray);
+    % raw_scores = predict(app.movie_data.models.(model_type).model, scaled_data_dlarray);
+    
+    %extract matrix from dlarray
+    scaled_data_matrix  = extractdata(scaled_data_dlarray);
+    B                   = size(scaled_data_matrix, 2);
+    max_batch_size      = 10000;
+    
+    if B <= max_batch_size
+        %process all results in one operation
+        raw_scores = predict(app.movie_data.models.(model_type).model, dlarray(scaled_data_matrix, 'CBT'));
+    else
+        %too large; process in chunks
+        N_chunks            = ceil(B / max_batch_size);
+        raw_scores_chunks   = cell(1, N_chunks);
+        h_wait              = waitbar(0, sprintf('Processing batch 0/%d', N_chunks));
+        
+        for ii = 1:N_chunks
+            %extract matrix batch and convert to dlarray for prediction
+            start_idx   = (ii - 1) * max_batch_size + 1;
+            end_idx     = min(ii * max_batch_size, B);
+            
+            waitbar(ii/N_chunks, h_wait, sprintf('Processing batch %d/%d: [%d to %d]', ii, N_chunks, start_idx, end_idx));
+            
+            batch_dlarray = dlarray(scaled_data_matrix(:, start_idx:end_idx, :), 'CBT');
+            raw_scores_chunks{ii} = predict(app.movie_data.models.(model_type).model, batch_dlarray);
+        end
+        
+        %reconstruct raw_scores
+        raw_scores = cat(2, raw_scores_chunks{:});
+    end
+    
     t = toc;
+    close(h_wait);
     
     %convert raw scores to probabilities
     probabilities = softmax(raw_scores);

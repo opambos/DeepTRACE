@@ -1,4 +1,5 @@
 # DeepTRACE
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18869232.svg)](https://doi.org/10.5281/zenodo.18869232)
 
 DeepTRACE is the software accompanying Pambos, O.J. _et al._ **DeepTRACE: Flexible Machine Learning for Analysis and Discovery in Single Molecule Tracks.** _bioRxiv_ (2025). [https://doi.org/10.1101/2025.05.15.654348](https://doi.org/10.1101/2025.05.15.654348)
 

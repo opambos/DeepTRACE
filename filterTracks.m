@@ -109,6 +109,8 @@ function [filter_status] = filterTracks(app)
         end
     end
     
+    focus(app.DeepTRACEUIFigure);
+
     %record filtering method
     app.movie_data.params.filtering_method  = selection_ID;
     
@@ -120,7 +122,6 @@ function [filter_status] = filterTracks(app)
             
         case 'truncate_tracks'
             
-            focus(app.DeepTRACEUIFigure);
             f = waitbar(0,'Processing tracks; please wait....','Name','Filtering tracks');
             %identify clashing tracks, and short tracks
             %loop over all cells
@@ -148,7 +149,7 @@ function [filter_status] = filterTracks(app)
                         app.movie_data.cellROI_data(ii).tracks(idx,:) = [];
                     end
                 end
-
+                
                 waitbar(ii/size(app.movie_data.cellROI_data,1), f, strcat('Processing cell #', num2str(ii), {' '}, 'of', {' '}, num2str(size(app.movie_data.cellROI_data,1))));
             end
             
@@ -167,30 +168,59 @@ function [filter_status] = filterTracks(app)
             %identify clashing tracks, and short tracks
             %loop over all cells
             for ii = 1:size(app.movie_data.cellROI_data,1)
+                if isempty(app.movie_data.cellROI_data(ii).tracks)
+                    continue;
+                end
+
                 %identify all tracks that fall within 'buffer' frames of one another
                 %and identify all overlapping frames
                 [track_conflicts, ~] = identifyOverlaps(app.movie_data.cellROI_data(ii).tracks, track_buffer);
                 
-                    %compile a list of short tracks
-                    short_tracks = identifyShortTracks(app.movie_data.cellROI_data(ii).tracks, min_track_len);
-                    
-                    %combine with short tracks and tidy up
-                    del_tracks = cat(1, track_conflicts, short_tracks);
-                    del_tracks = unique(del_tracks);
-                    
-                    for kk = 1:size(del_tracks, 1)
-                        idx = find(app.movie_data.cellROI_data(ii).tracks(:,4) == del_tracks(kk));
-                        app.movie_data.cellROI_data(ii).tracks(idx,:) = [];
-                    end
-                    
+                %compile a list of short tracks
+                short_tracks = identifyShortTracks(app.movie_data.cellROI_data(ii).tracks, min_track_len);
+                
+                %combine with short tracks and tidy up
+                del_tracks = cat(1, track_conflicts, short_tracks);
+                del_tracks = unique(del_tracks);
+                
+                for kk = 1:size(del_tracks, 1)
+                    idx = find(app.movie_data.cellROI_data(ii).tracks(:,4) == del_tracks(kk));
+                    app.movie_data.cellROI_data(ii).tracks(idx,:) = [];
+                end
+                
                 waitbar(ii/size(app.movie_data.cellROI_data,1), f, strcat('Processing cell #', num2str(ii), {' '}, 'of', {' '}, num2str(size(app.movie_data.cellROI_data,1))));
             end
+
             close(f);
             filter_status = "Successfully eliminated by tracks";
 
-        case {'keep all_tracks', 'keep all_localisations'}
-            %currently do nothing
+        case {'length only_tracks', 'length only_localisations'}
+
+            f = waitbar(0,'Processing tracks, please wait....', 'Name', 'Filtering tracks by length only');
+            
+            %loop over all cells
+            for ii = 1:size(app.movie_data.cellROI_data,1)
+                if isempty(app.movie_data.cellROI_data(ii).tracks)
+                    continue;
+                end
+                
+                %compile a list of short tracks
+                del_tracks = identifyShortTracks(app.movie_data.cellROI_data(ii).tracks, min_track_len);
+
+                %eliminate short tracks
+                for kk = 1:size(del_tracks, 1) 
+                    idx = find(app.movie_data.cellROI_data(ii).tracks(:,4) == del_tracks(kk));
+                    app.movie_data.cellROI_data(ii).tracks(idx,:) = [];
+                end
+                
+                waitbar(ii/size(app.movie_data.cellROI_data,1), f, strcat('Processing cell #', num2str(ii), {' '}, 'of', {' '}, num2str(size(app.movie_data.cellROI_data,1))));
+            end
+
+            close(f);
+            filter_status = "Completed track elimination by length only.";
+
         otherwise
+
     end
 end
 

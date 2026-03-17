@@ -131,6 +131,8 @@ function [] = prepData(app)
         app.textout.Value = "Tracks were filtered by truncation against all tracks associated with their parent cell.";
     elseif strcmp(filter_status, "Successfully eliminated by tracks")
         app.textout.Value = "Tracks were filtered by elimination against all tracks associated with their parent cell.";
+    elseif strcmp(filter_status, "Completed track elimination by length only.")
+        app.textout.Value = "Tracks filtering was skipped at the request of the user.";
     else
         app.textout.Value = "Track filtering failed due to an known error. Please try again.";
         warning("Track filtering failed due to an known error. Please try again");

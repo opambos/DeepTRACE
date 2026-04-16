@@ -1,4 +1,4 @@
-function [] = loadDataset(app, tracking_pipeline)
+function [] = loadDataset(app, input_pipeline)
 %Load and prepare a new dataset, Oliver Pambos, 02/05/2024.
 %
 %AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
@@ -80,6 +80,7 @@ function [] = loadDataset(app, tracking_pipeline)
 %findColumnIdx()
 %loadLoColiData()           - local to this .m file
 %loadSeparateSegTracks()    - local to this .m file
+%loadPicassoDataset()       - local to this .m file
 %genStructFromSegFile()     - local to this .m file
 %genROIVertices()           - local to this .m file
 %removeCollinearVertices()  - local to this .m file
@@ -105,19 +106,28 @@ function [] = loadDataset(app, tracking_pipeline)
     app.movie_data.params.pipeline = "Unknown";
     
     %load data according to user selection
-    switch tracking_pipeline
+    switch input_pipeline
         case 'LoColi'
             app.textout.Value = 'Loading LoColi data...';
             loadLoColiData(app);
             
         case {'TrackMate', 'TrackPy'}
-            app.textout.Value = "You have selected to load tracking data from the " + tracking_pipeline + " tracking pipeline. Please provide the corresponding tracking, cell segmentation, and reference images for your dataset using the pop-up.";
-            app.movie_data.params.pipeline = tracking_pipeline;
+            app.textout.Value = "You have selected to load tracking data from the " + input_pipeline + " tracking pipeline. Please provide the corresponding tracking, cell segmentation, and reference images for your dataset using the pop-up.";
+            app.movie_data.params.pipeline = input_pipeline;
             data_loaded = loadSeparateSegTracks(app);
-            if ~data_loaded
+            if ~data_loaded 
                 app.textout.Value = 'Data was not loaded successfully. Please try again.';
                 return;
             end
+
+        case 'Picasso'
+            app.textout.Value = "You have selected to load localisation data from " + input_pipeline + ". Please provide the corresponding .hdf5 localisation file, cell segmentation, and reference images for your dataset using the pop-up GUI.";
+            app.movie_data.params.pipeline = input_pipeline;
+            data_loaded = loadPicassoDataset(app);
+
+        otherwise
+            app.textout.Value = "The input data type " + input_pipeline + " was not recognised";
+            return;
     end
     
     if isprop(app, "movie_data") && isfield(app.movie_data, "params")
@@ -308,7 +318,7 @@ function [data_loaded] = loadSeparateSegTracks(app)
     
     data_loaded = false;
     
-    popup = RequestSourceFiles;
+    popup = RequestSourceFiles(app.movie_data.params.pipeline);
     uiwait(popup.SelectfilesUIFigure);
     
     %exit if user kills window
@@ -325,10 +335,9 @@ function [data_loaded] = loadSeparateSegTracks(app)
     end
     
     %store filepaths
-    ref_file        = char(popup.reference_path);
-    seg_file        = char(popup.segmentation_path);
-    tracking_data   = popup.tracking_pathnames;
-    fluor_data      = popup.fluor_path;
+    ref_file                                = char(popup.reference_path);
+    seg_file                                = char(popup.segmentation_path);
+    tracking_data                           = popup.tracking_pathnames;
     app.movie_data.params.frame_rate        = popup.frame_rate;
     app.movie_data.params.frames_per_file   = popup.frames_per_file;
     app.movie_data.params.frame_offsets     = popup.frame_offsets;
@@ -358,7 +367,6 @@ function [data_loaded] = loadSeparateSegTracks(app)
             case '.mat'
                 seg_data = load(seg_file);
             case {'.dat', '.csv'}
-                seg_data = readtable(seg_file);
             otherwise
                 error('Unsupported file format.');
         end
@@ -890,8 +898,8 @@ function [reformatted_tracks] = loadTrackMateData(app, tracks_pathname)
     
     %rename columns for consistency between tracking file types using a map
     replacement_map = containers.Map( ...
-        {'Position_x', 'Position_y', 'Frame', 'Track_id', 'Total_intensity_ch1', 'Max_intensity_ch1'}, ...
-        {'x (px)',     'y (px)',     'Frame', 'MolID', 'Brightness from TrackMate', 'Peak intensity'});
+        {'Position_x', 'Position_y', 'Frame', 'Track_id', 'Total_intensity_ch1',       'Max_intensity_ch1'}, ...
+        {'x (px)',     'y (px)',     'Frame', 'MolID',    'Brightness from TrackMate', 'Peak intensity'});
     
     %replace relevant titles with those in the map
     for ii = 1:size(app.movie_data.params.column_titles.tracks,2)
@@ -1199,4 +1207,788 @@ function [expanded_mesh] = expandMesh(mesh, expansion)
         %translate to original location
         expanded_mesh(ii,1:2) = temp + mesh(ii,1:2);
     end
+end
+
+
+function [data_loaded] = loadPicassoDataset(app)
+%Load a new dataset localised by Picasso, Oliver Pambos, 30/03/2026.
+%
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
+%
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
+%
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
+%Much of this function is identical to loadSeparateSegTracks(); a future
+%refactoring can modularise and simplify both f'ns.
+%
+%Inputs
+%------
+%app            (handle)    main GUI handle
+%
+%Output
+%------
+%data_loaded    (bool)      true when data has been successfully loaded
+%
+%Dependent functions
+%-------------------
+%RequestSourceFiles         - external .mlapp
+%DataImportViewerGUI        - external .mlapp
+%loadPicassoLocs()          - local to this .m file
+%renamePicassoFeatures()    - local to this .m file
+%assignLocsToCells()        - local to this .m file
+%linkIntoTracks()           - local to this .m file
+%renumberTracksByCell()     - local to this .m file
+    
+    data_loaded = false;
+    
+    popup = RequestSourceFiles(app.movie_data.params.pipeline);
+    uiwait(popup.SelectfilesUIFigure);
+    
+    %exit if user kills window
+    if ~isvalid(popup)
+        data_loaded = false;
+        return;
+    end
+    
+    %exit if file gathering was unsuccessful
+    if ~isprop(popup, "success") || ~popup.success
+        data_loaded = false;
+        delete(popup);
+        return;
+    end
+    
+    %store filepaths
+    ref_file                                = char(popup.reference_path);
+    seg_file                                = char(popup.segmentation_path);
+    tracking_data                           = popup.tracking_pathnames;
+    app.movie_data.params.frame_rate        = popup.frame_rate;
+    app.movie_data.params.frames_per_file   = popup.frames_per_file;
+    app.movie_data.params.frame_offsets     = popup.frame_offsets;
+    app.movie_data.params.ffPath            = popup.fluor_path;
+    app.movie_data.params.ffFile            = popup.fluor_file;
+    
+    delete(popup);
+    
+    %load ref image
+    [~, ~, ext] = fileparts(ref_file);
+    if strcmpi(ext, '.fits')
+        app.movie_data.brightfield_image = fitsread(ref_file);
+    else
+        app.movie_data.brightfield_image = imread(ref_file);
+    end
+    
+    %average ref image if it has multiple channels/timepoints
+    if ndims(app.movie_data.brightfield_image) > 2
+        app.movie_data.brightfield_image = mean(app.movie_data.brightfield_image, 3);
+    end
+    
+    %get file extension and read segmentation data
+    [~, ~, ext] = fileparts(seg_file);
+    try
+        switch lower(ext)
+            case '.mat'
+                seg_data = load(seg_file);
+            case {'.dat', '.csv'}
+            otherwise
+                error('Unsupported file format.');
+        end
+    catch ME
+        warning(ME.identifier, 'Error loading segmentation file: %s', ME.message);
+        errordlg("There was a problem loading the selected file. Please ensure the file is valid and try again.", "File Load Error");
+        app.textout.Value = "Error: Please start again with loading the file.";
+        return;
+    end
+    
+    %keep track of segmentation type
+    app.movie_data.params.seg_type = "Unknown";
+    if isstruct(seg_data) && isfield(seg_data, "cellList")
+        app.movie_data.params.seg_type = "MicrobeTracker";
+        N_cells = length(seg_data.cellList{1,1});
+        
+    elseif isstruct(seg_data) && isfield(seg_data, "meshData")
+        app.movie_data.params.seg_type = "Oufti";
+        
+    elseif isnumeric(seg_data) && ismatrix(seg_data)
+        app.movie_data.params.seg_type = "Pixel mask";
+        
+    else
+        app.textout.Value = "The segmentation file provided is not valid. Please load data again.";
+        errordlg("The segmentation file provided was not recognised, please try again.", "Invalid segmentation file");
+        return;
+    end
+    
+    %check the loaded data actually contains cells
+    if N_cells == 0
+        app.textout.Value = "The segmentation file was recognised as being of the type " + app.movie_data.params.seg_type +...
+            ", and was loaded successfully, however it appears to contain no cells. If you believe this to be incorrect please consult the manual.";
+        return;
+    end
+    
+    %construct main data struct
+    genStructFromSegFile(app, seg_data);
+    
+    %keep track of tracking file type
+    app.movie_data.params.tracks_type = "DeepTRACE internal linker";
+    
+    %load the picasso localisation data
+    [picasso_data, column_titles]               = loadPicassoLocs(tracking_data);
+    app.movie_data.params.column_titles.tracks  = renamePicassoFeatures(column_titles);
+    
+    %call pop-up GUI for human correction of drift between reference image and localisations
+    popup = DataImportViewerGUI(app, picasso_data);
+    uiwait(popup.DataImportViewerUIFigure);
+    
+    %replace local locs with drift-corrected versions (temp_tracks var name is historical as TrackMate implementation came first)
+    drift_corrected_locs = app.movie_data.state.temp_tracks;
+    
+    %get meshes in 2-column looping format
+    meshes = cell(N_cells, 1);
+    for ii = 1:N_cells
+        meshes{ii, 1} = [app.movie_data.cellROI_data(ii).mesh(:,1:2); flipud(app.movie_data.cellROI_data(ii).mesh(1:end-1,3:4))];
+    end
+    
+    %assign locs to cells
+    locs_by_cell = assignLocsToCells(drift_corrected_locs, meshes);
+    
+    %assignLocsToCells() adds the Cell ID column at position 4; update column titles
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks(1:3), {'Cell ID'}, app.movie_data.params.column_titles.tracks(4:end)];
+    
+    %prompt the user to provide a memory parameter and maximum track linking distance
+    user_input = inputdlg({'Memory parameter (max missing frames):', 'Maximum linking distance (pixels):'}, 'Tracking Parameters', [1 45], {'1', '7'});
+    if isempty(user_input)
+        app.movie_data.params.mem_param = 1;
+        app.movie_data.params.link_dist = 7;
+    else
+        app.movie_data.params.mem_param = str2double(user_input{1});
+        app.movie_data.params.link_dist = str2double(user_input{2});
+    end
+    
+    %link localisations into tracks
+    linkIntoTracks(app, locs_by_cell);
+    
+    %renumber mol_IDs such that they are local to each cell as the combination [cell_ID molID] is unique
+    renumberTracksByCell(app);
+    
+    %generate registry of arbitrary and core feature names to match TrackMate-style output
+    titles = app.movie_data.params.column_titles.tracks;
+    core   = {'x (px)', 'y (px)', 'Frame', 'MolID', 'Cell ID', 'Background (photons/px)', 'Photons', 'PSF width x axis (px)', 'PSF width y axis (px)',...
+        'Localisation precision in x (px)', 'Localisation precision in y (px)', 'Net gradient', 'Ellipticity'};
+    isCore = ismember(titles, core);
+    
+    app.movie_data.params.column_titles.tracks   = titles(isCore);
+    app.movie_data.params.arbitrary_features     = titles(~isCore);
+    app.movie_data.params.arbitrary_feature_cols = find(~isCore);
+    
+    if ~isempty(app.movie_data)
+        data_loaded       = true;
+        app.textout.Value = "Data was loaded successfully. Please now follow the data preparation instructions.";
+    end
+    
+    [~, suggested_name, ~] = fileparts(app.movie_data.params.ffFile(1));
+    suggested_name = suggested_name + " DeepTRACE analysis";
+    app.textout.Value = "Please choose a sensible name for the dataset";
+    app.movie_data.params.title = inputdlg({'Please choose a sensible name for the dataset'}, 'Name this dataset', [1 80], suggested_name);
+end
+
+
+function [picasso_data, column_titles] = loadPicassoLocs(file_pathname)
+%Load a Picasso localisation file, Oliver Pambos, 30/03/2026.
+%
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
+%
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
+%
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
+%
+%
+%Inputs
+%------
+%file_pathname  (str)   string holding filepath for picasso loc file
+%
+%Output
+%------
+%picasso_data   (mat)   localisation data from Picasso formated into a
+%                           matrix
+%column_titles  (cell)  cell array of column names in which each cell
+%                           contains a char arr
+%
+%Dependent functions
+%-------------------
+%None
+    
+    %=======================
+    %import the picasso data
+    %=======================
+    picassofile   = h5read(file_pathname{1}, "/locs");
+    column_titles = fieldnames(picassofile)';
+    
+    %convert all vectors to double, concat into single mat
+    picassofile = struct2cell(picassofile);
+    tmp = cellfun(@double, picassofile, 'UniformOutput', false);
+    picasso_data = horzcat(tmp{:});
+    
+    %error check for missing data, and number of titles matches data cols
+    if isempty(picasso_data)
+        errordlg("The Picasso localisation data is empty.", "Error loading Picasso data");
+        return;
+    end
+    if numel(column_titles) ~= size(picasso_data, 2)
+        errordlg("The Picasso localisation data was incorrectly loaded.", "Error loading Picasso data");
+        return;
+    end
+    
+    %==================================================
+    %re-order columns to [x, y, frame, everything else]
+    %==================================================
+    x_idx     = find(strcmp(column_titles, 'x'));
+    y_idx     = find(strcmp(column_titles, 'y'));
+    frame_idx = find(strcmp(column_titles, 'frame'));
+    
+    if isempty(x_idx) || isempty(y_idx) || isempty(frame_idx)
+        errordlg("Required Picasso columns 'x', 'y', and/or 'frame' were not found.", "Error loading Picasso data");
+        return;
+    end
+    
+    new_order = [x_idx, y_idx, frame_idx, setdiff(1:numel(column_titles), [x_idx, y_idx, frame_idx], 'stable')];
+    
+    %apply to mat and col titles
+    picasso_data = picasso_data(:, new_order);
+    column_titles = column_titles(new_order);
+    
+    %==========================================
+    %set frame numbers to start at one not zero
+    %==========================================
+    picasso_data(:, 3) = picasso_data(:, 3) + 1;
+end
+
+
+function [column_titles] = renamePicassoFeatures(column_titles)
+%Updates Picasso feature names to match the strings expected by DeepTRACE,
+%Oliver Pambos, 30/03/2026.
+%
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
+%
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
+%
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
+%Simply reformats the column/feature names to match expected strings used
+%by downstream DeepTRACE functions.
+%
+%Inputs
+%------
+%column_titles  (cell)  cell array of column names in which each cell
+%                           contains a char arr
+%
+%Output
+%------
+%column_titles  (cell)  cell array of column names in which each cell
+%                           contains a char arr
+%
+%Dependent functions
+%-------------------
+%None
+    
+    %rename columns for consistency between tracking file types using a map
+    replacement_map = containers.Map({'x',       'y',      'frame', 'bg',                      'photons', 'sx',                    'sy',                    'lpx',                              'lpy',                              'net_gradient', 'ellipticity'}, ...
+                                     {'x (px)',  'y (px)', 'Frame', 'Background (photons/px)', 'Photons', 'PSF width x axis (px)', 'PSF width y axis (px)', 'Localisation precision in x (px)', 'Localisation precision in y (px)', 'Net gradient', 'Ellipticity'});
+    
+    %replace relevant titles
+    for ii = 1:numel(column_titles)
+        current_title = column_titles{ii};
+        if replacement_map.isKey(current_title)
+            column_titles{ii} = replacement_map(current_title);
+        end
+    end
+end
+
+
+function [locs_by_cell] = assignLocsToCells(locs, meshes)
+%Assigns each localisation to a cell, Oliver Pambos, 31/03/2026.
+%
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
+%
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
+%
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
+%To improve performance, hittests are performed initially against bounding
+%boxes, eliminating the vast majority of more computationally expensive
+%comparisons to cell mesh polygons.
+%
+%To handle cases of overlapping meshes, the algorithm computes the furthest
+%distance to cell boundary to determine in which cell the localisation is
+%most inside. In the unlikely event of a tie for distance to cell boundary
+%the cell with the lowest index is chosen (set in the case of
+%MicrobeTracker this is set by the order in which cells are identified).
+%
+%Performance can be further improved through parallelisation in a future
+%refactoring if this f'n becomes a bottleneck for very large datasets.
+%
+%Input
+%-----
+%locs           (mat)   NxM matrix of N localisations with M features, for
+%                           which the first two columns are (x, y)
+%meshes         (cell)  cell array of matrices containing
+%                           MicrobeTracker-formatted meshes
+%
+%Output
+%------
+%locs_by_cell   (cell)      cell array of localisations for each cell
+%                               segmented in the input MicrobeTracker file
+%
+%Dependent functions
+%-------------------
+%findPointToMeshDist()
+%genHitboxes()          - local to this .m file
+    
+    N_locs = size(locs, 1);
+    N_cells = numel(meshes);
+    
+    %preallocate outputs
+    locs_to_cell = zeros(N_locs, 1);
+    locs_by_cell = cell(N_cells, 1);
+    
+    %obtain bounding boxes for all meshes
+    boxes = genHitboxes(meshes);
+    
+    for ii = 1:N_locs
+        %find candidate cells whose hitbox contains current loc
+        candidate_cells = find(locs(ii, 1) >= boxes(:, 1) & locs(ii, 2) >= boxes(:, 2) & locs(ii, 1) <= boxes(:, 3) & locs(ii, 2) <= boxes(:, 4));
+        
+        %skip if no hitbox match
+        if isempty(candidate_cells)
+            continue;
+        end
+        
+        %confirm candidates using full polygon hit test
+        mesh_hits = false(numel(candidate_cells), 1);
+        for jj = 1:numel(candidate_cells)
+            curr_cell = candidate_cells(jj);
+            curr_mesh = meshes{curr_cell};
+            
+            mesh_hits(jj) = inpolygon(locs(ii, 1), locs(ii, 2), curr_mesh(:, 1), curr_mesh(:, 2));
+        end
+        
+        matched_cells = candidate_cells(mesh_hits);
+        
+        %assign loc to cell
+        if numel(matched_cells) == 1
+            %only one valid mesh hit
+            locs_to_cell(ii) = matched_cells;
+            
+        elseif numel(matched_cells) > 1
+            %multiple valid mesh hits, assign to cell it is most inside
+            d_all = zeros(numel(matched_cells), 1);
+            
+            %loop over the mesh matches, and compute distance from membrane for each
+            for jj = 1:numel(matched_cells)
+                curr_cell = matched_cells(jj);
+                d_all(jj) = findPointToMeshDist(locs(ii, 1), locs(ii, 2), meshes{curr_cell});
+            end
+            
+            %take the mesh it is most inside to be the assigned cell
+            [~, best_idx]    = max(d_all);
+            locs_to_cell(ii) = matched_cells(best_idx);
+        end
+    end
+    
+    %insert cell_ID col (data only, col titles later added as app handle is currently out of scope here)
+    locs = [locs(:,1:3), locs_to_cell, locs(:,4:end)];
+    
+    %split localisations into cell array
+    for ii = 1:N_cells
+        locs_by_cell{ii} = locs(locs_to_cell == ii, :);
+    end
+end
+
+
+function [boxes] = genHitboxes(meshes)
+%Compiles a matrix of hittest boxes from an array of MicrobeTracker meshes,
+%Oliver Pambos, 31/03/2026.
+%
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
+%
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
+%
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
+%Used once for each segmentation file. This function reduces computational
+%overhead by providing a list of candidate boxes, eliminating the need to
+%perform more expensive comparisons against polygons from cell
+%segmentations.
+%
+%Input
+%-----
+%meshes (cell)  cell array of MicrobeTracker-formatted segmented cell
+%                   meshes
+%
+%Output
+%------
+%boxes  (mat)   Nx4 matrix of hittest box key vertices, with columns:
+%                   col 1: x-coordinate of lower left corner
+%                   col 2: y-coordinate of lower left corner
+%                   col 3: x-coordinate of upper right corner
+%                   col 4: y-coordinate of upper right corner
+%
+%Dependent functions
+%-------------------
+%None
+    
+    boxes = zeros(numel(meshes), 4);
+    
+    %later replace with cellfun()
+    for ii = 1:numel(meshes)
+        boxes(ii, 1) = min(meshes{ii}(:, 1));
+        boxes(ii, 2) = min(meshes{ii}(:, 2));
+        boxes(ii, 3) = max(meshes{ii}(:, 1));
+        boxes(ii, 4) = max(meshes{ii}(:, 2));
+    end
+end
+
+
+function [] = linkIntoTracks(app, locs_by_cell)
+%Link locasations grouped by cells into tracks, Oliver Pambos 31/03/2026.
+%
+%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
+%CONTACT: oliver.pambos@physics.ox.ac.uk
+%
+%ATTRIBUTION AND DISCLAIMER
+%This code was conceived and developed entirely by Oliver James Pambos, and
+%is distributed as part of DeepTRACE.
+%
+%If this code contributes to results presented in a scientific publication,
+%the following article should be cited:
+%
+%   https://doi.org/10.1101/2025.05.15.654348
+%
+%The publicly available version of DeepTRACE, including documentation and
+%updates, is available at:
+%
+%   https://github.com/opambos/DeepTRACE
+%
+%For full license, attribution, and citation terms, see the LICENSE and
+%NOTICE files distributed with DeepTRACE.
+%
+%Copyright 2022-2026 Oliver James Pambos
+%
+%Licensed under the Apache License, Version 2.0 (the "License");
+%you may not use this file except in compliance with the License.
+%You may obtain a copy of the License at
+%
+%   http://www.apache.org/licenses/LICENSE-2.0
+%
+%Unless required by applicable law or agreed to in writing, software
+%distributed under the License is distributed on an "AS IS" BASIS,
+%WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%See the License for the specific language governing permissions and
+%limitations under the License.
+%
+%
+%DESIGN AND CONTEXT
+%Perofrms linking into tracks of localisations in each cell using a simple
+%nearest-neighbour algorithm.
+%
+%The algorithm uses two parameters:
+%   mem_param: determines how many missing frames can be bridged by a
+%               molecule temporarily disappearing.
+%   link_dist: determines the maximum distance a molecule can move in the
+%               next frame and still be linked.
+%
+%A future iteration of this algorithm may increase link_dist across missing
+%frames to account for free diffusion when tracking is transiently lost,
+%factoring in the distance the molecule would have moved while unobserved.
+%
+%Input
+%-----
+%app            (handle)    main GUI handle
+%locs_by_cell   (cell)      cell array of localisations for each cell
+%                               segmented in the input MicrobeTracker file
+%
+%Output
+%------
+%None
+%
+%Dependent functions
+%-------------------
+%None
+    
+    mem_param = app.movie_data.params.mem_param;
+    link_dist = app.movie_data.params.link_dist;
+    
+    %loop over cells
+    for ii = 1:numel(locs_by_cell)
+        curr_locs = locs_by_cell{ii};
+        
+        %skip empty cells
+        if isempty(curr_locs)
+            app.movie_data.cellROI_data(ii).tracks = [];
+            continue;
+        end
+        
+        %sort by frame
+        curr_locs = sortrows(curr_locs, 3);
+        
+        N_locs      = size(curr_locs, 1);
+        track_ids   = zeros(N_locs, 1);
+        
+        %active track state (those currently being built)
+        active_track_IDs      = [];
+        active_track_x        = [];
+        active_track_y        = [];
+        active_track_frame    = [];
+        
+        %loop over loc-containing frames
+        next_track_ID = 1;
+        unique_frames = unique(curr_locs(:, 3))';
+        for jj = unique_frames      %using unique frames here to avoid evaluating and then skipping empty frames
+            %store row numbers for all locs in frame jj
+            curr_idx = find(curr_locs(:, 3) == jj);
+            
+            %remove tracks that would exceed memory param if further linking were to take place
+            keep_idx            = (jj - active_track_frame) <= (mem_param + 1);
+            active_track_IDs    = active_track_IDs(keep_idx);
+            active_track_x      = active_track_x(keep_idx);
+            active_track_y      = active_track_y(keep_idx);
+            active_track_frame  = active_track_frame(keep_idx);
+            
+            N_curr      = numel(curr_idx);          %number of locs in frame jj
+            N_active    = numel(active_track_IDs);  %number of active tracks being built
+            
+            %loop over all locs in the curr frame, and compute dist each valid candidate would have to extend the currently active tracks
+            candidate_pairs = [];
+            for kk = 1:N_curr
+                %current loc's row number, and (x,y) coords
+                loc_row = curr_idx(kk);
+                loc_x   = curr_locs(loc_row, 1);
+                loc_y   = curr_locs(loc_row, 2);
+                
+                %loop over all active tracks, computing dist between curr loc and end of all active tracks being considered by linker
+                for ll = 1:N_active
+                    %if mem_param exceeded, skip this active track, the longest valid gap is (mem_param + 1), e.g. previous tracked loc was 2 frames earlier if mem_param == 1
+                    frame_gap = jj - active_track_frame(ll);
+                    if frame_gap > (mem_param + 1)
+                        continue;
+                    end
+                    
+                    %compute dist between curr loc and last loc in active track being considered for linking
+                    d = hypot(loc_x - active_track_x(ll), loc_y - active_track_y(ll));  %I should replace findEuclidDist() elsewhere in code with this f'n to avoid external call overhead
+                    
+                    %if the linking dist is valid, record this as a candidate
+                    if d <= link_dist
+                        %array will grow over time but this isn't terribly costly in most SPT datasets
+                        candidate_pairs = [candidate_pairs; kk, ll, d]; %#ok<AGROW>
+                    end
+                end
+            end
+            
+            %============================
+            %nearest-neighbour assignment
+            %============================
+            %keep track of whether each loc in curr frame, and each active track, has already been linked
+            assigned_locs   = false(N_curr, 1);
+            assigned_tracks = false(N_active, 1);
+            
+            if ~isempty(candidate_pairs)
+                %sort by ascending distance
+                candidate_pairs = sortrows(candidate_pairs, 3);
+                
+                %loop over candidate pairs
+                for kk = 1:size(candidate_pairs, 1)
+                    loc_local_idx = candidate_pairs(kk, 1);
+                    track_local_idx = candidate_pairs(kk, 2);
+                    
+                    %skip if either of the loc-track candidate pair has already been linked
+                    if assigned_locs(loc_local_idx) || assigned_tracks(track_local_idx)
+                        continue;
+                    end
+                    
+                    %assign track ID to identified loc
+                    loc_row             = curr_idx(loc_local_idx);
+                    track_ids(loc_row)  = active_track_IDs(track_local_idx);
+                    
+                    %update new end-point of currently active track
+                    active_track_x(track_local_idx)     = curr_locs(loc_row, 1);
+                    active_track_y(track_local_idx)     = curr_locs(loc_row, 2);
+                    active_track_frame(track_local_idx) = jj;
+                    
+                    %mark loc and track as assigned
+                    assigned_locs(loc_local_idx)        = true;
+                    assigned_tracks(track_local_idx)    = true;
+                end
+            end
+            
+            %start new tracks for any locs in curr frame that were not unassigned
+            unassigned_idx = curr_idx(~assigned_locs);
+            for kk = 1:numel(unassigned_idx)
+                loc_row = unassigned_idx(kk);
+                
+                track_ids(loc_row) = next_track_ID;
+                
+                %add new track to active track list
+                active_track_IDs(end+1, 1) = next_track_ID;
+                active_track_x(end+1, 1) = curr_locs(loc_row, 1);
+                active_track_y(end+1, 1) = curr_locs(loc_row, 2);
+                active_track_frame(end+1, 1) = curr_locs(loc_row, 3);
+                
+                next_track_ID = next_track_ID + 1;
+            end
+        end
+        
+        %append track IDs
+        app.movie_data.cellROI_data(ii).tracks = [curr_locs(:, 1:3), track_ids, curr_locs(:, 4:end)];
+    end
+    app.movie_data.params.column_titles.tracks = [app.movie_data.params.column_titles.tracks(1:3), {'MolID'}, app.movie_data.params.column_titles.tracks(4:end)];
 end

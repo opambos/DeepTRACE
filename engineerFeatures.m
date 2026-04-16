@@ -1501,7 +1501,9 @@ function [] = engineerSpotSize(app, h_progress)
 %DESIGN AND CONTEXT
 %Computes double the square root of the sum of the squares of the standard
 %deviation in the major an minor axes of the Gaussian fitting process
-%during localisation.
+%during localisation. If Picasso is used, this falls back to using the PSF
+%widths in the x and y image axes in the place of the fit to the major and
+%minor axes.
 %
 %Input
 %-----
@@ -1517,9 +1519,17 @@ function [] = engineerSpotSize(app, h_progress)
 %findColumnIdx()
     
     %find the required columns
-    col_std_major = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
-    col_std_minor = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation minor axis");
-    if col_std_minor == 0 || col_std_major == 0
+    col_sigma_1 = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
+    col_sigma_2 = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation minor axis");
+    
+    %if Picasso was used as localiser use PSF widths in x and y axes as approximation
+    if col_sigma_1 == 0 || col_sigma_2 == 0
+        col_sigma_1 = findColumnIdx(app.movie_data.params.column_titles.tracks, "PSF width x axis (px)");
+        col_sigma_2 = findColumnIdx(app.movie_data.params.column_titles.tracks, "PSF width y axis (px)");
+    end
+    
+    %fallback in case no feature present (e.g. TrackMate, non-Gaussian)
+    if col_sigma_1 == 0 || col_sigma_2 == 0
         warndlg("Warning: Unable to find suitable columns in tracks file for standard deviation of localisations. Feature engineering for spot size has been skipped.", 'Warning: unable to engineer feature', 'modal');
         return;
     end
@@ -1532,7 +1542,7 @@ function [] = engineerSpotSize(app, h_progress)
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
             %compute spot sizes and append to tracks matrix
-            new_col = 2 .* (sqrt((app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* px_scale).^2 + (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* px_scale).^2));
+            new_col = 2 .* (sqrt((app.movie_data.cellROI_data(ii).tracks(:, col_sigma_1) .* px_scale).^2 + (app.movie_data.cellROI_data(ii).tracks(:, col_sigma_2) .* px_scale).^2));
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
     end
@@ -1582,9 +1592,11 @@ function [] = engineerSpotArea(app, h_progress)
 %
 %
 %DESIGN AND CONTEXT
-%Computes the spot area using the formula A = pi * a * b, where a and be
+%Computes the spot area using the formula A = pi * a * b, where a and b
 %are the standard deviation in the major an minor axes of the Gaussian
-%fitting process during localisation.
+%fitting process during localisation. If Picasso is used, this falls back
+%to using the PSF widths in the x and y image axes in the place of the fit
+%to the major and minor axes.
 %
 %Input
 %-----
@@ -1599,10 +1611,18 @@ function [] = engineerSpotArea(app, h_progress)
 %-----------------------------------------
 %findColumnIdx()
     
-    col_std_major = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
-    col_std_minor = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation minor axis");
+    %find the required columns
+    col_sigma_1 = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation major axis");
+    col_sigma_2 = findColumnIdx(app.movie_data.params.column_titles.tracks, "Standard deviation minor axis");
     
-    if col_std_minor == 0 || col_std_major == 0
+    %if Picasso was used as localiser use PSF widths in x and y axes as approximation
+    if col_sigma_1 == 0 || col_sigma_2 == 0
+        col_sigma_1 = findColumnIdx(app.movie_data.params.column_titles.tracks, "PSF width x axis (px)");
+        col_sigma_2 = findColumnIdx(app.movie_data.params.column_titles.tracks, "PSF width y axis (px)");
+    end
+    
+    %fallback in case no feature present (e.g. TrackMate, non-Gaussian)
+    if col_sigma_1 == 0 || col_sigma_2 == 0
         warndlg("Warning: Unable to find suitable columns in tracks file for standard deviation of localisations. Feature engineering for spot area has been skipped.", 'Warning: unable to engineer feature', 'modal');
         return;
     end
@@ -1614,8 +1634,8 @@ function [] = engineerSpotArea(app, h_progress)
         waitbar(ii/N_cells, h_progress, sprintf('Computing spot areas for cell %d of %d', ii, N_cells));
         
         if ~isempty(app.movie_data.cellROI_data(ii).filtered_track_IDs)
-            %compute spot sizes and append to tracks matrix
-            new_col = pi .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_major) .* px_scale) .* (app.movie_data.cellROI_data(ii).tracks(:, col_std_minor) .* px_scale);
+            %compute spot areas, and append to tracks matrix
+            new_col = pi .* (app.movie_data.cellROI_data(ii).tracks(:, col_sigma_1) .* px_scale) .* (app.movie_data.cellROI_data(ii).tracks(:, col_sigma_2) .* px_scale);
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
     end

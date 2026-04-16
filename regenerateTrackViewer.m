@@ -57,7 +57,7 @@ function [] = regenerateTrackViewer(app)
     
     cell_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.CellID;
     mol_ID = app.movie_data.results.VisuallyLabelled.LabelledMols{app.movie_data.state.event_labeller_current_ID,1}.MolID;
-
+    
     %display the mesh over the overlay
     imagesc(app.movie_data.cellROI_data(cell_ID).overlay, 'parent', app.UIAxes_event_labeller_mesh);
     axis(app.UIAxes_event_labeller_mesh, 'equal');
@@ -67,6 +67,14 @@ function [] = regenerateTrackViewer(app)
     
     %obtain track
     track = app.movie_data.cellROI_data(cell_ID).tracks(app.movie_data.cellROI_data(cell_ID).tracks(:,4) == mol_ID, :);
+    
+    %if necessary, flip track display in human annotator's track viewer
+    if isfield(app.movie_data.params, "flipped") && app.movie_data.params.flipped
+        img_hei = size(app.movie_data.brightfield_image, 1);
+        track(:, 2) = track(:, 2) - (img_hei/2);
+        track(:, 2) = -1 .* track(:, 2);
+        track(:, 2) = track(:, 2) + (img_hei/2);
+    end
     
     %correct offset between cropped image and track - note that the offset applied by LoColi's ROI_tracking function appears to have already been applied to the localisation data
     track(:,1) = track(:,1) - app.movie_data.cellROI_data(cell_ID).overlay_offset(2);

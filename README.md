@@ -58,13 +58,13 @@ On some systems the `savepath` command requires administrator access. If so, an 
 
 ## Input Formats
 DeepTRACE requires the following input files:
-- Tracking data (TrackMate or LoColi formats)
+- Tracking data (TrackMate or LoColi formats) or Localisation data (Picasso format)
 - Cell segmentations (MicrobeTracker format)
 - Fluorescence video recordings (.tif or .fits)
 - Reference image (.tif or .fits)
 - Optional: ground truth data for training on simulated data (.csv)
 
-Support for additional tracking pipelines is under active development. If you use a different pipeline, please contact us via the email address provided below.
+Support for additional localisation and tracking pipelines is under active development. If you use a different pipeline, please contact us via the email address provided below.
 DeepTRACE is under continuous development, with additional analytical modules and input formats added periodically.
 
 ---
@@ -147,7 +147,7 @@ DeepTRACE supports export of analytical results and visualisations in multiple f
 ## How to Cite
 To cite DeepTRACE, the following preprint should be used
 
-Pambos, O.J. _et al._ **DeepTRACE: Flexible Machine Learning for Analysis and Discovery in Single Molecule Tracks.** _bioRxiv_ (2025). [https://doi.org/10.1101/2025.05.15.654348](https://doi.org/10.1101/2025.05.15.654348)
+Pambos, O.J. _et al._ **DeepTRACE brings flexible machine learning to single-molecule track analysis.** (2026). [https://doi.org/10.1038/s42003-026-09899-y](https://doi.org/10.1038/s42003-026-09899-y)
 
 ---
 

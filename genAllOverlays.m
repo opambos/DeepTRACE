@@ -59,6 +59,10 @@ function [movie_data] = genAllOverlays(movie_data, border, bitdepth)
     img = mat2gray(movie_data.brightfield_image);
     img = img .* (-1);
     img = img + 1;
+
+    if isfield(movie_data.params, 'flipped') && movie_data.params.flipped
+        img = flipud(img);
+    end
     
     %convert image back to original bit depth
     if bitdepth == 8

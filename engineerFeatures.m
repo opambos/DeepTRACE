@@ -203,6 +203,19 @@ function [] = engineerFeatures(app)
     N_features      = numel(app.movie_data.state.selected_features) + 3;    %3 obligatory features to engineer; update as required when adding more
     h_progress      = waitbar(0,'Preparing....', 'Name', 'Engineering features');
     
+    %====================================================
+    %Sort tracks data prior to feature engineering by
+    %track ID with chronological frames within each track
+    %====================================================
+    col_frame   = findColumnIdx(app.movie_data.params.column_titles.tracks, "Frame");
+    col_mol_ID  = findColumnIdx(app.movie_data.params.column_titles.tracks, "MolID");
+    
+    for ii = 1:size(app.movie_data.cellROI_data, 1)
+        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+            app.movie_data.cellROI_data(ii).tracks = sortrows(app.movie_data.cellROI_data(ii).tracks, [col_mol_ID col_frame]);
+        end
+    end
+    
     %==============================
     %Obligatory engineered features
     %==============================
@@ -378,7 +391,7 @@ function [] = engineerFeatures(app)
         engineerLocalTrappedness(app, h_progress);
         curr_feature = curr_feature + 1;
     end
-
+    
     %compute local anomalous diffusion exponent
     if ismember('Local anomalous diffusion exponent', app.movie_data.state.selected_features)
         set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local diffusion exponent"));
@@ -434,7 +447,7 @@ function [] = engineerFeatures(app)
         engineerLocalMaximalExcursion(app, h_progress)
         curr_feature = curr_feature + 1;
     end
-
+    
     %compute local VACF
     if ismember('Local velocity autocorrelation function', app.movie_data.state.selected_features)
         set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Local VACF"));
@@ -483,7 +496,6 @@ function [] = engineerFeatures(app)
         curr_feature = curr_feature + 1;
     end
     
-
     %compute track end proximity
     if ismember('Proximity to ends of track', app.movie_data.state.selected_features)
         set(h_progress, 'Name', char("Feature " + num2str(curr_feature) + "/" + num2str(N_features) + ": Track ends proximity"));
@@ -502,6 +514,16 @@ function [] = engineerFeatures(app)
         waitbar(0, h_progress, 'Eliminating unused data, please wait....');
     end
     engineerArbitraryFeatures(app, selected_arbitrary); %run regardless of whether there are any any requested arb features, as func performs clean-up of unused features
+    
+    %================================================================
+    %Re-sort all tracks data by frame number (for frames containing
+    %multiple locs, rows are ordered by ascending by track_ID number)
+    %================================================================
+    for ii = 1:size(app.movie_data.cellROI_data, 1)
+        if ~isempty(app.movie_data.cellROI_data(ii).tracks)
+            app.movie_data.cellROI_data(ii).tracks = sortrows(app.movie_data.cellROI_data(ii).tracks, [col_frame col_mol_ID]);
+        end
+    end
     
     close(h_progress);
     
@@ -894,8 +916,10 @@ function [] = engineerTimeFromTrackStart(app, h_progress)
 %-----------------------------------------
 %None
     
-    N_cells = size(app.movie_data.cellROI_data, 1);
-    frame_rate = app.movie_data.params.frame_rate;
+    N_cells     = size(app.movie_data.cellROI_data, 1);
+    frame_rate  = app.movie_data.params.frame_rate;
+    col_frame   = findColumnIdx(app.movie_data.params.column_titles.tracks, "Frame");
+    col_mol_ID  = findColumnIdx(app.movie_data.params.column_titles.tracks, "MolID");
     
     for ii = 1:N_cells
         waitbar(ii/N_cells, h_progress, sprintf('Computing track times for cell %d of %d', ii, N_cells));
@@ -904,11 +928,14 @@ function [] = engineerTimeFromTrackStart(app, h_progress)
             %store the data to be concatenated with the current tracks matrix - could pre-allocate this, and keep a track of current index for improved performance
             new_col = [];
             
+            %ensure the filtered track IDs are in ascending order
+            filtered_ids = sort(app.movie_data.cellROI_data(ii).filtered_track_IDs(:,1));
+            
             %loop over all filtered molecules in the current cell
-            for jj = 1:size(app.movie_data.cellROI_data(ii).filtered_track_IDs, 1)
+            for jj = 1:numel(filtered_ids)
                 %get the current track and compute the time from start
-                curr_track = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:,4) == app.movie_data.cellROI_data(ii).filtered_track_IDs(jj,1), :);
-                curr_intervals = (curr_track(:, 3) - curr_track(1, 3)) ./ frame_rate;
+                curr_track      = app.movie_data.cellROI_data(ii).tracks(app.movie_data.cellROI_data(ii).tracks(:, col_mol_ID) == filtered_ids(jj), :);
+                curr_intervals  = (curr_track(:, col_frame) - curr_track(1, col_frame)) ./ frame_rate;
                 
                 %add the new data to be concatenated to the current cell's tracks data
                 new_col = cat(1, new_col, curr_intervals);
@@ -917,7 +944,6 @@ function [] = engineerTimeFromTrackStart(app, h_progress)
             %append to tracks matrix
             app.movie_data.cellROI_data(ii).tracks = [app.movie_data.cellROI_data(ii).tracks, new_col];
         end
-        
     end
     
     %update column titles accordingly

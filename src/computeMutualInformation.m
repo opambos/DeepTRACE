@@ -1,28 +1,28 @@
 function [] = computeMutualInformation(app, method)
 %Compute mutual information between each feature and assigned class, and
-%between feature pairs, Oliver Pambos, 12/12/2024.
+%between feature pairs, 12/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -160,29 +160,29 @@ end
 
 function [feature_data_proximal, class_data_proximal, feature_data_distal, class_data_distal] = splitCPRegions(track_data, cp_range)
 %Split tracks into changepoint-proximal and changepoint-distal regions, and
-%return as concatenated matrices, Oliver Pambos, 12/12/2024.
+%return as concatenated matrices, 12/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -261,30 +261,30 @@ end
 
 
 function [] = plotMIRanked(feature_list, MI_scores)
-%Display features ranked by mutual information with class score, Oliver
-%Pambos, 12/12/2024.
+%Display features ranked by mutual information with class score,
+%12/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -343,29 +343,29 @@ end
 function [] = plotMIScoresProximalDistal(feature_list, MI_scores_proximal, MI_scores_distal)
 %Plots the mutual information shared between each feature and known classes
 %in changepoint proximal and changpoint distal regions on the same plot,
-%Oliver Pambos, 12/12/2024.
+%12/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -425,30 +425,30 @@ end
 
 
 function [] = computeFeaturePairwiseMI(feature_data, feature_list, feature_names, N_bins)
-%Compute pairwise mutual information between all requested features, Oliver
-%Pambos, 14/12/2024.
+%Compute pairwise mutual information between all requested features,
+%14/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -545,29 +545,29 @@ end
 
 function [] = plotPairwiseMIHeatmap(MI_mat, feature_list)
 %Plot heatmap of all pairwise mutual information between all requested
-%features, Oliver Pambos, 14/12/2024.
+%features, 14/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.

@@ -1,27 +1,27 @@
 function [] = trainRNN(app)
-%Train arbitrary RNN model on annotated data, Oliver Pambos, 15/09/2024.
+%Train arbitrary RNN model on annotated data, 15/09/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -146,29 +146,29 @@ end
 
 function [layers] = defineModelLayers(app)
 %Define the model layers dynamically based on user input during runtime,
-%Oliver Pambos 15/09/2024.
+%15/09/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -287,30 +287,30 @@ end
 
 
 function [options] = getTrainingOptions(val_data, val_labels, show_plot, max_epochs, batch_size, learn_rate, val_interval, val_patience, LR_drop_period, LR_drop_fraction)
-%Returns the training options for use with the trainnet function, Oliver
-%Pambos, 13/07/2024.
+%Returns the training options for use with the trainnet function,
+%13/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -390,29 +390,29 @@ end
 
 function [classes, class_weights] = computeClassWeights(app)
 %Balance class weights by the inverse of the frequency with which they
-%occur, Oliver Pambos, 13/07/2024.
+%occur, 13/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -472,29 +472,29 @@ end
 
 function [] = storeMetadata(app, model_type)
 %Store metadata and variables used for feature scaling and training with
-%model, Oliver Pambos, 13/07/2024.
+%model, 13/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -551,30 +551,29 @@ end
 
 function [train_data, train_labels, val_data, val_labels] = transposeTrainValData(train_data, train_labels, val_data, val_labels)
 %Transpose the data and labels in cell arrays of training and validation
-%datasets to prepare data for use with trainnet(), Oliver Pambos,
-%13/07/2024.
+%datasets to prepare data for use with trainnet(), 13/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -641,29 +640,29 @@ end
 
 
 function [shuffled_data, shuffled_labels] = shuffleBySegment(data, labels)
-%Reshuffle all data again by segment, Oliver Pambos, 14/08/2024.
+%Reshuffle all data again by segment, 14/08/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -712,29 +711,29 @@ end
 
 function [loss] = changepointWeightedLoss(YPred, YTrue, class_weights)
 %Custom loss function using heavier weights for datapoints around regions
-%of changepoints, as well as class weighting, Oliver Pambos, 13/07/2024.
+%of changepoints, as well as class weighting, 13/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -818,30 +817,29 @@ end
 
 
 function [changepoint_masks] = genChangepointMasks(YTrue)
-%Computes a changepoint mask for all windows for a batch, Oliver Pambos,
-%13/07/2024.
+%Computes a changepoint mask for all windows for a batch, 13/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.

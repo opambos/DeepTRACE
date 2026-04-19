@@ -1,28 +1,27 @@
 function [filter_status] = filterTracks(app)
-%Filter tracks to ensure there is only one track per cell, Oliver Pambos,
-%11/09/2020.
+%Filter tracks to ensure there is only one track per cell, 11/09/2020.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -226,30 +225,29 @@ end
 
 
 function [track_conflicts, overlaps] = identifyOverlaps(tracks_file, track_buffer)
-%Compile a list of all tracks overlapping with reference track, Oliver
-%Pambos, 11/09/2020.
+%Compile a list of all tracks overlapping with reference track, 11/09/2020.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -329,30 +327,29 @@ end
 
 
 function [local_del_list] = identifyShortTracks(tracks_file, min_track_len)
-%Identify tracks shorter than the minimum track length, Oliver Pambos,
-%11/09/2020.
+%Identify tracks shorter than the minimum track length, 11/09/2020.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -395,30 +392,29 @@ end
 
 
 function [new_tracks] = applyMemoryParameter(tracks, mem_param)
-%Apply memory parameter to the tracks in a single cell, Oliver Pambos,
-%22/02/22.
+%Apply memory parameter to the tracks in a single cell, 22/02/22.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -471,29 +467,29 @@ end
 
 
 function [movie_data] = removeEmptyCells(movie_data)
-%Remove the cells that contain no tracks, Oliver Pambos, 21/03/2023.
+%Remove the cells that contain no tracks, 21/03/2023.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -534,29 +530,29 @@ end
 
 function [movie_data] = filterByAllLocs(movie_data, tolerance)
 %Filters tracks if there are any other localisations in the cell at the
-%same time (very strict), Oliver Pambos, 06/07/2023.
+%same time (very strict), 06/07/2023.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.

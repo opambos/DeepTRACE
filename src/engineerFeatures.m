@@ -1,27 +1,27 @@
 function [] = engineerFeatures(app)
-%Perform feature engineering, Oliver Pambos, 22/05/2024.
+%Perform feature engineering, 22/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -167,21 +167,21 @@ function [] = engineerFeatures(app)
     strings_to_check = {'Smoothed step size'};
     if any(ismember(strings_to_check, app.movie_data.state.selected_features))
         popup = SetWindowSizeStepSmoothingPopUp(app);
-        uiwait(popup.UIFigure);
+        uiwait(popup.StepSizeSmoothingUIFigure);
     end
     
     %get from user reference point(s) if requested
     strings_to_check = {'Set experiment reference timepoints'};
     if any(ismember(strings_to_check, app.movie_data.state.selected_features))
         popup = ReferencePointPopUp(app);
-        uiwait(popup.ReferencetimepointentryUIFigure);
+        uiwait(popup.ExperimentalReferenceTimePointsUIFigure);
     end
     
     %get from user time shifts if requested
     strings_to_check = {'Time shifted step sizes'};
     if any(ismember(strings_to_check, app.movie_data.state.selected_features))
         popup = TemporalContextPopUp(app);
-        uiwait(popup.UIFigure);
+        uiwait(popup.TemporallyShiftofStepSizeUIFigure);
     end
     
     %get from user time shifts if requested
@@ -542,29 +542,29 @@ end
 
 function [] = engineerPosInNm(app, h_progress)
 %Feature engineering for conversion of position units to nm for all tracked
-%localisations in dataset, Oliver Pambos, 24/05/2024.
+%localisations in dataset, 24/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -617,29 +617,29 @@ end
 
 function [] = engineerStepSize(app, h_progress)
 %Feature engineering for step size from the previous localisation in a
-%track, Oliver Pambos, 24/05/2024.
+%track, 24/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -706,29 +706,29 @@ end
 
 function [] = engineerTimeStep(app, h_progress)
 %Feature engineering for the time step from the previous localisation in a
-%track, Oliver Pambos, 24/05/2024.
+%track, 24/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -790,30 +790,30 @@ end
 
 
 function [] = engineerExperimentTime(app, h_progress)
-%Feature engineering for the time elapsed from start of experiment, Oliver
-%Pambos, 30/05/2024.
+%Feature engineering for the time elapsed from start of experiment,
+%30/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -861,30 +861,29 @@ end
 
 
 function [] = engineerTimeFromTrackStart(app, h_progress)
-%Feature engineering for the time elapsed from start of track, Oliver
-%Pambos, 30/05/2024.
+%Feature engineering for the time elapsed from start of track, 30/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -953,29 +952,29 @@ end
 
 function [] = engineerTimeFromReferencePoints(app, h_progress)
 %Feature engineering for the time elapsed from reference point(s) provided
-%by user, Oliver Pambos, 29/05/2024.
+%by user, 29/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1042,29 +1041,29 @@ end
 
 function [] = engineerDistanceFromTrackStart(app, h_progress)
 %Feature engineering for the distance of position from start of track,
-%Oliver Pambos, 30/05/2024.
+%30/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1138,29 +1137,29 @@ end
 
 function [] = engineerCumulativeDistanceTravelled(app, h_progress)
 %Feature engineering for the cumulative distance travelled from start of
-%track, Oliver Pambos, 30/05/2024.
+%track, 30/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1227,30 +1226,29 @@ end
 
 
 function [] = engineerRelativeStepAngle(app, h_progress)
-%Feature engineering for step angles relative to previous step, Oliver
-%Pambos, 24/05/2024.
+%Feature engineering for step angles relative to previous step, 24/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1313,30 +1311,30 @@ end
 
 
 function [] = engineerStepAngleRelImage(app, h_progress)
-%Feature engineering for step angles relative to the image axis, Oliver
-%Pambos, 24/05/2024.
+%Feature engineering for step angles relative to the image axis,
+%24/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1400,29 +1398,29 @@ end
 
 function [] = engineerStepAngleRelCell(app, h_progress)
 %Feature engineering for step angles relative to the cell major axis,
-%Oliver Pambos, 24/05/2024.
+%24/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1486,30 +1484,30 @@ end
 
 
 function [] = engineerSpotSize(app, h_progress)
-%Feature engineering for spot size of all tracked localisations, Oliver
-%Pambos, 31/05/2024.
+%Feature engineering for spot size of all tracked localisations,
+%31/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1579,30 +1577,30 @@ end
 
 
 function [] = engineerSpotArea(app, h_progress)
-%Feature engineering for spot area of all tracked localisations, Oliver
-%Pambos, 31/05/2024.
+%Feature engineering for spot area of all tracked localisations,
+%31/05/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1673,29 +1671,29 @@ end
 
 function [] = engineerLocalDStar(app, h_progress)
 %Feature engineering for local apparent diffusion coefficient for all
-%tracked localisations, Oliver Pambos, 17/06/2024.
+%tracked localisations, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1804,29 +1802,29 @@ end
 
 function [] = engineerRollingDStarDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
-%D* values, Oliver Pambos, 19/06/2024.
+%D* values, 19/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -1967,30 +1965,29 @@ end
 
 
 function [] = engineerLocalAnomalousExponent(app, h_progress)
-%Feature engineering for local anomalous diffusion exponent, Oliver Pambos,
-%17/06/2024.
+%Feature engineering for local anomalous diffusion exponent, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2081,29 +2078,29 @@ end
 
 function [] = engineerRollingMeanStepSizeDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
-%mean step sizes, Oliver Pambos, 19/06/2024.
+%mean step sizes, 19/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2205,29 +2202,29 @@ end
 
 function [] = engineerRollingStdDevStepSizeDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
-%standard deviation in step sizes, Oliver Pambos, 20/06/2024.
+%standard deviation in step sizes, 20/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2332,29 +2329,29 @@ end
 
 function [] = engineerRollingStdDevPosnDelta(app, h_progress)
 %Feature engineering for the rolling difference of window pairs of local
-%standard deviation in coordinates, Oliver Pambos, 20/06/2024.
+%standard deviation in coordinates, 20/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2456,29 +2453,29 @@ end
 
 function [] = engineerRollingDispersionChange(app, h_progress)
 %Feature engineering for the rolling difference in spread of localisations
-%between a pair of adjacent sliding windows, Oliver Pambos, 03/07/2024.
+%between a pair of adjacent sliding windows, 03/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2586,30 +2583,29 @@ end
 
 function [] = engineerRollingCentroidDisplacement(app, h_progress)
 %Feature engineering for the distance between centroids of a collection of
-%localisations in window pairs around the current point, Oliver Pambos,
-%04/07/2024.
+%localisations in window pairs around the current point, 04/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2707,29 +2703,29 @@ end
 
 function [] = engineerFramesFromEnds(app, h_progress)
 %Feature engineering for the number of frames from start and end of the
-%track, Oliver Pambos, 09/07/2024.
+%track, 09/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2817,29 +2813,29 @@ end
 
 
 function [] = engineerSmoothedStepSize(app, h_progress)
-%Feature engineering for smoothed step sizes, Oliver Pambos, 09/07/2024.
+%Feature engineering for smoothed step sizes, 09/07/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -2948,29 +2944,29 @@ end
 
 
 function [] = engineerLocalEfficiency(app, h_progress)
-%Feature engineering for local efficiency, Oliver Pambos, 17/06/2024.
+%Feature engineering for local efficiency, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3061,29 +3057,29 @@ end
 
 
 function [] = engineerLocalStraightness(app, h_progress)
-%Feature engineering for local straightness, Oliver Pambos, 17/06/2024.
+%Feature engineering for local straightness, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3178,30 +3174,30 @@ end
 
 
 function [] = engineerLocalKurtosis(app, h_progress)
-%Feature engineering for local kurtosis using the gyration tensor, Oliver
-%Pambos, 17/06/2024.
+%Feature engineering for local kurtosis using the gyration tensor,
+%17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3292,29 +3288,29 @@ end
 
 function [] = engineerLocalStepSizeKurtosis(app, h_progress)
 %Feature engineering for local kurtosis for step sizes in each local
-%window, Oliver Pambos, 17/06/2024.
+%window, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3402,30 +3398,29 @@ end
 
 
 function [] = engineerLocalFractalDimension(app, h_progress)
-%Feature engineering for local fractal dimension, Oliver Pambos,
-%17/06/2024.
+%Feature engineering for local fractal dimension, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3530,29 +3525,29 @@ end
 
 
 function [] = engineerLocalTrappedness(app, h_progress)
-%Feature engineering for local trappedness, Oliver Pambos, 17/06/2024.
+%Feature engineering for local trappedness, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3664,30 +3659,29 @@ end
 
 
 function [] = engineerStepAngleAsymmetry(app, h_progress)
-%Feature engineering for local setp angle asymmetry, Oliver Pambos,
-%17/06/2024.
+%Feature engineering for local setp angle asymmetry, 17/06/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3791,30 +3785,30 @@ end
 
 
 function [] = engineerLocalVACF(app, h_progress)
-%Feature engineering for local velocity autocorrelation function, Oliver
-%Pambos, 19/12/2024.
+%Feature engineering for local velocity autocorrelation function,
+%19/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -3902,30 +3896,29 @@ end
 
 
 function [] = engineerLocalMaximalExcursion(app, h_progress)
-%Feature engineering for local maximal excursion, Oliver Pambos,
-%19/12/2024.
+%Feature engineering for local maximal excursion, 19/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -4023,29 +4016,29 @@ end
 
 function [] = engineerArbitraryFeatures(app, selected_arbitrary)
 %Erase unwanted arbitrary features to leave only those requested by user,
-%Oliver Pambos, 10/07/2025.
+%10/07/2025.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.

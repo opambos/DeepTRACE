@@ -1,28 +1,28 @@
 function [] = computeFeatureCorrelation(app)
 %Computes and displays the Pearson correlation pairwise between all feature
-%pairs, Oliver Pambos, 16/12/2024.
+%pairs, 16/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -100,30 +100,30 @@ end
 
 
 function [all_feature_data] = concatFeatureData(track_data)
-%Concatenate all feature data across all tracks into single matrix, Oliver
-%Pambos, 16/12/2024.
+%Concatenate all feature data across all tracks into single matrix,
+%16/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -166,30 +166,30 @@ end
 
 
 function [corr_mat] = computeCorrelationMatrix(all_feature_data, feature_list, column_titles)
-%Compute Pearson correlation matrix for all requested feature pairs, Oliver
-%Pambos, 16/12/2024.
+%Compute Pearson correlation matrix for all requested feature pairs,
+%16/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -244,29 +244,29 @@ end
 
 
 function [] = plotCorrelationHeatmap(corr_mat, feature_list)
-%Plot heatmap of Pearson correlation matrix, Oliver Pambos, 16/12/2024.
+%Plot heatmap of Pearson correlation matrix, 16/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -317,29 +317,29 @@ end
 
 function [track_data_combined] = loadAndCombineTracks(app, data_source)
 %Load and combine tracks from multiple external files into single cell
-%array, Oliver Pambos, 16/12/2024.
+%array, 16/12/2024.
 %
-%AUTHOR: OLIVER JAMES PAMBOS, DEPARTMENT OF PHYSICS, UNIVERSITY OF OXFORD
-%CONTACT: oliver.pambos@physics.ox.ac.uk
+%Author: Oliver J. Pambos, Department of Physics, University of Oxford, UK
+%(oliver.pambos@physics.ox.ac.uk).
 %
 %ATTRIBUTION AND DISCLAIMER
-%This code was conceived and developed entirely by Oliver James Pambos, and
-%is distributed as part of DeepTRACE.
+%This code was conceived and developed by Oliver J. Pambos, and is
+%distributed as part of the single-molecule track analysis software
+%DeepTRACE.
 %
-%If this code contributes to results presented in a scientific publication,
-%the following article should be cited:
+%For citation of this work, refer to:
 %
-%   https://doi.org/10.1101/2025.05.15.654348
+%   Pambos et al., Commun Biol (2026)
+%   https://doi.org/10.1038/s42003-026-09899-y
 %
 %The publicly available version of DeepTRACE, including documentation and
 %updates, is available at:
 %
 %   https://github.com/opambos/DeepTRACE
 %
-%For full license, attribution, and citation terms, see the LICENSE and
-%NOTICE files distributed with DeepTRACE.
+%For license and attribution terms, see the LICENSE and NOTICE files.
 %
-%Copyright 2022-2026 Oliver James Pambos
+%Copyright 2022-2026 Oliver J. Pambos
 %
 %Licensed under the Apache License, Version 2.0 (the "License");
 %you may not use this file except in compliance with the License.
@@ -378,7 +378,7 @@ function [track_data_combined] = loadAndCombineTracks(app, data_source)
     
     %Launch popup for user to select files
     popup = SelectTrainingFilesPopUp(app);
-    uiwait(popup.UIFigure);
+    uiwait(popup.SelectTrainingDataUIFigure);
     
     %check if the user provided valid files
     if ~isfield(app.movie_data.params, "train_data_source") || isempty(app.movie_data.params.train_data_source)

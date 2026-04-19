@@ -1,7 +1,7 @@
 # DeepTRACE
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18869232.svg)](https://doi.org/10.5281/zenodo.18869232)
 
-DeepTRACE is the software accompanying Pambos, O.J. _et al._ **DeepTRACE: Flexible Machine Learning for Analysis and Discovery in Single Molecule Tracks.** _bioRxiv_ (2025). [https://doi.org/10.1101/2025.05.15.654348](https://doi.org/10.1101/2025.05.15.654348)
+DeepTRACE is the software accompanying Pambos, O.J., Wright, J.A.R. & Kapanidis, A.N., **"DeepTRACE brings flexible machine learning to single-molecule track analysis"**. Commun Biol (2026). [https://doi.org/10.1038/s42003-026-09899-y](https://doi.org/10.1038/s42003-026-09899-y)
 
 This repository hosts the actively maintained DeepTRACE codebase.
 
@@ -32,7 +32,7 @@ If you do not use Git, the following steps will set up DeepTRACE on your system:
 addpath(genpath('path_to_unzipped_DeepTRACE'))
 savepath
 ```
-3. Launch DeepTRACE by typing `InVivoKineticsGUI` in the Command Window.
+3. Launch DeepTRACE by typing `DeepTRACE` in the Command Window.
 
 On some systems the `savepath` command requires administrator access. If so, an alternative to step 2 above is to add the `addpath(genpath('path_to_unzipped_DeepTRACE'))` command to the `startup.m` file so that the DeepTRACE path is configured automatically each time MATLAB starts.
 
@@ -50,7 +50,7 @@ git clone https://github.com/opambos/DeepTRACE.git
 addpath(genpath('path_to_DeepTRACE'))
 savepath
 ```
-3. Launch DeepTRACE by typing `InVivoKineticsGUI` in the MATLAB Command Window.
+3. Launch DeepTRACE by typing `DeepTRACE` in the MATLAB Command Window.
 
 On some systems the `savepath` command requires administrator access. If so, an alternative to step 2 above is to add the `addpath(genpath('path_to_DeepTRACE'))` command to the `startup.m` file so that the DeepTRACE path is configured automatically each time MATLAB starts.
 
@@ -147,7 +147,7 @@ DeepTRACE supports export of analytical results and visualisations in multiple f
 ## How to Cite
 To cite DeepTRACE, the following preprint should be used
 
-Pambos, O.J. _et al._ **DeepTRACE brings flexible machine learning to single-molecule track analysis.** (2026). [https://doi.org/10.1038/s42003-026-09899-y](https://doi.org/10.1038/s42003-026-09899-y)
+Pambos, O.J., Wright, J.A.R. & Kapanidis, A.N., **DeepTRACE brings flexible machine learning to single-molecule track analysis.** (2026). [https://doi.org/10.1038/s42003-026-09899-y](https://doi.org/10.1038/s42003-026-09899-y)
 
 ---
 

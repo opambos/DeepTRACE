@@ -1,19 +1,20 @@
 NOTICE
 
 DeepTRACE
-Copyright (c) 2022–2026 Oliver James Pambos
+Copyright (c) 2022–2026 Oliver J. Pambos
 Department of Physics, University of Oxford
 
 DeepTRACE, including its methods and system design, was conceived and
-developed entirely by Oliver James Pambos.
+developed entirely by Oliver J. Pambos.
 
 For scientific publications arising from use of this software or
 derivative works based substantially on it, citation is made via
 the following article:
 
-Pambos et al., “DeepTRACE: Flexible Machine Learning for Analysis
-and Discovery in Single-Molecule Tracks”
-https://doi.org/10.1101/2025.05.15.654348
+Pambos, O.J., Wright, J.A.R. & Kapanidis, A.N. "DeepTRACE brings
+flexible machine learning to single-molecule track analysis". Commun
+Biol (2026).
+https://doi.org/10.1038/s42003-026-09899-y
 
 This project is licensed under the Apache License, Version 2.0.
 See the LICENSE file for full terms and conditions.
